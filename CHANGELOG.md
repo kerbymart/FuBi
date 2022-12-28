@@ -17,4 +17,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - Update CMakeLists.txt with target and link libraries - Added comments on each source and header files - Updated `FunctionSpec` to use enum-type var and call types - Modified parser for the changes in `FunctionSpec` data structure - Modified `Fubi::Call_function` method to return the result type
 - Created initial README file
 - Fixed README headings
+- Set platform to x86 in the CMakeLists file - Updated README build instruction
 
