@@ -1,3 +1,9 @@
+/**
+ * @file DbgHelpDll.cpp
+ * @brief Source file for the DbgHelpDll class.
+ * @author Kerby
+ * @date 2022-12-20
+ */
 #include "StdAfx.h"
 #include "DbgHelpDll.h"
 

@@ -1,3 +1,12 @@
+/**
+ * @file targetver.h
+ * @brief Target version header file for the application.
+ *        Contains the minimum required platform macros that are used to enable features available
+ *        on platform versions up to and including the version specified.
+ * @author Kerby
+ * @date 2022-12-20
+ */
+
 #pragma once
 
 // The following macros define the minimum required platform.  The minimum required platform
