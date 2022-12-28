@@ -32,7 +32,7 @@ To build the Fubi project, you will need to have CMake installed. Then, follow t
 ```
 $ mkdir build
 $ cd build
-$ cmake -G "Visual Studio 16 2019" ..
+$ cmake -A Win32 ..
 $ cmake --build .
 ```
 
