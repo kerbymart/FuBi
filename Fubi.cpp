@@ -1,3 +1,9 @@
+/**
+ * @file Fubi.cpp
+ * @brief Implementation of the Fubi class, which wraps functions from a DLL in a function table.
+ * @author Kerby
+ * @date 2022-12-20
+ */
 #include "StdAfx.h"
 #include "Fubi.h"
 
@@ -9,19 +15,23 @@ Fubi::~Fubi(void)
 {
 }
 
-DWORD Fubi::Call_function(std::string funcName, const void* args)
+Result Fubi::Call_function(std::string funcName, const void* args)
 {
-	int size = 0;
-	DWORD res = 0; // should be null
-	std::string res_type(""); // should add this to the return value Map<string,DWORD>
-	for ( functionVec::iterator it = sys.m_Functions.begin() ; it != sys.m_Functions.end(); ++it ) {	
-		if ( !it->m_Name.compare(funcName) && !it->m_CallType.compare("__cdecl") )
-		{
-			res = Call_cdecl(args, size,it->m_dwAddress);	
-			res_type = it->m_ReturnType;
-		}
-	} 	
-	return res;
+    int size = 0;
+    DWORD res = 0;
+    std::string res_type("");
+    for ( functionVec::iterator it = sys.m_Functions.begin() ; it != sys.m_Functions.end(); ++it ) {
+        if ( !it->m_Name.compare(funcName) && it->m_CallType == FunctionSpec::CALL_CDECL )
+        {
+            res = Call_cdecl(args, size,it->m_dwAddress);
+            res_type = it->m_ReturnType;
+        }
+    }
+
+    Result result;
+    result.res_type = res_type;
+    result.res = res;
+    return result;
 }
 
 DWORD Fubi::Call_cdecl( const void* args, size_t sz, DWORD func )

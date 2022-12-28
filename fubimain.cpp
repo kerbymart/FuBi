@@ -1,78 +1,60 @@
-// fubi.cpp : Defines the entry point for the console application.
-//
+/**
+* @file fubimain.cpp
+* @brief Defines the entry point for the console application.
+*      This file contains the main function of the application, which loads a DLL, instantiates a Fubi object,
+*      and calls functions from the DLL using the Fubi object's function table.
+* @author Kerby
+* @date 2022-12-20
+*/
 
 #include "stdafx.h"
 #include <iostream>
-#include <dbghelp.h>
 #include "Fubi.h"
 
 using namespace std;
 
-class Foo {
-public: 
-	static const DWORD bar = 0x1234;
-	string mystring;
-	__declspec(dllexport) void foo();
-	void foobar();
-};
-
-void Foo::foo(){
-	printf("foo called");
-}
-
-void Foo::foobar(){
-	printf("foobar called");
-}
-
+/**
+ * @brief The main entry point of the console application. This function loads the specified DLL,
+ *        instantiates a Fubi object, and calls functions from the DLL using the Fubi object's function table.
+ * @param argc The number of arguments passed to the application.
+ * @param argv An array of arguments passed to the application.
+ * @return Returns 0 on successful execution, or -1 if the DLL could not be loaded.
+ */
 int _tmain(int argc, _TCHAR* argv[])
 {
-	Foo foo;
-	foo.mystring =  "all your base are belong to us";
-
 	HINSTANCE hDLL;
- 	LPCWSTR  thedll = L"Test.dll";
 	hDLL = LoadLibrary(argv[1]);
-
-	DWORD testvar = 0x1;
 
 	if ( !hDLL ){
 		MessageBox(NULL, _T("Unable to load dll."), _T("Fatal Error"), MB_ICONERROR);
 		return -1;
 	}
-	cout <<"DLL loaded successfully...\n";
 
 	// Instantiate the Fubi object
 	Fubi fubi;
+
 	// Bind with the DLL
-	fubi.sys.ImportBindigs( hDLL );
+    fubi.sys.ImportBindings(hDLL);
 	fubi.sys.PrintFunctionInfo();
 
-	////////////////////////////////////////////////////////////////////
-	// Sample call to function using the function table
-	// Requirements : 
-	// -> DWORD address
-	// -> args
-	// -> arg_size 
-	////////////////////////////////////////////////////////////////////
-	cout << "********************************************************\n";
-	cout << "Please Type the name of the function you want to call...\n";
-	cout << "********************************************************\n";
+    // Prompt the user to input the name of the function they want to call
+    cout << "Please enter the name of the function you want to call:\n";
 	
 	string str;
 	string fn_name; // function name
 	vector<DWORD> params; // parameter stack
 
-	DWORD res=0;
-	
-	string res_type("ToDo");
-	while ( getline(cin, str) )
-		{
-		    if (str.empty() || str[0] == 'q' || str[0] == 'Q')
-				break;		
-			cout << "\n";
-			res = fubi.Call_function(str, NULL);
-			cout << "RESULT (" << res_type << ")" << " = " << res << "\n";
-		}
+    Result result;
+    while ( getline(cin, str) )
+    {
+        if (str.empty() || str[0] == 'q' || str[0] == 'Q')
+            break;
+        cout << "\n";
+        result = fubi.Call_function(str, NULL);
+        auto res_type = result.res_type;
+        auto res = result.res;
+        cout << "RESULT (" << res_type << ")" << " = " << res << "\n";
+    }
 
 	system("PAUSE");
 	return 0;
