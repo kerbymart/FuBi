@@ -17,4 +17,5 @@ set_property(TARGET Fubi PROPERTY ENTRY_POINT "fubimain.cpp")
 include_directories("C:/local/boost_1_73_0")
 link_directories(C:/local/boost_1_73_0/lib64-msvc-14.2)
 
+set(CMAKE_GENERATOR_PLATFORM x86)
 set(CMAKE_SYSTEM_VERSION 6.0)
