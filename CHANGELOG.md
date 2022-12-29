@@ -18,4 +18,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - Created initial README file
 - Fixed README headings
 - Set platform to x86 in the CMakeLists file - Updated README build instruction
+- Updated CMakeLists to enable Boost test - Added initial TestSignatureParser
 
