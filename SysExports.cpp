@@ -139,6 +139,22 @@ bool SysExports::ImportFunction(const char* mangledName, DWORD address, Signatur
  *       and parameter types for each function.
 */
 void SysExports::PrintFunctionInfo() {
+        std::map<FunctionSpec::eCallType, std::string> callTypeMap = {
+                { FunctionSpec::eCallType::CALL_CDECL, "__cdecl" },
+                { FunctionSpec::eCallType::CALL_STDCALL, "__stdcall" },
+                { FunctionSpec::eCallType::CALL_THISCALL, "__thiscall" },
+                { FunctionSpec::eCallType::CALL_THISCALLVARARG, "__fastcall" },
+                { FunctionSpec::eCallType::CALL_UNKNOWN, "unknown" }
+        };
+        std::map<FunctionSpec::eVarType, std::string> returnTypeMap = {
+                { FunctionSpec::eVarType::VAR_VOID, "void" },
+                { FunctionSpec::eVarType::VAR_BOOL, "bool" },
+                { FunctionSpec::eVarType::VAR_INT, "int" },
+                { FunctionSpec::eVarType::VAR_FLOAT, "float" },
+                { FunctionSpec::eVarType::VAR_STRING, "string" },
+                { FunctionSpec::eVarType::VAR_USER, "???" },
+                { FunctionSpec::eVarType::VAR_UNKNOWN, "unknown" }
+        };
 		std::cout << "*********************************\n";
 		std::cout << "* Printing function information *\n";
 		std::cout << "*********************************\n";
@@ -148,10 +164,10 @@ void SysExports::PrintFunctionInfo() {
 			std::cout << "================================" << std::endl;
 			std::cout << "FID = " << it->m_SerialID << "'\n";
 			std::cout << "FUN_NAME = '" << it->m_Name << "'\n";
-			std::cout << "RET_TYPE = '" << it->m_ReturnType << "'\n";
-			std::cout << "CAL_TYPE = '" << it->m_CallType << "'\n";
+			std::cout << "RET_TYPE = '" << returnTypeMap[it->m_ReturnType] << "'\n";
+			std::cout << "CAL_TYPE = '" << callTypeMap[it->m_CallType] << "'\n";
 			for ( FunctionSpec::ParamVec::size_type i = 0; i < it->m_ParamTypes.size() ; ++i ){
-				std::cout << "PARAM_" << i << "  = '" << it->m_ParamTypes[i] << "'\n";
+				std::cout << "PARAM_" << i << "  = '" << returnTypeMap[it->m_ParamTypes[i]] << "'\n";
 			}
 			std::cout << "================================" << std::endl;
 
