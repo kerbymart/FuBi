@@ -112,7 +112,8 @@ public:
 									>> *(alnum_p)][assign_a(callTypeString)
 							  ];
 				rettype
-					=  ( rettype_unsigned | rettype_signed )[assign_a(returnTypeString)];
+					=  ( rettype_unsigned | rettype_signed )[assign_a(returnTypeString)]
+					        | eps_p[assign_a(returnTypeString, "")];
 
 				rettype_signed 
 					= lexeme_d[
@@ -121,26 +122,29 @@ public:
 									( base_types )
 								 )	
 							  ];
+
 				rettype_unsigned
 					= lexeme_d[
-								str_p("unsigned") >> space_p >> rettype_signed
+                                ((str_p("unsigned") | str_p("virtual") | str_p("static"))
+								>> space_p) >> rettype_signed
 							  ];
-				datatype 
-					= lexeme_d[
-								(alpha_p) 
-									>> *(alnum_p | space_p | ch_p('*'))
-							  ][push_back_a(paramTypes)];
-				function 
+
+                datatype
+                    = lexeme_d[
+                                (alpha_p)
+                                >> *(alnum_p | space_p | ch_p('*')
+                                | (str_p("const") >> space_p >> ch_p('*')))
+                              ][push_back_a(paramTypes)];
+
+				function
 					= ( lexeme_d[
-								(alpha_p | ch_p('_')) 
-									>> *(alnum_p | ch_p('_')) >> str_p("::") 
-									>> ((alpha_p | ch_p('_')) >> *(alnum_p | ch_p('_')))[assign_a(spec.m_Name)]
-							  ] |
-		
-					    lexeme_d[
-								(alpha_p | ch_p('_')) 
-									>> *(alnum_p | ch_p('_') /* | ch_p(':')temporary*/)
-							  ][assign_a(spec.m_Name)]
+					        (alpha_p | ch_p('_'))
+					            >> *(alnum_p | ch_p('_')) >> str_p("::")
+					            >> *((alpha_p | ch_p('_')) >> *(alnum_p | ch_p('_'))
+					            >> str_p("::"))
+					            >> ((alpha_p | ch_p('_'))
+					            >> *(alnum_p | ch_p('_')))[assign_a(spec.m_Name)]
+                                ]
 					   );
 
 				params 
