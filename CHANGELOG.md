@@ -21,3 +21,7 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - Updated CMakeLists to enable Boost test - Added initial TestSignatureParser
 - Added basic SignatureParser tests - Added grammar to capture 'class' function return type - Added addition base types
 
+### 2022-12-30
+
+- Updated README source file list section
+

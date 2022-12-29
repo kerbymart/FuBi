@@ -10,18 +10,18 @@ Compiler: Visual Studio<br>
 
 ## Architecture
 The Fubi project consists of the following files:<br>
-**Fubi.h**: Header file for the Fubi class, which contains the function table and methods for calling functions from a DLL.<br>
-**Fubi.cpp**: Implementation file for the Fubi class.<br>
-**SysExports.h**: Header file for the SysExports class, which handles the import and management of functions in a DLL.<br>
-**SysExports.cpp**: Implementation file for the SysExports class.<br>
-**SignatureParser.h**: Header file for the SignatureParser class, which parses function signatures using the Boost Spirit library.<br>
-**SignatureParser.cpp**: Implementation file for the SignatureParser class.<br>
-**DbgHelpDll.h**: Header file for the DbgHelpDll class, which loads the DbgHelp library and provides methods for unmangling function signatures.<br>
-**DbgHelpDll.cpp**: Implementation file for the DbgHelpDll class.<br>
-**stdafx.h**: Standard include file for precompiled headers.<br>
-**stdafx.cpp**: Source file that includes just the standard includes and generates the precompiled header.<br>
-**fubimain.cpp**: Main entry point for the Fubi application.<br>
-**CMakeLists.txt**: CMake build configuration file for this project. Contains the necessary commands and settings for building the project using CMake.<br>
+- `Fubi.h`: Header file for the Fubi class, which contains the function table and methods for calling functions from a DLL.<br>
+- `Fubi.cpp`: Implementation file for the Fubi class.<br>
+- `SysExports.h`: Header file for the SysExports class, which handles the import and management of functions in a DLL.<br>
+- `SysExports.cpp`: Implementation file for the SysExports class.<br>
+- `SignatureParser.h`: Header file for the SignatureParser class, which parses function signatures using the Boost Spirit library.<br>
+- `SignatureParser.cpp`: Implementation file for the SignatureParser class.<br>
+- `DbgHelpDll.h`: Header file for the DbgHelpDll class, which loads the DbgHelp library and provides methods for unmangling function signatures.<br>
+- `DbgHelpDll.cpp`: Implementation file for the DbgHelpDll class.<br>
+- `stdafx.h`: Standard include file for precompiled headers.<br>
+- `stdafx.cpp`: Source file that includes just the standard includes and generates the precompiled header.<br>
+- `fubimain.cpp`: Main entry point for the Fubi application.<br>
+- `CMakeLists.txt`: CMake build configuration file for this project. Contains the necessary commands and settings for building the project using CMake.<br>
 
 ## Building the Project
 To build the Fubi project, you will need to have CMake installed. Then, follow these steps:
