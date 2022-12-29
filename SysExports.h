@@ -48,14 +48,14 @@ struct FunctionSpec
         CALL_THISCALLVARARG, CALL_UNKNOWN
     };
 
-	typedef std::vector <eVarType> ParamVec;
+	typedef std::vector <std::string> ParamVec;
 	std::vector<std::string> params; // temporary parameters vector
 
     DWORD m_SerialID;				// Serial id based on EXE import order
     std::string  m_Name;			// Function name
     DWORD		 m_dwAddress;		// Function address
-    eVarType     m_ReturnType;		// Return Type
-    eCallType    m_CallType;		// Call Type
+    std::string  m_ReturnType;		// Return Type
+    std::string  m_CallType;		// Call Type
     ParamVec     m_ParamTypes;		// Parameter type(s)
 };
 typedef std::vector<std::map<DWORD, FunctionSpec>>FunctionByAddrMap;
@@ -78,19 +78,22 @@ public:
 	{	
 		symbols<> base_types, call_types, access_types;
 		access_types = "public:","private","protected";
-		base_types = "void","bool","int","char","long","short","double";
+		base_types = "void","bool","int","char","long","short","double",
+                     "float", "wchar_t", "char16_t", "char32_t",
+                     "__int8", "__int16", "__int32","__int64", "long long";
 		call_types = "__cdecl","__stdcall","__thiscall","__fastcall";
 
         std::string callTypeString;
         std::string returnTypeString;
+        std::string returnTypeClass;
         std::vector <std::string> paramTypes;
 
         std::vector<std::string> v;
 			// Grammar rules
 			rule<> 
-				rettype, datatype, calltype, params, group, function;
+				rettype, datatype, calltype, params, group, function, class_name;
 			rule<>
-				rettype_signed, rettype_unsigned;
+				rettype_signed, rettype_unsigned, rettype_class;
 			rule<>
 				top;
 			// Begin Grammar
@@ -111,11 +114,12 @@ public:
 								str_p("__")
 									>> *(alnum_p)][assign_a(callTypeString)
 							  ];
-				rettype
-					=  ( rettype_unsigned | rettype_signed )[assign_a(returnTypeString)]
-					        | eps_p[assign_a(returnTypeString, "")];
 
-				rettype_signed 
+                rettype
+                        =  ( rettype_unsigned | rettype_signed | rettype_class )[assign_a(returnTypeString)]
+                           | eps_p[assign_a(returnTypeString, "")];
+
+                rettype_signed
 					= lexeme_d[
 								 ( base_types >> space_p >> ( ( str_p("const") >> space_p >> ch_p('*') ) | 
 									( str_p("const") | ch_p('*') ) ) |
@@ -129,18 +133,46 @@ public:
 								>> space_p) >> rettype_signed
 							  ];
 
+                rettype_class = lexeme_d[
+                                            (str_p("class") | str_p("struct"))
+                                            >> space_p >> class_name
+                                        ][assign_a(returnTypeClass)];
+
+                /**
+                 * This grammar will match class names such as Foo, Bar_1, and Baz::Quux_2.
+                 * It will also match compound class names like Foo::Bar::Baz::Quux.
+                 * It will not match class names that start with a number, such as 1Foo.
+                 */
+                class_name =
+                        (alpha_p | ch_p('_'))
+                        >> *(alnum_p | ch_p('_'))
+                        >> *(str_p("::")
+                        >> (alpha_p | ch_p('_'))
+                        >> *(alnum_p | ch_p('_')));
+
+                /**
+                 * This grammar will match and extract data types such as
+                 * "int", "char*", "const char*", and "__int64", etc.
+                 */
                 datatype
                     = lexeme_d[
-                                (alpha_p)
-                                >> *(alnum_p | space_p | ch_p('*')
-                                | (str_p("const") >> space_p >> ch_p('*')))
-                              ][push_back_a(paramTypes)];
+                        // match either "__" or any alphabetic character
+                        (str_p("__") | alpha_p)
+
+                        // match any number of characters that are either alphanumeric, a space, or an asterisk
+                        // or match "const" followed by a space and an asterisk
+                        >> *(alnum_p | space_p | ch_p('*') | (str_p("const") >> space_p >> ch_p('*')))
+
+                        // apply the semantic action "push_back_a" to the parameter "paramTypes"
+                        ][push_back_a(paramTypes)];
 
 				function
 					= ( lexeme_d[
 					        (alpha_p | ch_p('_'))
-					            >> *(alnum_p | ch_p('_')) >> str_p("::")
-					            >> *((alpha_p | ch_p('_')) >> *(alnum_p | ch_p('_'))
+					            >> *(alnum_p | ch_p('_'))
+					            >> str_p("::")
+					            >> *((alpha_p | ch_p('_'))
+					            >> *(alnum_p | ch_p('_'))
 					            >> str_p("::"))
 					            >> ((alpha_p | ch_p('_'))
 					            >> *(alnum_p | ch_p('_')))[assign_a(spec.m_Name)]
@@ -155,30 +187,19 @@ public:
 				top
 			));
 
-        std::map<std::string, FunctionSpec::eCallType> callTypeMap = {
-                {"__cdecl", FunctionSpec::CALL_CDECL},
-                {"__stdcall", FunctionSpec::CALL_STDCALL},
-                {"__thiscall", FunctionSpec::CALL_THISCALL},
-                {"__fastcall", FunctionSpec::CALL_THISCALLVARARG}
-        };
-
-        std::unordered_map<std::string, FunctionSpec::eVarType> varTypeMap = {
-                {"void", FunctionSpec::VAR_VOID},
-                {"bool", FunctionSpec::VAR_BOOL},
-                {"int", FunctionSpec::VAR_INT},
-                {"float", FunctionSpec::VAR_FLOAT},
-                {"string", FunctionSpec::VAR_STRING},
-                {"user", FunctionSpec::VAR_USER},
-                {"unknown", FunctionSpec::VAR_UNKNOWN}
-        };
-
-        spec.m_CallType = callTypeMap[callTypeString];
-        spec.m_ReturnType = varTypeMap[returnTypeString];
+        spec.m_CallType = callTypeString;
+        // Hack to set the return type, since the `rettype` grammar rule wont spit out `rettype_class`
+        spec.m_ReturnType = returnTypeClass.empty() ? returnTypeString : returnTypeClass;
         for (const auto& paramType : paramTypes) {
-            spec.m_ParamTypes.push_back(varTypeMap[paramType]);
+            spec.m_ParamTypes.push_back(paramType);
         }
 		return r;
 	}
+private:
+    static void debug(const std::string& message)
+    {
+        std::cout << "DEBUG: " << message << std::endl;
+    }
 };
 
 typedef std::vector<FunctionSpec> functionVec;
