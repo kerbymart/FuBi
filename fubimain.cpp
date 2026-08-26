@@ -20,10 +20,31 @@ using namespace std;
  * @param argv An array of arguments passed to the application.
  * @return Returns 0 on successful execution, or -1 if the DLL could not be loaded.
  */
-int _tmain(int argc, _TCHAR* argv[])
+int main(int argc, char* argv[])
 {
+	if (argc < 2) {
+		cerr << "Usage: Fubi.exe <dll-path> [--dump <output-file>] [--no-interactive]\n";
+		return 2;
+	}
+
+	string dumpPath;
+	bool interactive = true;
+	for (int index = 2; index < argc; ++index) {
+		const string option = argv[index];
+		if (option == "--dump" && index + 1 < argc) {
+			dumpPath = argv[++index];
+		}
+		else if (option == "--no-interactive") {
+			interactive = false;
+		}
+		else {
+			cerr << "Unknown or incomplete option: " << option << "\n";
+			return 2;
+		}
+	}
+
 	HINSTANCE hDLL;
-	hDLL = LoadLibrary(argv[1]);
+	hDLL = LoadLibraryA(argv[1]);
 
 	if ( !hDLL ){
 		MessageBox(NULL, _T("Unable to load dll."), _T("Fatal Error"), MB_ICONERROR);
@@ -34,8 +55,26 @@ int _tmain(int argc, _TCHAR* argv[])
 	Fubi fubi;
 
 	// Bind with the DLL
-    fubi.sys.ImportBindings(hDLL);
+	if (!fubi.sys.ImportBindings(hDLL)) {
+		cerr << "Unable to read the DLL export table.\n";
+		FreeLibrary(hDLL);
+		return 3;
+	}
 	fubi.sys.PrintFunctionInfo();
+
+	if (!dumpPath.empty()) {
+		if (!fubi.sys.DumpFunctionInfo(dumpPath, argv[1])) {
+			cerr << "Unable to write dump file: " << dumpPath << "\n";
+			FreeLibrary(hDLL);
+			return 4;
+		}
+		cout << "Wrote export signature dump: " << dumpPath << "\n";
+	}
+
+	if (!interactive) {
+		FreeLibrary(hDLL);
+		return 0;
+	}
 
     // Prompt the user to input the name of the function they want to call
     cout << "Please enter the name of the function you want to call:\n";
@@ -56,6 +95,6 @@ int _tmain(int argc, _TCHAR* argv[])
         cout << "RESULT (" << res_type << ")" << " = " << res << "\n";
     }
 
-	system("PAUSE");
+	FreeLibrary(hDLL);
 	return 0;
 }

@@ -15,6 +15,7 @@
 #include <boost/spirit/include/classic_symbols.hpp>
 #include <boost/variant.hpp>
 
+#include <cstdint>
 #include <iostream>
 #include <vector>
 #include <map>
@@ -51,12 +52,21 @@ struct FunctionSpec
 	typedef std::vector <std::string> ParamVec;
 	std::vector<std::string> params; // temporary parameters vector
 
-    DWORD m_SerialID;				// Serial id based on EXE import order
-    std::string  m_Name;			// Function name
-    DWORD		 m_dwAddress;		// Function address
-    std::string  m_ReturnType;		// Return Type
-    std::string  m_CallType;		// Call Type
-    ParamVec     m_ParamTypes;		// Parameter type(s)
+    DWORD m_SerialID = 0;
+    DWORD m_Ordinal = 0;
+    DWORD m_Rva = 0;
+    std::string m_Name;
+    std::string m_DecoratedName;
+    std::vector<std::string> m_ExportNames;
+    std::string m_Signature;
+    std::string m_Forwarder;
+    uintptr_t m_dwAddress = 0;
+    std::string m_ReturnType = "unknown";
+    std::string m_CallType = "unknown";
+    ParamVec m_ParamTypes;
+
+    bool IsForwarder() const { return !m_Forwarder.empty(); }
+    bool HasRecoveredSignature() const { return !m_Signature.empty(); }
 };
 typedef std::vector<std::map<DWORD, FunctionSpec>>FunctionByAddrMap;
 
@@ -168,10 +178,7 @@ public:
 
 				function
 					= ( lexeme_d[
-					        (alpha_p | ch_p('_'))
-					            >> *(alnum_p | ch_p('_'))
-					            >> str_p("::")
-					            >> *((alpha_p | ch_p('_'))
+					        *((alpha_p | ch_p('_'))
 					            >> *(alnum_p | ch_p('_'))
 					            >> str_p("::"))
 					            >> ((alpha_p | ch_p('_'))
@@ -208,12 +215,13 @@ class SysExports
 {
 public:
 	SysExports(void);
-public:
 	~SysExports(void);
-public:
 	bool ImportBindings(HMODULE module = NULL);
-public:
-	bool ImportFunction(const char* mangledName, DWORD address, SignatureParser* parser);
-	functionVec m_Functions; /* temporary */
-	void PrintFunctionInfo();
+	void PrintFunctionInfo() const;
+	bool DumpFunctionInfo(const std::string& filePath, const std::string& modulePath) const;
+
+	functionVec m_Functions;
+
+private:
+	void RecoverSignature(FunctionSpec& function, SignatureParser& parser);
 };
