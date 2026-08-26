@@ -7,6 +7,8 @@
 #include "StdAfx.h"
 #include "Fubi.h"
 
+#include <algorithm>
+
 Fubi::Fubi(void)
 {
 }
@@ -21,7 +23,10 @@ Result Fubi::Call_function(std::string funcName, const void* args)
     DWORD res = 0;
     std::string res_type("");
     for ( functionVec::iterator it = sys.m_Functions.begin() ; it != sys.m_Functions.end(); ++it ) {
-        if ( !it->m_Name.compare(funcName) && it->m_CallType == FunctionSpec::CALL_CDECL )
+        const bool nameMatches = it->m_Name == funcName ||
+            std::find(it->m_ExportNames.begin(), it->m_ExportNames.end(), funcName) !=
+                it->m_ExportNames.end();
+        if (nameMatches && it->m_CallType == "__cdecl")
         {
             res = Call_cdecl(args, size,it->m_dwAddress);
             res_type = it->m_ReturnType;
@@ -34,8 +39,12 @@ Result Fubi::Call_function(std::string funcName, const void* args)
     return result;
 }
 
-DWORD Fubi::Call_cdecl( const void* args, size_t sz, DWORD func )
+DWORD Fubi::Call_cdecl( const void* args, size_t sz, uintptr_t func )
 {
+#if defined(_M_X64)
+    if (sz != 0) return 0;
+    return reinterpret_cast<DWORD(*)()>(func)();
+#else
     DWORD rc;               // here's our return value...
     __asm
     {
@@ -50,10 +59,15 @@ DWORD Fubi::Call_cdecl( const void* args, size_t sz, DWORD func )
         add   esp, sz       // restore the stack pointer
     }
     return ( rc );
+#endif
 }
 
-DWORD Fubi::Call_stdcall( const void* args, size_t sz, DWORD func )
+DWORD Fubi::Call_stdcall( const void* args, size_t sz, uintptr_t func )
 {
+#if defined(_M_X64)
+    if (sz != 0) return 0;
+    return reinterpret_cast<DWORD(*)()>(func)();
+#else
     DWORD rc;               // here's our return value...
     __asm
     {
@@ -67,10 +81,15 @@ DWORD Fubi::Call_stdcall( const void* args, size_t sz, DWORD func )
         mov   rc,  eax      // save the return value
     }
     return ( rc );
+#endif
 }
 
-DWORD Fubi::Call_thiscall( const void* args, size_t sz, void* object, DWORD func )
+DWORD Fubi::Call_thiscall( const void* args, size_t sz, void* object, uintptr_t func )
 {
+#if defined(_M_X64)
+    (void)args; (void)sz; (void)object; (void)func;
+    return 0;
+#else
     DWORD rc;               // here's our return value...
     _asm
     {
@@ -85,10 +104,15 @@ DWORD Fubi::Call_thiscall( const void* args, size_t sz, void* object, DWORD func
         mov   rc,  eax      // save the return value
     }
     return ( rc );
+#endif
 }
 
-DWORD Fubi::Call_thiscallvararg( const void* args, size_t sz, void* object, DWORD func )
+DWORD Fubi::Call_thiscallvararg( const void* args, size_t sz, void* object, uintptr_t func )
 {
+#if defined(_M_X64)
+    (void)args; (void)sz; (void)object; (void)func;
+    return 0;
+#else
     DWORD rc;               // here's our return value...
     _asm
     {
@@ -107,4 +131,5 @@ DWORD Fubi::Call_thiscallvararg( const void* args, size_t sz, void* object, DWOR
         add   esp, eax      // restore the stack pointer
     }
     return ( rc );
+#endif
 }

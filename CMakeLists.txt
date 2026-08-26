@@ -8,20 +8,23 @@
 cmake_minimum_required(VERSION 3.10)
 project(Fubi)
 
-set(BOOST_ROOT "C:/local/boost_1_73_0")
-set(Boost_INCLUDE_DIRS "C:/local/boost_1_73_0")
-set(Boost_LIBRARY_DIRS "C:/local/boost_1_73_0/lib64-msvc-14.2")
-set(Boost_USE_STATIC_LIBS ON)
-
-message(STATUS "BOOST_ROOT: ${BOOST_ROOT}")
+set(BOOST_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/boost_1_87_0" CACHE PATH "Boost source directory")
+if(EXISTS "${BOOST_ROOT}/boost/version.hpp")
+    set(Boost_INCLUDE_DIRS "${BOOST_ROOT}")
+else()
+    include(FetchContent)
+    FetchContent_Declare(
+        boost_headers
+        URL https://archives.boost.io/release/1.87.0/source/boost_1_87_0.zip
+        SOURCE_SUBDIR _headers_only
+        DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+    )
+    FetchContent_MakeAvailable(boost_headers)
+    set(Boost_INCLUDE_DIRS "${boost_headers_SOURCE_DIR}")
+endif()
 message(STATUS "Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
-message(STATUS "Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
-
-find_package(Boost REQUIRED)
-find_package(Boost REQUIRED COMPONENTS unit_test_framework)
 
 include_directories(${Boost_INCLUDE_DIRS})
-link_directories(${Boost_LIBRARY_DIRS})
 
 set(SOURCES DbgHelpDll.cpp Fubi.cpp SysExports.cpp fubimain.cpp stdafx.cpp)
 add_executable(Fubi ${SOURCES})
@@ -33,9 +36,15 @@ set(CMAKE_GENERATOR_PLATFORM x86)
 set(CMAKE_SYSTEM_VERSION 6.0)
 
 set(TEST_SOURCES TestSignatureParser.cpp)
-#add_definitions(-DBOOST_TEST_DYN_LINK)
-add_definitions(-DBOOST_TEST_STATIC_LINK)
 add_executable(tests ${TEST_SOURCES})
-target_link_libraries(tests ${Boost_UNIT_TEST_FRAMEWORK_LIBRARY})
+
+add_library(export_fixture SHARED TestExportsFixture.cpp TestExportsFixture.def)
+add_executable(export_tests TestExports.cpp SysExports.cpp DbgHelpDll.cpp stdafx.cpp)
+target_link_libraries(export_tests PRIVATE DbgHelp)
+add_dependencies(export_tests export_fixture)
+
+enable_testing()
+add_test(NAME signature_parser COMMAND tests)
+add_test(NAME export_enumeration COMMAND export_tests)
 
 message(STATUS "Compiler version: ${CMAKE_CXX_COMPILER_VERSION}")
