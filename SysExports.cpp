@@ -1,19 +1,82 @@
 /**
  * @file SysExports.cpp
- * @brief Source file for the SysExports class, which handles the import
- *        and management of functions in a dynamic-link library (DLL).
- * @author Kerby
- * @date 2022-12-20
+ * @brief Enumerates a loaded module's complete PE export table.
  */
 #include "StdAfx.h"
 #include "SysExports.h"
 #include "DbgHelpDll.h"
 
-#define rcast reinterpret_cast
+#include <fstream>
+#include <iomanip>
+#include <unordered_map>
 
-#define UNDNAME_32_BIT_DECODE	0x0800 
-#define UNDNAME_64_BIT_DECODE	0x2000
-#define UNDNAME_COMPLETE		0x0000
+namespace
+{
+const char* OrdinalName(DWORD ordinal, std::string& storage)
+{
+    storage = "#" + std::to_string(ordinal);
+    return storage.c_str();
+}
+
+void WriteExport(std::ostream& output, const FunctionSpec& function)
+{
+    output << "[export " << function.m_SerialID << "]\n";
+    output << "ordinal = " << function.m_Ordinal << "\n";
+    output << "rva = 0x" << std::hex << std::uppercase << function.m_Rva
+           << std::dec << std::nouppercase << "\n";
+    output << "name = " << function.m_Name << "\n";
+    output << "export_names = ";
+    if (function.m_ExportNames.empty())
+    {
+        output << "<ordinal-only>";
+    }
+    else
+    {
+        for (size_t index = 0; index < function.m_ExportNames.size(); ++index)
+        {
+            if (index != 0) output << ", ";
+            output << function.m_ExportNames[index];
+        }
+    }
+    output << "\n";
+
+    if (function.IsForwarder())
+    {
+        output << "forwarder = " << function.m_Forwarder << "\n";
+    }
+    else
+    {
+        output << "address = 0x" << std::hex << std::uppercase << function.m_dwAddress
+               << std::dec << std::nouppercase << "\n";
+    }
+
+    output << "signature = "
+           << (function.HasRecoveredSignature()
+                   ? function.m_Signature
+                   : "<unavailable: not encoded in PE export table>")
+           << "\n";
+    output << "return_type = " << function.m_ReturnType << "\n";
+    output << "calling_convention = " << function.m_CallType << "\n";
+
+    output << "parameters = ";
+    if (function.m_ParamTypes.empty())
+    {
+        output << "<unknown>";
+    }
+    else
+    {
+        for (size_t index = 0; index < function.m_ParamTypes.size(); ++index)
+        {
+            if (index != 0)
+            {
+                output << ", ";
+            }
+            output << function.m_ParamTypes[index];
+        }
+    }
+    output << "\n\n";
+}
+}
 
 SysExports::SysExports(void)
 {
@@ -23,136 +86,219 @@ SysExports::~SysExports(void)
 {
 }
 
-/**
- * @brief This function is responsible for importing all functions from the specified dynamic-link library (DLL).
- * @param module A handle to the DLL module that contains the functions to be imported.
- * @return Returns true if the import process was successful, false otherwise.
- */
 bool SysExports::ImportBindings(HMODULE module)
 {
-    SignatureParser parser;
+    m_Functions.clear();
+
     if (module == NULL)
     {
-        module = ::GetModuleHandle(NULL); // get HMODULE
+        module = ::GetModuleHandle(NULL);
     }
 
-    // Find the export table.
-
-    // get headers
-    const BYTE* imageBase = rcast<const BYTE*>(module);
-    const IMAGE_DOS_HEADER* dosHeader = rcast<const IMAGE_DOS_HEADER*>(module);
-    const IMAGE_NT_HEADERS* winHeader = rcast<const IMAGE_NT_HEADERS*>
-    (imageBase + dosHeader->e_lfanew);
-
-    // find the import data directory
-    const IMAGE_DATA_DIRECTORY& exportDataDir = winHeader->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
-    DWORD exportRva = exportDataDir.VirtualAddress;
-    DWORD exportSize = exportDataDir.Size;
-
-    if (exportRva == 0)
+    const BYTE* imageBase = reinterpret_cast<const BYTE*>(module);
+    const IMAGE_DOS_HEADER* dosHeader = reinterpret_cast<const IMAGE_DOS_HEADER*>(imageBase);
+    if (dosHeader->e_magic != IMAGE_DOS_SIGNATURE)
     {
-        return (false);
+        return false;
     }
-    DWORD exportBegin = exportRva,
-            exportEnd = exportBegin + exportSize;
-    const IMAGE_EXPORT_DIRECTORY* exportDir = rcast<const IMAGE_EXPORT_DIRECTORY*>
-    (imageBase + exportBegin);
 
-    // find subtables
-    const DWORD* funcTable = rcast<const DWORD*>(imageBase + exportDir->AddressOfFunctions);
-    const DWORD* nameTable = rcast<const DWORD*>(imageBase + exportDir->AddressOfNames);
-    const WORD* ordinalTable = rcast<const WORD*>(imageBase + exportDir->AddressOfNameOrdinals);
-
-    const DWORD* nameTableIter,
-            * nameTableBegin = nameTable,
-            * nameTableEnd = nameTableBegin + exportDir->NumberOfFunctions;
-    const WORD* ordinalTableIter = ordinalTable;
-
-    wchar_t* szBuf = new wchar_t;
-
-    for (nameTableIter = nameTableBegin;
-         nameTableIter != nameTableEnd;
-         nameTableIter++, ordinalTableIter++)
+    const IMAGE_NT_HEADERS* ntHeaders = reinterpret_cast<const IMAGE_NT_HEADERS*>(
+        imageBase + dosHeader->e_lfanew);
+    if (ntHeaders->Signature != IMAGE_NT_SIGNATURE)
     {
+        return false;
+    }
 
-        const char* functionName = rcast<const char*>(imageBase + *nameTableIter);
-        DWORD functionAddress = funcTable[*ordinalTableIter];
+    const IMAGE_DATA_DIRECTORY& exportData =
+        ntHeaders->OptionalHeader.DataDirectory[IMAGE_DIRECTORY_ENTRY_EXPORT];
+    if (exportData.VirtualAddress == 0 || exportData.Size < sizeof(IMAGE_EXPORT_DIRECTORY))
+    {
+        return false;
+    }
 
-        if ((functionAddress < exportBegin) || (functionAddress > exportEnd))
+    const DWORD exportBegin = exportData.VirtualAddress;
+    const DWORD exportEnd = exportBegin + exportData.Size;
+    const IMAGE_EXPORT_DIRECTORY* exports =
+        reinterpret_cast<const IMAGE_EXPORT_DIRECTORY*>(imageBase + exportBegin);
+    const DWORD* functionRvas =
+        reinterpret_cast<const DWORD*>(imageBase + exports->AddressOfFunctions);
+    const DWORD* nameRvas =
+        reinterpret_cast<const DWORD*>(imageBase + exports->AddressOfNames);
+    const WORD* nameOrdinals =
+        reinterpret_cast<const WORD*>(imageBase + exports->AddressOfNameOrdinals);
+
+    std::unordered_map<DWORD, std::vector<std::string>> namesByFunctionIndex;
+    for (DWORD nameIndex = 0; nameIndex < exports->NumberOfNames; ++nameIndex)
+    {
+        const DWORD functionIndex = nameOrdinals[nameIndex];
+        if (functionIndex >= exports->NumberOfFunctions)
         {
-            functionAddress += rcast<DWORD>(imageBase);
-            // import the function.
-            if (!ImportFunction(functionName, functionAddress, &parser))
-            {
-                return false;
-            }
+            continue;
         }
+
+        namesByFunctionIndex[functionIndex].push_back(
+            reinterpret_cast<const char*>(imageBase + nameRvas[nameIndex]));
+    }
+
+    SignatureParser parser;
+    m_Functions.reserve(exports->NumberOfFunctions);
+    for (DWORD functionIndex = 0; functionIndex < exports->NumberOfFunctions; ++functionIndex)
+    {
+        const DWORD functionRva = functionRvas[functionIndex];
+        if (functionRva == 0)
+        {
+            continue;
+        }
+
+        FunctionSpec function;
+        function.m_SerialID = static_cast<DWORD>(m_Functions.size());
+        function.m_Ordinal = exports->Base + functionIndex;
+        function.m_Rva = functionRva;
+
+        const auto name = namesByFunctionIndex.find(functionIndex);
+        if (name != namesByFunctionIndex.end())
+        {
+            function.m_ExportNames = name->second;
+            function.m_DecoratedName = function.m_ExportNames.front();
+            function.m_Name = function.m_DecoratedName;
+        }
+        else
+        {
+            std::string ordinalName;
+            function.m_Name = OrdinalName(function.m_Ordinal, ordinalName);
+        }
+
+        if (functionRva >= exportBegin && functionRva < exportEnd)
+        {
+            function.m_Forwarder = reinterpret_cast<const char*>(imageBase + functionRva);
+        }
+        else
+        {
+            function.m_dwAddress = reinterpret_cast<uintptr_t>(imageBase + functionRva);
+        }
+
+        RecoverSignature(function, parser);
+        m_Functions.push_back(function);
     }
 
     return true;
 }
 
-/**
- * @brief Import a function from a dynamic-link library (DLL).
- *        The function is added to the function table based on its address and its name is unmangled using
- *         the provided SignatureParser object.
- * @param mangledName The mangled name of the function as it appears in the import table of the DLL file
- * @param address address The address of the function in the DLL.
- * @param parser The SignatureParser object to use for unmangling the function name.
- * @return True if the function was successfully imported, false otherwise.
- */
-bool SysExports::ImportFunction(const char* mangledName, DWORD address, SignatureParser* parser)
+void SysExports::RecoverSignature(FunctionSpec& function, SignatureParser& parser)
 {
-	static int i = 0;
-	static DbgHelpDll s_DbgHelpDll;
-	if ( !s_DbgHelpDll.Load() )
-	{
-		return false;
-	}
-	
-	char unmangledName[ 0x400 ];
-    if ( s_DbgHelpDll.UnDecorateSymbolName(mangledName,
-			unmangledName, sizeof(unmangledName),
-			UNDNAME_32_BIT_DECODE | UNDNAME_COMPLETE) == 0)
-	{
-		return false;
-	}
-	FunctionSpec spec;
-	spec.m_SerialID = i;
-	spec.m_dwAddress = address;
+    if (function.m_ExportNames.empty())
+    {
+        return;
+    }
 
-    parse_info<> r = parser->Parse(unmangledName, spec);
-	if ( r.full ){
-		// add to table
-		m_Functions.push_back( spec );
-        int numElements = m_Functions.size();
-	}
-	std::cout << unmangledName << "\n";
-	++i;
-	return true;
+    static DbgHelpDll dbgHelp;
+    static const bool dbgHelpLoaded = dbgHelp.Load();
+    if (!dbgHelpLoaded)
+    {
+        return;
+    }
+
+    char undecoratedName[0x1000] = {};
+    for (const std::string& exportName : function.m_ExportNames)
+    {
+        if (dbgHelp.UnDecorateSymbolName(
+                exportName.c_str(), undecoratedName,
+                static_cast<DWORD>(sizeof(undecoratedName)), UNDNAME_COMPLETE) != 0 &&
+            exportName != undecoratedName)
+        {
+            function.m_DecoratedName = exportName;
+            break;
+        }
+        undecoratedName[0] = '\0';
+    }
+
+    // Plain C export names do not contain type information.
+    if (undecoratedName[0] == '\0')
+    {
+        return;
+    }
+
+    function.m_Signature = undecoratedName;
+
+    FunctionSpec parsed = function;
+    parsed.m_ParamTypes.clear();
+    const parse_info<> result = parser.Parse(undecoratedName, parsed);
+    if (result.full)
+    {
+        function.m_Name = parsed.m_Name;
+        function.m_ReturnType = parsed.m_ReturnType;
+        function.m_CallType = parsed.m_CallType;
+        function.m_ParamTypes = parsed.m_ParamTypes;
+    }
 }
 
-/**
-* @brief Outputs the function information stored in the function map to the console.
-*        This includes the Function ID, name, return type, calling convention,
- *       and parameter types for each function.
-*/
-void SysExports::PrintFunctionInfo() {
-		std::cout << "*********************************\n";
-		std::cout << "* Printing function information *\n";
-		std::cout << "*********************************\n";
-        int numElements = m_Functions.size();
-        std::cout << "Number of function(s): " << numElements << std::endl;
-		for ( functionVec::iterator it = m_Functions.begin() ; it != m_Functions.end(); ++it ) {
-			std::cout << "================================" << std::endl;
-			std::cout << "FID = " << it->m_SerialID << "'\n";
-			std::cout << "FUN_NAME = '" << it->m_Name << "'\n";
-			std::cout << "RET_TYPE = '" << it->m_ReturnType << "'\n";
-			std::cout << "CAL_TYPE = '" << it->m_CallType << "'\n";
-			for ( FunctionSpec::ParamVec::size_type i = 0; i < it->m_ParamTypes.size() ; ++i ){
-				std::cout << "PARAM_" << i << "  = '" << it->m_ParamTypes[i] << "'\n";
-			}
-			std::cout << "================================" << std::endl;
+void SysExports::PrintFunctionInfo() const
+{
+    std::cout << "Number of exports: " << m_Functions.size() << "\n";
 
-		}
+    for (const FunctionSpec& function : m_Functions)
+    {
+        std::cout << "================================\n";
+        std::cout << "ID: " << function.m_SerialID << "\n";
+        std::cout << "Ordinal: " << function.m_Ordinal << "\n";
+        std::cout << "RVA: 0x" << std::hex << std::uppercase << function.m_Rva
+                  << std::dec << std::nouppercase << "\n";
+        std::cout << "Name: " << function.m_Name << "\n";
+
+        if (!function.m_DecoratedName.empty() &&
+            function.m_DecoratedName != function.m_Name)
+        {
+            std::cout << "Export name: " << function.m_DecoratedName << "\n";
+        }
+
+        if (function.m_ExportNames.size() > 1)
+        {
+            std::cout << "Aliases: ";
+            for (size_t index = 0; index < function.m_ExportNames.size(); ++index)
+            {
+                if (index != 0) std::cout << ", ";
+                std::cout << function.m_ExportNames[index];
+            }
+            std::cout << "\n";
+        }
+
+        if (function.IsForwarder())
+        {
+            std::cout << "Forwarder: " << function.m_Forwarder << "\n";
+        }
+        else
+        {
+            std::cout << "Address: 0x" << std::hex << std::uppercase
+                      << function.m_dwAddress << std::dec << std::nouppercase << "\n";
+        }
+
+        if (function.HasRecoveredSignature())
+        {
+            std::cout << "Signature: " << function.m_Signature << "\n";
+        }
+        else
+        {
+            std::cout << "Signature: unavailable in PE export table\n";
+        }
+    }
+}
+
+bool SysExports::DumpFunctionInfo(
+    const std::string& filePath, const std::string& modulePath) const
+{
+    std::ofstream output(filePath, std::ios::out | std::ios::trunc);
+    if (!output)
+    {
+        return false;
+    }
+
+    output << "FuBi export signature dump\n";
+    output << "module = " << modulePath << "\n";
+    output << "export_count = " << m_Functions.size() << "\n\n";
+    for (const FunctionSpec& function : m_Functions)
+    {
+        WriteExport(output, function);
+    }
+
+    return output.good();
 }

@@ -1,0 +1,4 @@
+/build/
+/boost_*/
+/boost_*.zip
+/*.exports.txt

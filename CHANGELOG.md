@@ -25,3 +25,7 @@ FuBi has not yet published versioned releases, so all project history is recorde
 
 - Updated README source file list section
 
+### 2026-08-27
+
+- feat: enumerate and dump complete DLL exports
+

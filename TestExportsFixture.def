@@ -1,0 +1,5 @@
+LIBRARY export_fixture
+EXPORTS
+    NamedExport @1
+    OrdinalOnly=NamedExport @2 NONAME
+    ForwardedSleep=KERNEL32.Sleep @3

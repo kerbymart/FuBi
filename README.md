@@ -42,3 +42,14 @@ To run fubi.exe and load a DLL, open a terminal window and navigate to the direc
 $ fubi.exe path/to/dll
 ```
 
+FuBi enumerates named exports, ordinal-only exports, and forwarded exports. It
+also demangles complete Microsoft C++ signatures when the decorated export name
+contains that information. Plain C exports do not encode parameter or return
+types in the PE export table, so those fields are reported as unavailable.
+
+To write all recovered export metadata and signatures to a formatted text file:
+
+```
+$ fubi.exe path/to/dll --dump exports.txt --no-interactive
+```
+
