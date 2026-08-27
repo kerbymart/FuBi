@@ -109,4 +109,8 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - feat: dispatch persistent JSONL session actions
 - fix: preserve JSONL response framing
 - Merge pull request #37 from kerbymart/feat/36-jsonl-session-dispatch
+- feat: support x86 calling conventions
+- fix: keep x86 catalog validation portable
+- fix: retain x86 worker ABI lifetime
+- Merge pull request #39 from kerbymart/feat/38-x86-calling-conventions
 

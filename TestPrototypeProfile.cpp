@@ -60,7 +60,8 @@ BOOST_AUTO_TEST_CASE(MismatchedIdentityAndDuplicateRvaAreRejected)
     BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
     PrototypeProfile profile;
     std::vector<ProfileValidationError> errors;
-    BOOST_REQUIRE(ParsePrototypeProfile(ProfileDocument(catalog, "x86"), profile, errors));
+    const std::string mismatchedArchitecture = catalog.Module().architecture == "x86" ? "x64" : "x86";
+    BOOST_REQUIRE(ParsePrototypeProfile(ProfileDocument(catalog, mismatchedArchitecture), profile, errors));
     BOOST_CHECK(!ValidatePrototypeProfile(profile, catalog, errors));
     BOOST_CHECK(!errors.empty());
     profile.functions.push_back(profile.functions.front());
