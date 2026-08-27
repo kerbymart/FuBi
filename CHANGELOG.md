@@ -42,4 +42,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: preserve complete catalog evidence output
 - fix: reject non-executable function evidence
 - fix: count complete export identity set
+- fix: correct canonical path length check
 

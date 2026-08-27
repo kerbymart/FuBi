@@ -30,7 +30,9 @@ bool CanonicalPath(const std::string& path, std::string& result)
         std::vector<char> buffer(capacity, '\0');
         const DWORD length = GetFullPathNameA(path.c_str(), capacity, buffer.data(), nullptr);
         if (length == 0) return false;
-        if (length < capacity - 1)
+        // GetFullPathNameA reports the path length excluding its NUL terminator
+        // when the supplied buffer is sufficient.
+        if (length < capacity)
         {
             result.assign(buffer.data(), length);
             return true;
