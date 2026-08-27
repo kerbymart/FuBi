@@ -6,6 +6,7 @@
 #include "CallContract.h"
 #include "InvocationEngine.h"
 #include "ProcessInvocation.h"
+#include "ExitCodes.h"
 
 #include <fstream>
 #include <iomanip>
@@ -160,7 +161,7 @@ int main(int argc, char* argv[])
     if (!ParseOptions(argc, argv, options))
     {
         PrintUsage();
-        return 2;
+        return FubiExitCode::Usage;
     }
 
     FunctionCatalog catalog;
@@ -168,14 +169,14 @@ int main(int argc, char* argv[])
     if (!FunctionCatalog::Load(options.targetPath, catalog, error))
     {
         std::cerr << error << "\n";
-        return 3;
+        return FubiExitCode::CatalogLoadFailed;
     }
     if (!options.profilePath.empty())
     {
         std::ifstream profileFile(options.profilePath, std::ios::binary | std::ios::ate);
-        if (!profileFile) { std::cerr << "Unable to open profile: " << options.profilePath << "\n"; return 6; }
+        if (!profileFile) { std::cerr << "Unable to open profile: " << options.profilePath << "\n"; return FubiExitCode::ProfileLoadFailed; }
         const std::streamoff size = profileFile.tellg();
-        if (size < 0 || size > 4 * 1024 * 1024) { std::cerr << "Profile exceeds the 4 MiB limit\n"; return 6; }
+        if (size < 0 || size > 4 * 1024 * 1024) { std::cerr << "Profile exceeds the 4 MiB limit\n"; return FubiExitCode::ProfileLoadFailed; }
         std::string document(static_cast<size_t>(size), '\0');
         profileFile.seekg(0);
         if (!document.empty()) profileFile.read(&document[0], static_cast<std::streamsize>(document.size()));
@@ -185,7 +186,7 @@ int main(int argc, char* argv[])
         {
             for (const ProfileValidationError& item : profileErrors)
                 std::cerr << item.code << " at " << item.path << ": " << item.message << "\n";
-            return 6;
+            return FubiExitCode::ProfileLoadFailed;
         }
     }
     if (options.symbols)
@@ -196,7 +197,7 @@ int main(int argc, char* argv[])
             !catalog.ApplySymbolEvidence(evidence, error))
         {
             std::cerr << error << "\n";
-            return 7;
+            return FubiExitCode::SymbolLoadFailed;
         }
     }
     if (options.jsonl)
@@ -272,7 +273,7 @@ int main(int argc, char* argv[])
                 std::cout << '\n';
             }
         }
-        return 0;
+        return FubiExitCode::Success;
     }
     if (options.action == "call")
     {
@@ -290,15 +291,15 @@ int main(int argc, char* argv[])
         if (!options.prototypeOverridePath.empty())
         {
             std::ifstream overrideFile(options.prototypeOverridePath, std::ios::binary | std::ios::ate);
-            if (!overrideFile) { std::cerr << "Unable to open prototype override\n"; return 6; }
+            if (!overrideFile) { std::cerr << "Unable to open prototype override\n"; return FubiExitCode::ProfileLoadFailed; }
             const std::streamoff size = overrideFile.tellg();
-            if (size < 0 || size > 4 * 1024 * 1024) { std::cerr << "Prototype override exceeds the 4 MiB limit\n"; return 6; }
+            if (size < 0 || size > 4 * 1024 * 1024) { std::cerr << "Prototype override exceeds the 4 MiB limit\n"; return FubiExitCode::ProfileLoadFailed; }
             std::string document(static_cast<size_t>(size), '\0'); overrideFile.seekg(0); if (!document.empty()) overrideFile.read(&document[0], static_cast<std::streamsize>(document.size()));
             PrototypeProfile overrideProfile; std::vector<ProfileValidationError> overrideErrors;
-            if (!ParsePrototypeProfile(document, overrideProfile, overrideErrors)) { for (const auto& item : overrideErrors) std::cerr << item.code << " at " << item.path << ": " << item.message << "\n"; return 6; }
-            if (record == nullptr) { std::cerr << "Function selector not found or ambiguous\n"; return 8; }
+            if (!ParsePrototypeProfile(document, overrideProfile, overrideErrors)) { for (const auto& item : overrideErrors) std::cerr << item.code << " at " << item.path << ": " << item.message << "\n"; return FubiExitCode::ProfileLoadFailed; }
+            if (record == nullptr) { std::cerr << "Function selector not found or ambiguous\n"; return FubiExitCode::ValidationFailed; }
             for (const auto& item : overrideProfile.functions) if (item.rva == record->startRva) { request.hasPrototypeOverride = true; request.prototypeOverride = item.prototype; break; }
-            if (!request.hasPrototypeOverride) { std::cerr << "Prototype override has no matching function\n"; return 8; }
+            if (!request.hasPrototypeOverride) { std::cerr << "Prototype override has no matching function\n"; return FubiExitCode::ValidationFailed; }
         }
         const PrototypeSpec* argumentPrototype = request.hasPrototypeOverride ? &request.prototypeOverride : (record != nullptr && record->hasPrototype ? &record->prototype : nullptr);
         if (argumentPrototype != nullptr && argumentPrototype->parameters.size() == options.rawArguments.size())
@@ -307,11 +308,11 @@ int main(int argc, char* argv[])
             {
                 const std::string& raw = options.rawArguments[index];
                 const size_t separator = raw.find(':');
-                if (separator == std::string::npos) { CallResult malformed; malformed.correlationId="cli-call"; malformed.status="validation-failed"; malformed.diagnostics.push_back({"invalid-argument-syntax","arguments","--arg requires kind:value"}); if(options.json) WriteCallResultJson(std::cout,malformed); else std::cerr << "--arg requires kind:value\n"; return 8; }
+                if (separator == std::string::npos) { CallResult malformed; malformed.correlationId="cli-call"; malformed.status="validation-failed"; malformed.diagnostics.push_back({"invalid-argument-syntax","arguments","--arg requires kind:value"}); if(options.json) WriteCallResultJson(std::cout,malformed); else std::cerr << "--arg requires kind:value\n"; return FubiExitCode::ValidationFailed; }
                 CallArgument argument;
                 argument.type = argumentPrototype->parameters[index];
                 const std::string kind = raw.substr(0, separator);
-                if (kind != TypeKindName(argument.type.kind)) { CallResult malformed; malformed.correlationId="cli-call"; malformed.status="validation-failed"; malformed.diagnostics.push_back({"argument-type-mismatch","arguments","argument type does not match prototype"}); if(options.json) WriteCallResultJson(std::cout,malformed); else std::cerr << "argument type does not match prototype\n"; return 8; }
+                if (kind != TypeKindName(argument.type.kind)) { CallResult malformed; malformed.correlationId="cli-call"; malformed.status="validation-failed"; malformed.diagnostics.push_back({"argument-type-mismatch","arguments","argument type does not match prototype"}); if(options.json) WriteCallResultJson(std::cout,malformed); else std::cerr << "argument type does not match prototype\n"; return FubiExitCode::ValidationFailed; }
                 argument.value = raw.substr(separator + 1);
                 request.arguments.push_back(std::move(argument));
             }
@@ -328,7 +329,7 @@ int main(int argc, char* argv[])
         if (!valid)
         {
             if (options.json) WriteCallResultJson(std::cout, result); else for (const CallDiagnostic& item : diagnostics) std::cerr << item.code << " at " << item.path << ": " << item.message << "\n";
-            return 8;
+            return FubiExitCode::ValidationFailed;
         }
         std::string invocationError;
         if (!InvokeX64ExportProcess(options.targetPath, request, catalog, result, invocationError))
@@ -336,10 +337,10 @@ int main(int argc, char* argv[])
             if (!invocationError.empty()) result.diagnostics.push_back({"invocation-failed", "call", invocationError});
             if (options.json) WriteCallResultJson(std::cout, result);
             else for (const CallDiagnostic& item : result.diagnostics) std::cerr << item.code << " at " << item.path << ": " << item.message << "\n";
-            return 9;
+            return FubiExitCode::InvocationFailed;
         }
         if (options.json) WriteCallResultJson(std::cout, result);
-        return 0;
+        return FubiExitCode::Success;
     }
     if (options.action == "describe")
     {
@@ -347,7 +348,7 @@ int main(int argc, char* argv[])
         if (matches.empty())
         {
             std::cerr << "Function selector not found: " << options.selector << "\n";
-            return 4;
+            return FubiExitCode::SelectorNotFound;
         }
         if (matches.size() > 1)
         {
@@ -355,13 +356,13 @@ int main(int argc, char* argv[])
             for (const FunctionRecord* candidate : matches)
                 std::cerr << "  rva=0x" << std::hex << std::uppercase << candidate->startRva
                           << std::dec << " name=" << candidate->displayName << "\n";
-            return 5;
+            return FubiExitCode::SelectorAmbiguous;
         }
         const FunctionRecord* record = matches.front();
         if (options.json)
         {
             catalog.WriteJsonDescribe(std::cout, *record);
-            return 0;
+            return FubiExitCode::Success;
         }
         std::cout << "FuBi function description\n"
                   << "schema_version = " << FunctionCatalog::kSchemaVersion << "\n"
@@ -373,5 +374,5 @@ int main(int argc, char* argv[])
     }
     else if (options.json) catalog.WriteJson(std::cout, options.action == "list-callable");
     else catalog.WriteText(std::cout, options.action == "list-callable");
-    return 0;
+    return FubiExitCode::Success;
 }
