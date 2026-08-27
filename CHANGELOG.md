@@ -86,4 +86,6 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: verify worker termination and IPC cleanup
 - fix: close worker result before IPC cleanup
 - Merge pull request #24 from kerbymart/feat/10-isolated-call-worker
+- feat: add guarded x86 cdecl invocation path
+- Merge pull request #25 from kerbymart/feat/11-native-invocation-x86
 
