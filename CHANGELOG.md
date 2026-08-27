@@ -111,4 +111,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - Merge pull request #37 from kerbymart/feat/36-jsonl-session-dispatch
 - feat: support x86 calling conventions
 - fix: keep x86 catalog validation portable
+- fix: retain x86 worker ABI lifetime
 
