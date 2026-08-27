@@ -163,4 +163,8 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - test: cover opaque echo validation
 - test: reject oversized string payloads
 - Merge pull request #125 from kerbymart/feat/124-string-fixture-matrix
+- feat: define normalized x86 call frame
+- fix: route x86 workers through normalized frames
+- refactor: remove legacy x86 call dispatch
+- Merge pull request #126 from kerbymart/feat/123-x86-call-frame-adapter
 
