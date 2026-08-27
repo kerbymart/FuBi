@@ -130,6 +130,10 @@ add_executable(internal_rva_tests TestInternalRva.cpp CallContract.cpp Invocatio
 target_link_libraries(internal_rva_tests PRIVATE bcrypt fubi_boost_headers fubi_build_limits)
 add_dependencies(internal_rva_tests static_fixture)
 
+add_executable(mixed_floating_tests TestMixedFloating.cpp CallContract.cpp InvocationEngine.cpp FunctionCatalog.cpp PrototypeProfile.cpp StaticExportCatalog.cpp PEImage.cpp ${NATIVE_CALL_SOURCES})
+target_link_libraries(mixed_floating_tests PRIVATE bcrypt fubi_boost_headers fubi_build_limits)
+add_dependencies(mixed_floating_tests static_fixture)
+
 add_executable(string_output_tests TestStringOutput.cpp CallContract.cpp InvocationEngine.cpp FunctionCatalog.cpp PrototypeProfile.cpp StaticExportCatalog.cpp PEImage.cpp ${NATIVE_CALL_SOURCES})
 target_link_libraries(string_output_tests PRIVATE bcrypt fubi_boost_headers fubi_build_limits)
 add_dependencies(string_output_tests static_fixture)
@@ -143,6 +147,7 @@ add_test(NAME function_catalog COMMAND function_catalog_tests)
 add_test(NAME prototype_profile COMMAND prototype_profile_tests)
 add_test(NAME call_contract COMMAND call_contract_tests)
 add_test(NAME internal_rva COMMAND internal_rva_tests)
+add_test(NAME mixed_floating COMMAND mixed_floating_tests)
 add_test(NAME string_output COMMAND string_output_tests)
 add_test(
     NAME static_cli_no_execution
