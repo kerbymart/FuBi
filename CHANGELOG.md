@@ -80,4 +80,10 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: validate JSON request structure completely
 - fix: enforce JSON number and unicode grammar
 - Merge pull request #23 from kerbymart/feat/9-script-session-protocol
+- feat: add isolated invocation worker executable
+- feat: supervise calls in isolated worker process
+- fix: normalize isolated worker failures
+- fix: verify worker termination and IPC cleanup
+- fix: close worker result before IPC cleanup
+- Merge pull request #24 from kerbymart/feat/10-isolated-call-worker
 
