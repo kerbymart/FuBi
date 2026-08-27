@@ -66,7 +66,9 @@ bool SessionReferences::ResolveHandle(const std::string& reference, uint64_t& va
 {
     if (!IsWellFormed(reference)) return false;
     const auto found = values_.find(reference);
-    if (found == values_.end() || !found->second.handle ||
+    const uint16_t expectedWidth = architecture == "x86" ? 32 : architecture == "x64" ? 64 : 0;
+    if (found == values_.end() || !found->second.handle || expectedWidth == 0 ||
+        found->second.identity.width != expectedWidth ||
         found->second.identity.moduleSha256 != moduleSha256 ||
         found->second.identity.architecture != architecture) return false;
     value = found->second.value;
@@ -88,7 +90,9 @@ bool SessionReferences::ReleaseHandle(const std::string& reference,
 {
     if (!IsWellFormed(reference)) return false;
     const auto found = values_.find(reference);
-    if (found == values_.end() || !found->second.handle ||
+    const uint16_t expectedWidth = architecture == "x86" ? 32 : architecture == "x64" ? 64 : 0;
+    if (found == values_.end() || !found->second.handle || expectedWidth == 0 ||
+        found->second.identity.width != expectedWidth ||
         found->second.identity.moduleSha256 != moduleSha256 ||
         found->second.identity.architecture != architecture ||
         !found->second.identity.release) return false;
