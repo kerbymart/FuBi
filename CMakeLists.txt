@@ -265,6 +265,16 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 4)
             -DFIXTURE=$<TARGET_FILE:thiscall_fixture>
             -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
             -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyX86ThisCall.cmake)
+    add_library(fastcall_fixture SHARED FastCallFixture.cpp FastCallFixture.asm FastCallFixture.def)
+    target_compile_options(fastcall_fixture PRIVATE /Od /Zi)
+    target_link_options(fastcall_fixture PRIVATE /DEBUG:FULL)
+    add_test(
+        NAME x86_fastcall_invocation
+        COMMAND ${CMAKE_COMMAND}
+            -DFUBI=$<TARGET_FILE:Fubi>
+            -DFIXTURE=$<TARGET_FILE:fastcall_fixture>
+            -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyX86FastCall.cmake)
 endif()
 
 message(STATUS "Compiler version: ${CMAKE_CXX_COMPILER_VERSION}")
