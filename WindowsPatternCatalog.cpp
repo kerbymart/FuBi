@@ -1,0 +1,6 @@
+#include "stdafx.h"
+#include "WindowsPatternCatalog.h"
+#include "PEImage.h"
+#include <algorithm>
+bool MatchWindowsPattern(const std::vector<uint8_t>& bytes,size_t offset,const std::string& id){if(id=="win-x64-stack-prologue")return offset+4<=bytes.size()&&bytes[offset]==0x48&&bytes[offset+1]==0x83&&bytes[offset+2]==0xEC;if(id=="win-x86-frame-prologue")return offset+3<=bytes.size()&&bytes[offset]==0x55&&bytes[offset+1]==0x8B&&bytes[offset+2]==0xEC;return false;}
+bool ScanWindowsCallPatterns(const std::string& path,std::vector<WindowsPatternEvidence>& out,std::string& error){PEImage image;if(!PEImage::Load(path,image,error))return false;out.clear();const std::string id=image.Headers().isPe32Plus?"win-x64-stack-prologue":"win-x86-frame-prologue";for(const PeSection& section:image.Sections()){if(!section.executable||section.rawSize==0||section.rawOffset>=image.Bytes().size())continue;const uint32_t limit=std::min(section.rawSize,static_cast<uint32_t>(image.Bytes().size()-section.rawOffset));for(uint32_t i=0;i<limit;++i)if(MatchWindowsPattern(image.Bytes(),section.rawOffset+i,id))out.push_back({section.rva+i,id,"static-pe-pattern-v1"});}std::sort(out.begin(),out.end(),[](const auto&a,const auto&b){return a.rva<b.rva;});return true;}

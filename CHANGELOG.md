@@ -88,4 +88,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - Merge pull request #24 from kerbymart/feat/10-isolated-call-worker
 - feat: add guarded x86 cdecl invocation path
 - Merge pull request #25 from kerbymart/feat/11-native-invocation-x86
+- feat: add bounded Windows call pattern catalog
 
