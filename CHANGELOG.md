@@ -38,4 +38,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: cap static catalog allocations
 - Merge pull request #15 from kerbymart/chore/remove-decoder-dependency
 - feat: add static function catalog core
+- fix: tighten function catalog identity and selectors
 
