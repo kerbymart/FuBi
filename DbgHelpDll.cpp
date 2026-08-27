@@ -230,8 +230,8 @@ BOOL CALLBACK EnumCallback(PSYMBOL_INFO info, ULONG size, PVOID context)
 {
     UNREFERENCED_PARAMETER(size);
     auto* state = static_cast<EnumerationState*>(context);
-    // DIA's SymTagFunction value is 5. Keep this adapter tolerant of SDKs
-    // that omit the DIA enum declaration from DbgHelp.h.
+    // The SDK function-tag value is 5. Keep this adapter tolerant of SDKs
+    // that omit the enum declaration from DbgHelp.h.
     if (info == nullptr || state == nullptr || state->symbols == nullptr || info->Tag != 5) return TRUE;
     SymbolPrototypeEvidence evidence;
     const bool hasDecoratedEvidence = Recover(info->Name, evidence);

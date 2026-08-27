@@ -42,17 +42,18 @@ Overall roadmap: **11/11 milestones have baseline implementation PRs, with detai
 No implementation milestone should begin until the dependency policy, call
 type vocabulary, internal-call policy, and scripting protocol are approved.
 
-- [ ] D-01 Keep Boost Spirit as the only grandfathered third-party build
+- [ ] D-01 Keep Boost Spirit as the only grandfathered parser build
   dependency, with no network fetch.
 - [ ] D-02 Remove general disassembly, call-graph, and xref commands with
-  Zydis.
+  decoder dependency.
 - [ ] D-03 Make `--list` the default action.
 - [ ] D-04 Require invocation-grade prototypes for every call.
 - [ ] D-05 Require hash-pinned profiles and `--allow-internal` for internal
   RVAs.
 - [ ] D-06 Block framework-managed entry points such as `FxDriverEntryUm` by
   default.
-- [ ] D-07 Use project-owned x64/x86 assembly adapters instead of libffi.
+- [ ] D-07 Use project-owned x64/x86 assembly adapters instead of external
+  invocation libraries.
 - [ ] D-08 Support repeated typed CLI arguments and a versioned JSONL session.
 - [ ] D-09 Keep broad PE diagnostics secondary under `--inspect` only.
 - [ ] D-10 Defer the focused Windows call-pattern scanner until the generic
@@ -84,19 +85,19 @@ These requirements apply to every milestone.
 - [ ] G-09 Runtime dependencies remain limited to Windows system DLLs/APIs.
 - [ ] G-10 Builds use MSVC, Windows SDK, CMake, and approved Boost headers only.
 - [ ] G-11 New Microsoft SDK APIs are hidden behind project-owned adapters.
-- [ ] G-12 No Capstone, libffi, LLVM, DIA wrapper, JSON library, or other
-  decoder/invocation dependency is introduced.
+- [ ] G-12 No unapproved decoder, invocation, symbol, or JSON dependency is
+  introduced.
 - [ ] G-13 File/profile/request parsing is bounded and treats inputs as
   untrusted.
 - [ ] G-14 Public domain records do not expose Windows handles.
 
-## Milestone 1 — Remove Zydis dependency
+## Milestone 1 — Remove retired decoder dependency
 
 Status: **In progress**
 Branch: `chore/3-remove-decoder-dependency`
 Evidence: Local Boost resolution and offline configuration behavior are covered by the current CMake configuration and dependency-policy changes in [PR #15](https://github.com/kerbymart/FuBi/pull/15). Remaining history and acceptance work is open.
 
-- [ ] M1-01 Remove Zydis and Zycore configuration and linking from CMake.
+- [ ] M1-01 Remove retired decoder configuration and linking from CMake.
 - [ ] M1-02 Remove network `FetchContent` behavior.
 - [x] M1-03 Resolve Boost through `FUBI_BOOST_ROOT` or `find_package(Boost)` and
   emit an actionable configuration error when unavailable. ([PR #43](https://github.com/kerbymart/FuBi/pull/43))
@@ -358,7 +359,7 @@ Evidence: Opt-in path, pinned identity, export/candidate checks, static describe
 
 ## Roadmap definition of done
 
-- [ ] DONE-01 Builds without Zydis, Zycore, network downloads, or new
+- [ ] DONE-01 Builds without retired decoder code, network downloads, or new
   third-party runtime libraries.
 - [x] DONE-02 The default command lists function candidates without executing
   the target. See [PR #15](https://github.com/kerbymart/FuBi/pull/15) and [PR #17](https://github.com/kerbymart/FuBi/pull/17).
