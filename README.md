@@ -96,6 +96,116 @@ aliases = Example
 forwarder = <none>
 ```
 
+## Prototype profiles
+
+Use `--profile <file>` to add an explicit, invocation-grade prototype to a
+catalog entry. Profile schema version `1` is a JSON object with exactly these
+top-level fields:
+
+```json
+{
+  "schema_version": 1,
+  "module": {
+    "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+    "architecture": "x64",
+    "path": "C:\\trusted\\example.dll",
+    "timestamp": 0,
+    "image_size": 0,
+    "preferred_image_base": 0,
+    "pdb_guid": "",
+    "pdb_age": 0
+  },
+  "functions": [
+    {
+      "rva": 4096,
+      "selector": "Example",
+      "abi": "x64",
+      "return_type": { "kind": "integer", "width": 32, "signed": true },
+      "parameters": [],
+      "variadic": false,
+      "framework_managed": false
+    }
+  ]
+}
+```
+
+The module `sha256` and `architecture` are required. `path`, `timestamp`,
+`image_size`, `preferred_image_base`, `pdb_guid`, and `pdb_age` are optional
+identity evidence. A function requires an executable `rva`, a unique optional
+`selector`, a supported ABI, a complete `return_type`, and a `parameters`
+array. `x64` and `win64` apply to x64 images. `__cdecl`, `__stdcall`,
+`__thiscall`, and `__fastcall` apply to x86 images.
+
+Type objects support `void`, `bool`, `integer`, `floating`, `string`, `bytes`,
+`pointer`, and `structure`. Type details may include `width`, `signed`,
+`pointer_depth`, `direction` (`in`, `out`, or `inout`), `element_count`,
+`encoding`, `ownership`, and `layout`. Integer widths are 8, 16, 32, or 64;
+floating widths are 32 or 64. Strings and byte buffers require pointer depth
+one, and byte buffers use width 8. Width, pointer depth, encoding, ownership,
+and layout must describe the actual target contract.
+
+For an exported function, a sanitized profile entry can identify the export
+without exposing a local path:
+
+```json
+{
+  "schema_version": 1,
+  "module": { "sha256": "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef", "architecture": "x64" },
+  "functions": [
+    { "rva": 4096, "selector": "Example", "abi": "x64",
+      "return_type": { "kind": "integer", "width": 32 }, "parameters": [] }
+  ]
+}
+```
+
+An internal-RVA entry uses the same function shape, but its RVA must be in the
+catalog and executable. Calling it also requires an explicit internal-call
+policy, a complete module identity match, and the corresponding request fields
+such as `allow_internal`, `authorization_provenance`, `module_sha256`,
+`module_path`, `module_timestamp`, `module_image_size`,
+`module_preferred_image_base`, `module_pdb_guid`, and `module_pdb_age`.
+
+For example, this is a distinct internal-RVA profile entry. The identity and
+RVA values are synthetic and must be replaced with values obtained from the
+same trusted catalog and target image:
+
+```json
+{
+  "schema_version": 1,
+  "module": {
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "architecture": "x64",
+    "timestamp": 305419896,
+    "image_size": 65536,
+    "preferred_image_base": 6442450944,
+    "pdb_guid": "00000000-0000-0000-0000-000000000000",
+    "pdb_age": 1
+  },
+  "functions": [
+    {
+      "rva": 8192,
+      "selector": "internal_candidate",
+      "abi": "x64",
+      "return_type": { "kind": "integer", "width": 32, "signed": true },
+      "parameters": [],
+      "variadic": false,
+      "framework_managed": false
+    }
+  ]
+}
+```
+
+This profile does not authorize a call by itself. The caller must opt into the
+internal-call policy and provide complete matching identity evidence. FuBi
+rejects framework-managed functions, non-executable RVAs, stale identities,
+and missing authorization before loading the target.
+
+Profiles do not prove that a declaration matches machine code. They record a
+user-declared contract, and framework-managed entries remain blocked by
+default. Invalid JSON, unknown fields, duplicate RVAs, unsupported types or
+ABIs, hash mismatches, non-executable RVAs, and incomplete identity are
+rejected before the target is loaded.
+
 ## Exit-code contract
 
 The command-line interface uses stable numeric exit codes: `0` success, `2`
