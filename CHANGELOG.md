@@ -50,4 +50,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - feat: add validated local PDB symbol evidence
 - feat: apply static symbol evidence to catalogs
 - fix: bind symbol evidence to module identity
+- fix: keep undecorated symbols display-only
 

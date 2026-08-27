@@ -77,8 +77,11 @@ bool Recover(const char* name, SymbolPrototypeEvidence& result)
     for (const std::string& parameter : function.m_ParamTypes) { TypeSpec type; if (!ParseScalar(parameter, type)) return false; result.prototype.parameters.push_back(type); }
     result.name = function.m_Name;
     result.prototype.abi = function.m_CallType;
-    result.prototype.source = "dbghelp-pdb";
-    result.prototype.quality = PrototypeQuality::ExactSymbol;
+    // Undecoration recovers a display signature, but does not prove the PDB's
+    // type graph. It must remain display-only until SymGetTypeInfo extraction
+    // supplies an invocation-grade declaration.
+    result.prototype.source = "dbghelp-undecorated";
+    result.prototype.quality = PrototypeQuality::Inferred;
     return true;
 }
 
