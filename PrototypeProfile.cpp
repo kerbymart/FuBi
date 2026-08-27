@@ -138,6 +138,21 @@ bool HasOnly(const JsonValue& object, const std::set<std::string>& fields, const
 bool HexHash(const std::string& hash) { if (hash.size() != 64) return false; return std::all_of(hash.begin(), hash.end(), [](char c) { return std::isxdigit(static_cast<unsigned char>(c)) != 0; }); }
 bool PdbGuid(const std::string& guid) { return guid.size() == 36 && std::all_of(guid.begin(), guid.end(), [](char c) { return std::isxdigit(static_cast<unsigned char>(c)) || c == '-'; }) && guid[8] == '-' && guid[13] == '-' && guid[18] == '-' && guid[23] == '-'; }
 bool SupportedAbi(const std::string& abi) { return abi == "x64" || abi == "win64" || abi == "__cdecl" || abi == "__stdcall" || abi == "__thiscall" || abi == "__fastcall"; }
+bool ValidType(const TypeSpec& type)
+{
+    if (type.pointerDepth > 8) return false;
+    switch (type.kind)
+    {
+    case TypeKind::Void: return type.width == 0 && type.pointerDepth == 0;
+    case TypeKind::Bool: return type.width == 1;
+    case TypeKind::Integer: return std::set<uint16_t>{8, 16, 32, 64}.count(type.width) != 0;
+    case TypeKind::Floating: return std::set<uint16_t>{32, 64}.count(type.width) != 0;
+    case TypeKind::String: return type.pointerDepth >= 1;
+    case TypeKind::Pointer: return type.pointerDepth >= 1;
+    case TypeKind::Structure: return type.width != 0;
+    default: return false;
+    }
+}
 bool EqualType(const TypeSpec& a, const TypeSpec& b)
 { return a.kind == b.kind && a.width == b.width && a.isSigned == b.isSigned && a.pointerDepth == b.pointerDepth && a.direction == b.direction && a.elementCount == b.elementCount && a.encoding == b.encoding && a.ownership == b.ownership && a.layout == b.layout; }
 bool EqualPrototype(const PrototypeSpec& a, const PrototypeSpec& b)
@@ -145,7 +160,7 @@ bool EqualPrototype(const PrototypeSpec& a, const PrototypeSpec& b)
 bool CompletePrototype(const PrototypeSpec& prototype)
 {
     if (!SupportedAbi(prototype.abi) || prototype.returnType.kind == TypeKind::Unknown) return false;
-    return std::all_of(prototype.parameters.begin(), prototype.parameters.end(), [](const TypeSpec& type) { return type.kind != TypeKind::Unknown; });
+    return ValidType(prototype.returnType) && std::all_of(prototype.parameters.begin(), prototype.parameters.end(), [](const TypeSpec& type) { return ValidType(type); });
 }
 
 bool ParseType(const JsonValue& value, TypeSpec& type, const std::string& path, std::vector<ProfileValidationError>& errors)
@@ -163,8 +178,7 @@ bool ParseType(const JsonValue& value, TypeSpec& type, const std::string& path, 
     if (Field(value, "encoding") != nullptr) StringValue(Field(value, "encoding"), type.encoding, path + ".encoding", errors);
     if (Field(value, "ownership") != nullptr) StringValue(Field(value, "ownership"), type.ownership, path + ".ownership", errors);
     if (Field(value, "layout") != nullptr) StringValue(Field(value, "layout"), type.layout, path + ".layout", errors);
-    if ((type.kind == TypeKind::Void && type.width != 0) || (type.kind == TypeKind::Bool && type.width != 1) || (type.kind == TypeKind::Integer && !std::set<uint16_t>{8,16,32,64}.count(type.width)) || (type.kind == TypeKind::Floating && !std::set<uint16_t>{32,64}.count(type.width))) Error(errors, "invalid-width", path + ".width", "width is invalid for this type");
-    if (type.kind == TypeKind::Void && type.pointerDepth != 0) Error(errors, "invalid-pointer-depth", path + ".pointer_depth", "void cannot be a pointer");
+    if (!ValidType(type)) Error(errors, "invalid-type-shape", path, "type width or pointer depth is invalid");
     return true;
 }
 }
@@ -181,6 +195,7 @@ bool ParsePrototypeProfile(const std::string& document, PrototypeProfile& profil
     if (!HexHash(profile.module.sha256)) Error(errors, "invalid-hash", "$.module.sha256", "expected 64 hexadecimal characters");
     if (profile.module.architecture != "x86" && profile.module.architecture != "x64") Error(errors, "unsupported-architecture", "$.module.architecture", "architecture must be x86 or x64");
     if (!profile.module.pdbGuid.empty() && !PdbGuid(profile.module.pdbGuid)) Error(errors, "invalid-pdb-guid", "$.module.pdb_guid", "expected a GUID in canonical form");
+    if (profile.module.pdbGuid.empty() && profile.module.pdbAge != 0) Error(errors, "invalid-pdb-age", "$.module.pdb_age", "PDB age requires a GUID");
     const JsonValue* functions = Field(root, "functions"); if (functions == nullptr || functions->kind != JsonValue::Kind::Array) { Error(errors, "invalid-type", "$.functions", "expected array"); return false; }
     for (size_t index=0; index<functions->array.size(); ++index) { const JsonValue& item=functions->array[index]; const std::string path="$.functions["+std::to_string(index)+"]"; if (!ObjectValue(&item,path,errors)) continue; HasOnly(item,{"rva","selector","abi","return_type","parameters","variadic","framework_managed"},path,errors); ProfileFunction function; NumberValue(Field(item,"rva"),function.rva,path+".rva",errors); if(Field(item,"selector")) StringValue(Field(item,"selector"),function.selector,path+".selector",errors); StringValue(Field(item,"abi"),function.prototype.abi,path+".abi",errors); if(!SupportedAbi(function.prototype.abi)) Error(errors,"unsupported-abi",path+".abi","ABI is not supported"); const JsonValue* ret=Field(item,"return_type"); if(!ret) Error(errors,"incomplete-prototype",path+".return_type","return type is required"); else ParseType(*ret,function.prototype.returnType,path+".return_type",errors); const JsonValue* params=Field(item,"parameters"); if(params==nullptr||params->kind!=JsonValue::Kind::Array) Error(errors,"invalid-type",path+".parameters","expected array"); else for(size_t p=0;p<params->array.size();++p) { TypeSpec type; ParseType(params->array[p],type,path+".parameters["+std::to_string(p)+"]",errors); function.prototype.parameters.push_back(std::move(type)); } if(Field(item,"variadic")) BooleanValue(Field(item,"variadic"),function.prototype.variadic,path+".variadic",errors); if(Field(item,"framework_managed")) BooleanValue(Field(item,"framework_managed"),function.frameworkManaged,path+".framework_managed",errors); function.prototype.source="profile"; function.prototype.quality=PrototypeQuality::UserDeclared; profile.functions.push_back(std::move(function)); }
     return errors.empty();
@@ -188,7 +203,7 @@ bool ParsePrototypeProfile(const std::string& document, PrototypeProfile& profil
 
 bool ValidatePrototypeProfile(const PrototypeProfile& profile, const FunctionCatalog& catalog, std::vector<ProfileValidationError>& errors)
 {
-    errors.clear(); const ModuleIdentity& module=catalog.Module(); if(profile.schemaVersion!=1) Error(errors,"unsupported-schema","schema_version","supported version is 1"); if(profile.module.sha256!=module.sha256) Error(errors,"module-hash-mismatch","module.sha256","profile does not match catalog module"); if(profile.module.architecture!=module.architecture) Error(errors,"architecture-mismatch","module.architecture","profile does not match catalog module"); if(!module.pdbGuid.empty() && (profile.module.pdbGuid != module.pdbGuid || profile.module.pdbAge != module.pdbAge)) Error(errors,"pdb-identity-mismatch","module.pdb_guid","profile does not match CodeView identity"); std::set<uint32_t> rvas;
+    errors.clear(); const ModuleIdentity& module=catalog.Module(); if(profile.schemaVersion!=1) Error(errors,"unsupported-schema","schema_version","supported version is 1"); if(profile.module.sha256!=module.sha256) Error(errors,"module-hash-mismatch","module.sha256","profile does not match catalog module"); if(profile.module.architecture!=module.architecture) Error(errors,"architecture-mismatch","module.architecture","profile does not match catalog module"); if(!profile.module.pdbGuid.empty() && module.pdbGuid.empty()) Error(errors,"pdb-identity-unavailable","module.pdb_guid","catalog has no CodeView identity"); if(!module.pdbGuid.empty() && (profile.module.pdbGuid != module.pdbGuid || profile.module.pdbAge != module.pdbAge)) Error(errors,"pdb-identity-mismatch","module.pdb_guid","profile does not match CodeView identity"); std::set<uint32_t> rvas;
     for(size_t i=0;i<profile.functions.size();++i) { const ProfileFunction& item=profile.functions[i]; const std::string path="functions["+std::to_string(i)+"]"; if(!rvas.insert(item.rva).second) Error(errors,"duplicate-selector",path+".rva","RVA appears more than once"); if(!CompletePrototype(item.prototype)) Error(errors,"incomplete-prototype",path,"prototype is incomplete or uses an unsupported ABI"); const FunctionRecord* record=nullptr; for(const auto& candidate:catalog.Functions()) if(candidate.startRva==item.rva) {record=&candidate;break;} if(record==nullptr) {Error(errors,"unknown-rva",path+".rva","RVA is not in the catalog");continue;} if(!record->executable && record->forwarder.empty()) Error(errors,"non-executable-rva",path+".rva","RVA is not executable"); const bool x64=module.architecture=="x64"; if((x64 && item.prototype.abi!="x64" && item.prototype.abi!="win64") || (!x64 && (item.prototype.abi=="x64"||item.prototype.abi=="win64"))) Error(errors,"architecture-mismatch",path+".abi","ABI does not match module architecture"); if(!item.selector.empty()) { const auto matches=catalog.FindAll(item.selector); if(matches.size()!=1 || matches.front()->startRva!=item.rva) Error(errors,"ambiguous-selector",path+".selector","selector does not identify this RVA uniquely"); } }
     return errors.empty();
 }

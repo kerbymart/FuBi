@@ -107,3 +107,28 @@ BOOST_AUTO_TEST_CASE(IncompleteUserPrototypeCannotBecomeCallable)
     BOOST_CHECK(!record.hasPrototype);
     BOOST_CHECK(record.callability == Callability::RequiresPrototype);
 }
+
+BOOST_AUTO_TEST_CASE(PdbIdentityAndTypeShapeAreRequiredWhenSupplied)
+{
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+    PrototypeProfile profile;
+    std::vector<ProfileValidationError> errors;
+    BOOST_REQUIRE(ParsePrototypeProfile(ProfileDocument(catalog, catalog.Module().architecture), profile, errors));
+    profile.module.pdbGuid = "01234567-89AB-CDEF-0123-456789ABCDEF";
+    profile.module.pdbAge = 1;
+    BOOST_CHECK(!ValidatePrototypeProfile(profile, catalog, errors));
+    BOOST_CHECK(std::any_of(errors.begin(), errors.end(), [](const ProfileValidationError& item) {
+        return item.code == "pdb-identity-unavailable";
+    }));
+
+    FunctionRecord record;
+    record.callability = Callability::RequiresPrototype;
+    PrototypeSpec invalid;
+    invalid.abi = "x64";
+    invalid.returnType.kind = TypeKind::Integer;
+    invalid.returnType.width = 7;
+    BOOST_CHECK(!MergePrototypeEvidence(record, invalid, "profile", PrototypeQuality::UserDeclared));
+    BOOST_CHECK(!record.hasPrototype);
+}
