@@ -9,6 +9,8 @@
 #include <algorithm>
 #include <atomic>
 #include <vector>
+#include <cstring>
+#include <iomanip>
 
 namespace
 {
@@ -25,7 +27,8 @@ using FastCall0 = uintptr_t (__fastcall*)(); using FastCall1 = uintptr_t (__fast
 
 #if defined(_M_X64)
 extern "C" void NativeCallX64(uintptr_t targetAddress,
-    const uintptr_t* arguments, uint32_t argumentCount, uintptr_t* returned);
+    const uintptr_t* arguments, uint32_t argumentCount, uint32_t floatingArgumentMask,
+    uintptr_t* returned, uint64_t* floatingReturned, bool floatingReturn);
 #endif
 
 bool Number(const std::string& text, int base, uint64_t& value)
@@ -37,6 +40,25 @@ bool Value(const CallArgument& argument, uint64_t& value)
     if (argument.type.kind == TypeKind::Pointer) { if (argument.value.rfind("opaque:", 0) != 0) return false; return Number(argument.value.substr(7), 0, value); }
     if (argument.type.isSigned) { if (argument.value.empty()) return false; errno=0; char* end=nullptr; const long long parsed=std::strtoll(argument.value.c_str(),&end,0); if(errno==ERANGE||end==argument.value.c_str()||*end!='\0') return false; value=static_cast<uint64_t>(parsed); return true; }
     return Number(argument.value, 0, value);
+}
+
+bool FloatingValue(const CallArgument& argument, uint64_t& bits)
+{
+    if (argument.type.width != 32 && argument.type.width != 64) return false;
+    char* end = nullptr;
+    errno = 0;
+    const double value = std::strtod(argument.value.c_str(), &end);
+    if (errno == ERANGE || end == argument.value.c_str() || *end != '\0' || !std::isfinite(value)) return false;
+    if (argument.type.width == 32)
+    {
+        const float narrow = static_cast<float>(value);
+        if (!std::isfinite(narrow)) return false;
+        uint32_t raw = 0;
+        std::memcpy(&raw, &narrow, sizeof(raw));
+        bits = raw;
+    }
+    else std::memcpy(&bits, &value, sizeof(bits));
+    return true;
 }
 
 bool DecodeHex(const std::string& text, std::vector<unsigned char>& bytes)
@@ -147,6 +169,26 @@ std::string ReturnValue(uint64_t value, const TypeSpec& type)
     return std::to_string(value);
 }
 
+std::string FloatingReturnValue(uint64_t bits, const TypeSpec& type)
+{
+    std::ostringstream output;
+    output << std::setprecision(type.width == 32 ? 9 : 17);
+    if (type.width == 32)
+    {
+        const uint32_t raw = static_cast<uint32_t>(bits);
+        float value = 0.0f;
+        std::memcpy(&value, &raw, sizeof(value));
+        output << value;
+    }
+    else
+    {
+        double value = 0.0;
+        std::memcpy(&value, &bits, sizeof(value));
+        output << value;
+    }
+    return output.str();
+}
+
 bool SameIdentity(const ModuleIdentity& left, const ModuleIdentity& right)
 { return left.canonicalPath==right.canonicalPath && left.sha256==right.sha256 && left.architecture==right.architecture && left.timestamp==right.timestamp && left.imageSize==right.imageSize && left.preferredImageBase==right.preferredImageBase && left.pdbGuid==right.pdbGuid && left.pdbAge==right.pdbAge; }
 
@@ -181,7 +223,9 @@ DWORD WINAPI CallWorker(void* raw)
     __try {
 #if defined(_M_X64)
         NativeCallX64(context->frame.targetAddress, context->frame.arguments.data(),
-            context->frame.argumentCount, &context->frame.targetAddress);
+            context->frame.argumentCount, context->frame.floatingArgumentMask,
+            &context->frame.targetAddress, &context->frame.floatingReturnBits,
+            context->frame.floatingReturn);
 #else
 #if defined(_M_IX86)
         if (std::strcmp(context->abi, "__stdcall") == 0)
@@ -225,8 +269,10 @@ bool InvokeNativeCallX64(const NativeCallFrameX64& frame, uintptr_t& returned,
         error = "x64 native adapter supports at most eight arguments";
         return false;
     }
+    uint64_t floatingReturned = 0;
     NativeCallX64(frame.targetAddress, frame.arguments.data(), frame.argumentCount,
-        &returned);
+        frame.floatingArgumentMask, &returned,
+        &floatingReturned, frame.floatingReturn);
     return true;
 #endif
 }
@@ -241,10 +287,10 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     if (!ValidateCallRequest(request, catalog, diagnostics)) { result = {}; result.correlationId=request.correlationId; result.status="validation-failed"; result.diagnostics=diagnostics; error="call request validation failed"; return false; }
     for (const CallArgument& argument : request.arguments)
     {
-        if (argument.type.kind != TypeKind::Integer && argument.type.kind != TypeKind::Bool && argument.type.kind != TypeKind::Pointer && argument.type.kind != TypeKind::String && argument.type.kind != TypeKind::Bytes)
+        if (argument.type.kind != TypeKind::Integer && argument.type.kind != TypeKind::Bool && argument.type.kind != TypeKind::Pointer && argument.type.kind != TypeKind::String && argument.type.kind != TypeKind::Bytes && argument.type.kind != TypeKind::Floating)
         {
             result = {}; result.correlationId = request.correlationId; result.status = "validation-failed";
-            result.diagnostics.push_back({"unsupported-type", "arguments", "x64 adapter supports integer, bool, and pointer values only"});
+            result.diagnostics.push_back({"unsupported-type", "arguments", "x64 adapter supports scalar integer, bool, pointer, and floating values"});
             error = "unsupported x64 argument type";
             return false;
         }
@@ -264,7 +310,7 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     if (prototype.abi != "__cdecl" && prototype.abi != "__stdcall" && prototype.abi != "__thiscall" && prototype.abi != "__fastcall") { result={}; result.correlationId=request.correlationId; result.status="validation-failed"; result.diagnostics.push_back({"unsupported-abi","prototype.abi","x86 adapter supports __cdecl, __stdcall, __thiscall, and __fastcall"}); error="unsupported x86 calling convention"; return false; }
     if (prototype.abi == "__thiscall" && request.arguments.empty()) { result={}; result.correlationId=request.correlationId; result.status="validation-failed"; result.diagnostics.push_back({"missing-object-pointer","arguments[0]","__thiscall requires the object pointer as the first argument"}); error="__thiscall requires an object pointer"; return false; }
 #endif
-    if (prototype.returnType.kind == TypeKind::Floating || prototype.returnType.kind == TypeKind::Structure || prototype.returnType.kind == TypeKind::Void)
+    if (prototype.returnType.kind == TypeKind::Structure || prototype.returnType.kind == TypeKind::Void)
     { result={}; result.correlationId=request.correlationId; result.status="validation-failed"; result.diagnostics.push_back({"unsupported-return-type","prototype.return_type","x64 adapter supports scalar integer, bool, and pointer returns only"}); error="unsupported x64 return type"; return false; }
     FunctionCatalog current; if (!FunctionCatalog::Load(imagePath, current, error) || !SameIdentity(current.Module(), catalog.Module())) { error = "runtime module identity changed"; return false; }
     const FunctionRecord* record=selected;
@@ -280,8 +326,11 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     }
     if(address==nullptr){FreeLibrary(module);error="target address is unavailable";return false;}
     uint64_t values[8]={}; if(request.arguments.size()>8){FreeLibrary(module);error="x64 adapter supports at most eight arguments";return false;}
+    uint32_t floatingMask = 0;
     for(size_t i=0;i<request.arguments.size();++i)
-        if (request.arguments[i].type.kind != TypeKind::String && request.arguments[i].type.kind != TypeKind::Bytes && !Value(request.arguments[i],values[i]))
+        if (request.arguments[i].type.kind == TypeKind::Floating)
+        { if (!FloatingValue(request.arguments[i], values[i])) { FreeLibrary(module); error="invalid floating-point argument"; return false; } floatingMask |= (1U << i); }
+        else if (request.arguments[i].type.kind != TypeKind::String && request.arguments[i].type.kind != TypeKind::Bytes && !Value(request.arguments[i],values[i]))
         { FreeLibrary(module); error="invalid typed argument"; return false; }
 #if defined(_M_IX86)
     for(size_t i=0;i<request.arguments.size();++i) if(values[i] > UINT32_MAX) { FreeLibrary(module); error="x86 argument exceeds pointer width"; return false; }
@@ -301,7 +350,10 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     WorkerState* state = new WorkerState();
     state->module = module;
     state->argumentStorage.resize(request.arguments.size());
-    state->call.frame = {functionAddress, {}, static_cast<uint32_t>(request.arguments.size())};
+    state->call.frame.targetAddress = functionAddress;
+    state->call.frame.argumentCount = static_cast<uint32_t>(request.arguments.size());
+    state->call.frame.floatingReturn = prototype.returnType.kind == TypeKind::Floating;
+    state->call.frame.floatingArgumentMask = floatingMask;
     for (size_t index = 0; index < request.arguments.size(); ++index)
     {
         const CallArgument& argument = request.arguments[index];
@@ -310,6 +362,12 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
             if (!PrepareStorage(argument, state->argumentStorage[index], error))
             { delete state; retainedTimeoutWorkers.store(0, std::memory_order_release); FreeLibrary(module); error = error.empty() ? "unable to prepare argument storage" : error; return false; }
             state->call.frame.arguments[index] = reinterpret_cast<uintptr_t>(state->argumentStorage[index].data());
+        }
+        else if (argument.type.kind == TypeKind::Floating)
+        {
+            if (!FloatingValue(argument, state->call.frame.arguments[index]))
+            { delete state; retainedTimeoutWorkers.store(0, std::memory_order_release); FreeLibrary(module); error = "invalid floating-point argument"; return false; }
+            state->call.frame.floatingArgumentMask |= (1U << index);
         }
         else state->call.frame.arguments[index] = static_cast<uintptr_t>(values[index]);
     }
@@ -348,6 +406,7 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     CloseHandle(worker);
 #if defined(_M_X64)
     const uint64_t returned=static_cast<uint64_t>(state->call.frame.targetAddress);
+    const uint64_t floatingReturned=state->call.frame.floatingReturnBits;
 #else
     const uint64_t returned=state->call.returned;
 #endif
@@ -364,7 +423,7 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     delete state;
     retainedTimeoutWorkers.store(0, std::memory_order_release);
     if (exceptionCode != 0) { FreeLibrary(module); result={}; result.correlationId=request.correlationId; result.status="crashed"; result.diagnostics.push_back({"target-exception","call","target raised a structured exception"}); error="target raised a structured exception"; return false; }
-    FreeLibrary(module); result={}; result.correlationId=request.correlationId; result.success=true; result.status="completed"; result.returnValue=ReturnValue(returned,prototype.returnType); result.returnType=prototype.returnType; result.prototypeUsed=prototype; result.resolvedModule=catalog.Module();
+    FreeLibrary(module); result={}; result.correlationId=request.correlationId; result.success=true; result.status="completed"; result.returnValue=prototype.returnType.kind == TypeKind::Floating ? FloatingReturnValue(floatingReturned, prototype.returnType) : ReturnValue(returned,prototype.returnType); result.returnType=prototype.returnType; result.prototypeUsed=prototype; result.resolvedModule=catalog.Module();
     result.outputValues = std::move(outputValues);
     return true;
 #endif

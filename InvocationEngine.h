@@ -12,7 +12,10 @@ struct NativeCallFrameX64
 {
     uintptr_t targetAddress = 0;
     std::array<uintptr_t, 8> arguments{};
+    uint32_t floatingArgumentMask = 0;
     uint32_t argumentCount = 0;
+    bool floatingReturn = false;
+    uint64_t floatingReturnBits = 0;
 };
 
 bool InvokeNativeCallX64(const NativeCallFrameX64& frame, uintptr_t& returned,
