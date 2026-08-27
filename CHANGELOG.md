@@ -127,4 +127,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: harden string and buffer marshalling
 - fix: bound byte buffer decoding
 - Merge pull request #47 from kerbymart/feat/46-bounded-strings-byte-buffers
+- feat: report isolated worker outcomes
 
