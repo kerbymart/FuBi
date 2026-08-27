@@ -56,4 +56,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - style: normalize call contract header
 - fix: harden typed call validation and transport
 - fix: round-trip call diagnostics
+- fix: preserve call contract metadata and errors
 
