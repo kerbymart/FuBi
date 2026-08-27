@@ -160,6 +160,7 @@ BOOST_AUTO_TEST_CASE(ExactSymbolEvidenceMakesMatchingRecordCallable)
     evidence.module = catalog.Module();
     evidence.rva = original->startRva;
     evidence.name = "NamedExport";
+    evidence.prototype.quality = PrototypeQuality::ExactSymbol;
     evidence.prototype.abi = catalog.Module().architecture == "x64" ? "x64" : "__cdecl";
     evidence.prototype.returnType.kind = TypeKind::Integer;
     evidence.prototype.returnType.width = 32;
@@ -169,4 +170,24 @@ BOOST_AUTO_TEST_CASE(ExactSymbolEvidenceMakesMatchingRecordCallable)
     BOOST_CHECK(catalog.Find("NamedExport")->callability == Callability::Callable);
     BOOST_CHECK(catalog.Find("NamedExport")->prototype.quality == PrototypeQuality::ExactSymbol);
     BOOST_CHECK_EQUAL(catalog.Find("NamedExport")->id.symbol, "NamedExport");
+}
+
+BOOST_AUTO_TEST_CASE(InferredSymbolEvidenceRemainsDisplayOnly)
+{
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+    const FunctionRecord* original = catalog.Find("NamedExport");
+    BOOST_REQUIRE(original != nullptr);
+    SymbolPrototypeEvidence evidence;
+    evidence.module = catalog.Module();
+    evidence.rva = original->startRva;
+    evidence.name = "NamedExport";
+    evidence.prototype.quality = PrototypeQuality::Inferred;
+    evidence.prototype.abi = catalog.Module().architecture == "x64" ? "x64" : "__cdecl";
+    evidence.prototype.returnType.kind = TypeKind::Integer;
+    evidence.prototype.returnType.width = 32;
+    std::string applyError;
+    BOOST_REQUIRE(catalog.ApplySymbolEvidence({evidence}, applyError));
+    BOOST_CHECK(catalog.Find("NamedExport")->callability == Callability::RequiresPrototype);
 }
