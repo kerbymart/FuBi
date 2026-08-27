@@ -129,4 +129,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - Merge pull request #47 from kerbymart/feat/46-bounded-strings-byte-buffers
 - feat: report isolated worker outcomes
 - feat: support x64 floating point calls
+- test: verify JSONL malformed-line recovery
 
