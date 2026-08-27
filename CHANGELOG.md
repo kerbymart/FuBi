@@ -155,4 +155,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - test: verify architecture and calling-convention matrices (#102)
 - test: add Windows pattern acceptance coverage (#104)
 - test: add opt-in t1pidd catalog acceptance (#106)
+- feat: add opaque session reference lifecycle (#113)
 
