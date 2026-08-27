@@ -60,6 +60,7 @@ set(SOURCES
     PrototypeProfile.cpp
     DbgHelpDll.cpp
     CallContract.cpp
+    SessionReferences.cpp
     InvocationEngine.cpp
     ProcessInvocation.cpp
     WindowsPatternCatalog.cpp
@@ -157,6 +158,9 @@ add_dependencies(string_output_tests static_fixture)
 add_executable(exit_code_tests TestExitCodes.cpp)
 target_link_libraries(exit_code_tests PRIVATE fubi_boost_headers)
 
+add_executable(session_reference_tests TestSessionReferences.cpp SessionReferences.cpp)
+target_link_libraries(session_reference_tests PRIVATE fubi_boost_headers)
+
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
     add_library(x86_abi_fixture SHARED X86AbiFixture.cpp X86AbiFixture.def)
     target_compile_options(x86_abi_fixture PRIVATE /Od /Zi)
@@ -193,6 +197,7 @@ add_test(NAME internal_rva COMMAND internal_rva_tests)
 add_test(NAME mixed_floating COMMAND mixed_floating_tests)
 add_test(NAME string_output COMMAND string_output_tests)
 add_test(NAME exit_code_constants COMMAND exit_code_tests)
+add_test(NAME session_references COMMAND session_reference_tests)
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
     add_test(NAME x86_abi_worker_guarantees COMMAND x86_abi_tests)
     add_test(
@@ -217,6 +222,13 @@ add_test(
         -DFIXTURE=$<TARGET_FILE:export_fixture>
         -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
         -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyJsonlSession.cmake)
+add_test(
+    NAME opaque_session_references
+    COMMAND ${CMAKE_COMMAND}
+        -DFUBI=$<TARGET_FILE:Fubi>
+        -DFIXTURE=$<TARGET_FILE:export_fixture>
+        -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyOpaqueSessionReferences.cmake)
 add_test(
     NAME exit_code_contract
     COMMAND ${CMAKE_COMMAND}

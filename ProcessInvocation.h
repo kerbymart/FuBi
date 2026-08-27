@@ -11,4 +11,5 @@ bool SelectInvocationWorker(const std::string& targetArchitecture,
     std::string& workerPath, std::string& error);
 
 bool InvokeX64ExportProcess(const std::string& imagePath, const CallRequest& request,
-    const FunctionCatalog& catalog, CallResult& result, std::string& error);
+    const FunctionCatalog& catalog, CallResult& result, std::string& error,
+    bool allowPointerResults = false);

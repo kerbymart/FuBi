@@ -298,6 +298,12 @@ results remain unsupported across the isolated worker boundary because a raw
 address is not a reusable session reference. Runtime tests use controlled,
 trusted fixture DLLs and should not load arbitrary contributor or system DLLs.
 
+Persistent JSONL sessions use `opaque:session-N` identifiers for values that
+are explicitly retained by the session. The identifier is never a numeric
+address, is valid only in the session that issued it, and can be released only
+once. Release only removes the session record; FuBi never dereferences or
+automatically frees the underlying target value.
+
 ## Testing
 
 The test suite includes a fixture DLL whose `DllMain` writes a marker. Both the
