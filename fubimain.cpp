@@ -15,7 +15,7 @@ namespace
 void PrintUsage()
 {
     std::cerr << "Usage:\n"
-              << "  Fubi.exe <dll-file> [--list|--list-callable|--describe <name|#ordinal|0xRVA>|--call <selector>] [--arg <kind:value> ...] [--profile <file>] [--prototype-override <file>] [--symbols] [--json]\n";
+              << "  Fubi.exe <dll-file> [--list|--list-callable|--describe <name|#ordinal|0xRVA>|--call <selector>] [--arg <kind:value> ...] [--profile <file>] [--prototype-override <file>] [--symbols] [--json|--jsonl]\n";
 }
 
 struct Options
@@ -24,6 +24,7 @@ struct Options
     std::string action = "list";
     std::string selector;
     bool json = false;
+    bool jsonl = false;
     std::string profilePath;
     std::string prototypeOverridePath;
     bool symbols = false;
@@ -60,6 +61,7 @@ bool ParseOptions(int argc, char* argv[], Options& options)
             options.rawArguments.push_back(argv[++index]);
         }
         else if (argument == "--json") options.json = true;
+        else if (argument == "--jsonl") options.jsonl = true;
         else if (argument == "--profile" && index + 1 < argc)
         {
             if (!options.profilePath.empty()) return false;
@@ -121,6 +123,32 @@ int main(int argc, char* argv[])
             std::cerr << error << "\n";
             return 7;
         }
+    }
+    if (options.jsonl)
+    {
+        std::string line;
+        while (std::getline(std::cin, line))
+        {
+            if (line.find_first_not_of(" \t\r\n") == std::string::npos) continue;
+            CallRequest request;
+            std::vector<CallDiagnostic> diagnostics;
+            CallResult response;
+            const bool parsed = ParseCallRequestJson(line, request, diagnostics);
+            response.correlationId = request.correlationId.empty() ? "jsonl-error" : request.correlationId;
+            response.resolvedModule = catalog.Module();
+            response.status = "validation-failed";
+            response.diagnostics = diagnostics;
+            if (parsed)
+            {
+                response.prototypeUsed = request.prototypeOverride;
+                const bool valid = ValidateCallRequest(request, catalog, diagnostics);
+                response.diagnostics = diagnostics;
+                response.status = valid ? "not-executed" : "validation-failed";
+            }
+            WriteCallResultJson(std::cout, response);
+            std::cout << '\n';
+        }
+        return 0;
     }
     if (options.action == "call")
     {
