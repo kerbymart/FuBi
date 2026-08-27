@@ -35,7 +35,7 @@ Current milestone: **Acceptance gaps, PDB type conversion, tracker evidence, and
 | 10. Focused Windows patterns | `feat/12-windows-call-pattern-catalog` | 2 | In progress | [PR #26](https://github.com/kerbymart/FuBi/pull/26) |
 | 11. t1pidd catalog acceptance | `test/13-t1pidd-catalog-acceptance` | 3 | In progress | [PR #27](https://github.com/kerbymart/FuBi/pull/27) |
 
-Overall roadmap: **11/11 milestones have baseline implementation PRs, with detailed acceptance checklists still open**. Bounded PDB metadata is merged in [PR #28](https://github.com/kerbymart/FuBi/pull/28) and display-only graph validation is merged in [PR #30](https://github.com/kerbymart/FuBi/pull/30). Internal RVA acceptance is covered by [PR #62](https://github.com/kerbymart/FuBi/pull/62), bounded string output by [PR #64](https://github.com/kerbymart/FuBi/pull/64), mixed x64 ABI placement by [PR #68](https://github.com/kerbymart/FuBi/pull/68), and adversarial parser boundaries by [PR #70](https://github.com/kerbymart/FuBi/pull/70). Complete invocation-grade PDB type conversion remains open in [#29](https://github.com/kerbymart/FuBi/issues/29), published-history rewriting remains open in [#14](https://github.com/kerbymart/FuBi/issues/14), and the unchecked acceptance items below remain authoritative.
+Overall roadmap: **11/11 milestones have baseline implementation PRs, with detailed acceptance checklists still open**. Bounded PDB metadata is merged in [PR #28](https://github.com/kerbymart/FuBi/pull/28), display-only graph validation in [PR #30](https://github.com/kerbymart/FuBi/pull/30), and invocation-grade type conversion in [PR #35](https://github.com/kerbymart/FuBi/pull/35). Internal RVA acceptance is covered by [PR #62](https://github.com/kerbymart/FuBi/pull/62), bounded string output by [PR #64](https://github.com/kerbymart/FuBi/pull/64), mixed x64 ABI placement by [PR #68](https://github.com/kerbymart/FuBi/pull/68), and adversarial parser boundaries by [PR #70](https://github.com/kerbymart/FuBi/pull/70). Published-history rewriting remains open in [#14](https://github.com/kerbymart/FuBi/issues/14), and the unchecked acceptance items below remain authoritative.
 
 ## Design approval gate
 
@@ -94,12 +94,12 @@ These requirements apply to every milestone.
 
 Status: **In progress**
 Branch: `chore/3-remove-decoder-dependency`
-Evidence: _None_
+Evidence: Local Boost resolution and offline configuration behavior are covered by the current CMake configuration and dependency-policy changes in [PR #15](https://github.com/kerbymart/FuBi/pull/15). Remaining history and acceptance work is open.
 
 - [ ] M1-01 Remove Zydis and Zycore configuration and linking from CMake.
 - [ ] M1-02 Remove network `FetchContent` behavior.
-- [ ] M1-03 Resolve Boost through `FUBI_BOOST_ROOT` or `find_package(Boost)` and
-  emit an actionable configuration error when unavailable.
+- [x] M1-03 Resolve Boost through `FUBI_BOOST_ROOT` or `find_package(Boost)` and
+  emit an actionable configuration error when unavailable. ([PR #43](https://github.com/kerbymart/FuBi/pull/43))
 - [ ] M1-04 Remove decoder-dependent source paths, records, CLI flags, and
   tests.
 - [ ] M1-05 Remove general disassembly and decoder-derived graph/xref/ABI
@@ -115,19 +115,19 @@ Evidence: _None_
 Status: **In progress**
 Branch: `refactor/4-function-catalog-core`
 Depends on: M1
-Evidence: _None_
+Evidence: Catalog domain records, callability, export preservation, deterministic output, and static providers are covered by [PR #17](https://github.com/kerbymart/FuBi/pull/17), [PR #62](https://github.com/kerbymart/FuBi/pull/62), and [PR #70](https://github.com/kerbymart/FuBi/pull/70). Reference-module acceptance remains open.
 
-- [ ] M2-01 Introduce `ModuleIdentity`, `FunctionId`, `FunctionRecord`,
-  `PrototypeSpec`, and `TypeSpec` domain records.
-- [ ] M2-02 Implement explicit callability states and stable reason codes.
-- [ ] M2-03 Add static export, x64 runtime-function, and Guard CF providers.
-- [ ] M2-04 Merge evidence by module hash plus RVA, never by display name alone.
-- [ ] M2-05 Preserve export names, aliases, ordinals, RVAs, and forwarders.
-- [ ] M2-06 Adapt `SysExports` without rewriting working enumeration behavior.
-- [ ] M2-07 Make `--list` the default and implement `--list-callable` and
-  `--describe`.
-- [ ] M2-08 Produce deterministic text and versioned JSON without loading the
-  target.
+- [x] M2-01 Introduce `ModuleIdentity`, `FunctionId`, `FunctionRecord`,
+  `PrototypeSpec`, and `TypeSpec` domain records. ([PR #17](https://github.com/kerbymart/FuBi/pull/17))
+- [x] M2-02 Implement explicit callability states and stable reason codes. ([PR #17](https://github.com/kerbymart/FuBi/pull/17))
+- [x] M2-03 Add static export, x64 runtime-function, and Guard CF providers. ([PR #57](https://github.com/kerbymart/FuBi/pull/57))
+- [x] M2-04 Merge evidence by module hash plus RVA, never by display name alone. ([PR #17](https://github.com/kerbymart/FuBi/pull/17))
+- [x] M2-05 Preserve export names, aliases, ordinals, RVAs, and forwarders. ([PR #17](https://github.com/kerbymart/FuBi/pull/17))
+- [x] M2-06 Adapt `SysExports` without rewriting working enumeration behavior. ([PR #17](https://github.com/kerbymart/FuBi/pull/17))
+- [x] M2-07 Make `--list` the default and implement `--list-callable` and
+  `--describe`. ([PR #15](https://github.com/kerbymart/FuBi/pull/15), [PR #17](https://github.com/kerbymart/FuBi/pull/17))
+- [x] M2-08 Produce deterministic text and versioned JSON without loading the
+  target. ([PR #17](https://github.com/kerbymart/FuBi/pull/17), [PR #57](https://github.com/kerbymart/FuBi/pull/57))
 - [ ] M2-09 Verify existing export coverage and the reference t1pidd catalog
   baseline: 2 exports, 149 candidates, and source provenance.
 
@@ -136,22 +136,22 @@ Evidence: _None_
 Status: **In progress**
 Branch: `feat/5-symbol-and-profile-prototypes`
 Depends on: M2
-Evidence: _None_
+Evidence: DbgHelp identity checks, profile validation, evidence merging, display-only prototype handling, and invocation-grade conversion are covered by [PR #28](https://github.com/kerbymart/FuBi/pull/28), [PR #30](https://github.com/kerbymart/FuBi/pull/30), [PR #35](https://github.com/kerbymart/FuBi/pull/35), and [PR #86](https://github.com/kerbymart/FuBi/pull/86).
 
-- [ ] M3-01 Expand the DbgHelp adapter for local PDB function symbols and exact
-  supported types.
-- [ ] M3-02 Verify PDB GUID and age before applying symbols or types.
-- [ ] M3-03 Add versioned profile parsing using the approved parser dependency.
-- [ ] M3-04 Require SHA-256 and architecture matches by default.
-- [ ] M3-05 Validate selectors, executable RVAs, ABI/type vocabulary, duplicate
-  entries, and unknown required fields.
-- [ ] M3-06 Merge PDB, profile, decorated-name, and unknown prototype evidence
-  without silently resolving conflicts.
-- [ ] M3-07 Treat only `exact-symbol` and explicit `user-declared` prototypes as
-  invocation-grade.
-- [ ] M3-08 Ensure inferred or partial prototypes remain display-only.
-- [ ] M3-09 Verify profile mismatch rejection and that an exact fixture profile
-  or PDB can make a supported fixture callable.
+- [x] M3-01 Expand the DbgHelp adapter for local PDB function symbols and exact
+  supported types. ([PR #28](https://github.com/kerbymart/FuBi/pull/28), [PR #35](https://github.com/kerbymart/FuBi/pull/35))
+- [x] M3-02 Verify PDB GUID and age before applying symbols or types. ([PR #28](https://github.com/kerbymart/FuBi/pull/28))
+- [x] M3-03 Add versioned profile parsing using the approved parser dependency. ([PR #86](https://github.com/kerbymart/FuBi/pull/86))
+- [x] M3-04 Require SHA-256 and architecture matches by default. ([PR #86](https://github.com/kerbymart/FuBi/pull/86))
+- [x] M3-05 Validate selectors, executable RVAs, ABI/type vocabulary, duplicate
+  entries, and unknown required fields. ([PR #86](https://github.com/kerbymart/FuBi/pull/86))
+- [x] M3-06 Merge PDB, profile, decorated-name, and unknown prototype evidence
+  without silently resolving conflicts. ([PR #30](https://github.com/kerbymart/FuBi/pull/30), [PR #35](https://github.com/kerbymart/FuBi/pull/35))
+- [x] M3-07 Treat only `exact-symbol` and explicit `user-declared` prototypes as
+  invocation-grade. ([PR #35](https://github.com/kerbymart/FuBi/pull/35))
+- [x] M3-08 Ensure inferred or partial prototypes remain display-only. ([PR #30](https://github.com/kerbymart/FuBi/pull/30))
+- [x] M3-09 Verify profile mismatch rejection and that an exact fixture profile
+  or PDB can make a supported fixture callable. ([PR #18](https://github.com/kerbymart/FuBi/pull/18), [PR #35](https://github.com/kerbymart/FuBi/pull/35))
 
 ## Milestone 4 — Typed call requests
 
@@ -160,22 +160,22 @@ Branch: `feat/6-typed-call-request`
 Depends on: M3
 Evidence: Bounded string output and inout marshalling in [PR #64](https://github.com/kerbymart/FuBi/pull/64), with targeted call-contract and string-output tests.
 
-- [ ] M4-01 Implement versioned `CallRequest`, `CallResult`, and structured
-  diagnostic records.
-- [ ] M4-02 Implement typed CLI argument and one-call prototype override
-  parsing.
-- [ ] M4-03 Support the approved scalar, pointer, string, buffer, handle, and
-  opaque-pointer vocabulary for the first calling phase.
-- [ ] M4-04 Validate argument count, direction, width, signedness, ranges,
-  pointer width, encoding, sizes, and ownership rules.
-- [ ] M4-05 Cap input/output buffers and zero newly allocated output buffers.
-- [ ] M4-06 Add stable diagnostic codes and exit-code mapping.
+- [x] M4-01 Implement versioned `CallRequest`, `CallResult`, and structured
+  diagnostic records. ([PR #20](https://github.com/kerbymart/FuBi/pull/20), [PR #78](https://github.com/kerbymart/FuBi/pull/78))
+- [x] M4-02 Implement typed CLI argument and one-call prototype override
+  parsing. ([PR #20](https://github.com/kerbymart/FuBi/pull/20))
+- [x] M4-03 Support the approved scalar, pointer, string, buffer, handle, and
+  opaque-pointer vocabulary for the first calling phase. ([PR #20](https://github.com/kerbymart/FuBi/pull/20), [PR #47](https://github.com/kerbymart/FuBi/pull/47))
+- [x] M4-04 Validate argument count, direction, width, signedness, ranges,
+  pointer width, encoding, sizes, and ownership rules. ([PR #20](https://github.com/kerbymart/FuBi/pull/20), [PR #47](https://github.com/kerbymart/FuBi/pull/47))
+- [x] M4-05 Cap input/output buffers and zero newly allocated output buffers. ([PR #47](https://github.com/kerbymart/FuBi/pull/47), [PR #64](https://github.com/kerbymart/FuBi/pull/64))
+- [x] M4-06 Add stable diagnostic codes and exit-code mapping. ([PR #78](https://github.com/kerbymart/FuBi/pull/78))
 - [ ] M4-07 Route command processing through a fake invocation adapter; do not
   execute native calls in this milestone.
-- [ ] M4-08 Make script output deterministic and prompt-free, with protocol on
-  stdout and diagnostics on stderr.
-- [ ] M4-09 Add positive/negative type tests and JSON request/response
-  round-trip tests.
+- [x] M4-08 Make script output deterministic and prompt-free, with protocol on
+  stdout and diagnostics on stderr. ([PR #20](https://github.com/kerbymart/FuBi/pull/20), [PR #76](https://github.com/kerbymart/FuBi/pull/76))
+- [x] M4-09 Add positive/negative type tests and JSON request/response
+  round-trip tests. ([PR #20](https://github.com/kerbymart/FuBi/pull/20), [PR #70](https://github.com/kerbymart/FuBi/pull/70))
 
 ## Milestone 5 — Native x64 invocation
 
@@ -184,18 +184,18 @@ Branch: `feat/7-native-invocation-x64`
 Depends on: M4
 Evidence: Mixed integer, floating, pointer, and stack-position coverage in [PR #68](https://github.com/kerbymart/FuBi/pull/68), with JSON round-trip and static non-execution assertions.
 
-- [ ] M5-01 Add a normalized call frame independent of catalog and CLI logic.
-- [ ] M5-02 Implement the project-owned Windows x64 assembly invocation adapter.
-- [ ] M5-03 Correctly place integer/pointer arguments in RCX, RDX, R8, R9 and
-  remaining arguments on the stack.
-- [ ] M5-04 Preserve 32-byte shadow space, 16-byte alignment, and nonvolatile
-  registers.
-- [ ] M5-05 Capture supported return values from RAX and, when enabled, XMM0.
-- [ ] M5-06 Keep marshalled call-frame memory alive through the call.
-- [ ] M5-07 Load modules only for explicit runtime commands and bind named or
-  ordinal exports with `GetProcAddress`.
-- [ ] M5-08 Add one-shot `--call` using the shared command service.
-- [ ] M5-09 Reject unsupported ABI/types before loading or invoking the DLL.
+- [x] M5-01 Add a normalized call frame independent of catalog and CLI logic. ([PR #45](https://github.com/kerbymart/FuBi/pull/45))
+- [x] M5-02 Implement the project-owned Windows x64 assembly invocation adapter. ([PR #45](https://github.com/kerbymart/FuBi/pull/45))
+- [x] M5-03 Correctly place integer/pointer arguments in RCX, RDX, R8, R9 and
+  remaining arguments on the stack. ([PR #45](https://github.com/kerbymart/FuBi/pull/45), [PR #51](https://github.com/kerbymart/FuBi/pull/51))
+- [x] M5-04 Preserve 32-byte shadow space, 16-byte alignment, and nonvolatile
+  registers. ([PR #45](https://github.com/kerbymart/FuBi/pull/45), [PR #68](https://github.com/kerbymart/FuBi/pull/68))
+- [x] M5-05 Capture supported return values from RAX and, when enabled, XMM0. ([PR #51](https://github.com/kerbymart/FuBi/pull/51), [PR #68](https://github.com/kerbymart/FuBi/pull/68))
+- [x] M5-06 Keep marshalled call-frame memory alive through the call. ([PR #45](https://github.com/kerbymart/FuBi/pull/45))
+- [x] M5-07 Load modules only for explicit runtime commands and bind named or
+  ordinal exports with `GetProcAddress`. ([PR #21](https://github.com/kerbymart/FuBi/pull/21))
+- [x] M5-08 Add one-shot `--call` using the shared command service. ([PR #21](https://github.com/kerbymart/FuBi/pull/21))
+- [x] M5-09 Reject unsupported ABI/types before loading or invoking the DLL. ([PR #20](https://github.com/kerbymart/FuBi/pull/20), [PR #21](https://github.com/kerbymart/FuBi/pull/21))
 - [x] M5-10 Pass the x64 fixture matrix, including more than four arguments and
   stack/register invariant tests.
 
@@ -206,15 +206,15 @@ Branch: `feat/8-internal-rva-binding`
 Depends on: M5
 Evidence: Hash-pinned internal RVA fixture and policy/identity rejection coverage in [PR #62](https://github.com/kerbymart/FuBi/pull/62).
 
-- [ ] M6-01 Recheck loaded module path, SHA-256, architecture, and image identity.
-- [ ] M6-02 Validate that the selected RVA lies in an executable section.
-- [ ] M6-03 Compute loaded base plus RVA with overflow checks.
-- [ ] M6-04 Require an invocation-grade, supported prototype.
-- [ ] M6-05 Require `--allow-internal` or the equivalent request policy.
-- [ ] M6-06 Block framework-managed targets unless a separately reviewed
-  stronger override is defined.
-- [ ] M6-07 Emit stable failures for mismatched hashes, invalid RVAs, missing
-  authorization, and blocked entry points.
+- [x] M6-01 Recheck loaded module path, SHA-256, architecture, and image identity. ([PR #62](https://github.com/kerbymart/FuBi/pull/62))
+- [x] M6-02 Validate that the selected RVA lies in an executable section. ([PR #62](https://github.com/kerbymart/FuBi/pull/62))
+- [x] M6-03 Compute loaded base plus RVA with overflow checks. ([PR #62](https://github.com/kerbymart/FuBi/pull/62))
+- [x] M6-04 Require an invocation-grade, supported prototype. ([PR #62](https://github.com/kerbymart/FuBi/pull/62))
+- [x] M6-05 Require `--allow-internal` or the equivalent request policy. ([PR #62](https://github.com/kerbymart/FuBi/pull/62))
+- [x] M6-06 Block framework-managed targets unless a separately reviewed
+  stronger override is defined. ([PR #84](https://github.com/kerbymart/FuBi/pull/84))
+- [x] M6-07 Emit stable failures for mismatched hashes, invalid RVAs, missing
+  authorization, and blocked entry points. ([PR #62](https://github.com/kerbymart/FuBi/pull/62), [PR #84](https://github.com/kerbymart/FuBi/pull/84))
 - [x] M6-08 Verify an internal fixture is called only with a matching hash-pinned
   profile and explicit authorization; mismatches are never executed.
 
@@ -223,42 +223,42 @@ Evidence: Hash-pinned internal RVA fixture and policy/identity rejection coverag
 Status: **In progress**
 Branch: `feat/9-script-session-protocol`
 Depends on: M6
-Evidence: _None_
+Evidence: Persistent JSONL lifecycle, correlation, malformed-request recovery, and protocol negotiation coverage in [PR #76](https://github.com/kerbymart/FuBi/pull/76).
 
-- [ ] M7-01 Implement versioned JSON and JSONL parsing with approved Boost
-  Spirit only.
-- [ ] M7-02 Support `hello`, `list`, `describe`, `call`, `release`, and `quit`.
-- [ ] M7-03 Preserve correlation IDs in every response.
-- [ ] M7-04 Add persistent module sessions through the shared command service.
+- [x] M7-01 Implement versioned JSON and JSONL parsing with approved Boost
+  Spirit only. ([PR #23](https://github.com/kerbymart/FuBi/pull/23))
+- [x] M7-02 Support `hello`, `list`, `describe`, `call`, `release`, and `quit`. ([PR #23](https://github.com/kerbymart/FuBi/pull/23), [PR #76](https://github.com/kerbymart/FuBi/pull/76))
+- [x] M7-03 Preserve correlation IDs in every response. ([PR #23](https://github.com/kerbymart/FuBi/pull/23))
+- [x] M7-04 Add persistent module sessions through the shared command service. ([PR #76](https://github.com/kerbymart/FuBi/pull/76))
 - [ ] M7-05 Represent session-owned handles/pointers with opaque IDs rather
   than lossy JSON numbers.
 - [ ] M7-06 Do not automatically dereference opaque IDs or arbitrary returned
   pointers.
-- [ ] M7-07 Build `--shell` on the same command model and retain `--interactive`
-  as a compatibility alias.
-- [ ] M7-08 Recover from malformed requests without corrupting the session.
-- [ ] M7-09 Pass multi-call session, opaque-reference reuse, stdout/stderr, and
-  protocol-negotiation tests.
+- [x] M7-07 Build `--shell` on the same command model and retain `--interactive`
+  as a compatibility alias. ([PR #76](https://github.com/kerbymart/FuBi/pull/76))
+- [x] M7-08 Recover from malformed requests without corrupting the session. ([PR #53](https://github.com/kerbymart/FuBi/pull/53))
+- [x] M7-09 Pass multi-call session, opaque-reference reuse, stdout/stderr, and
+  protocol-negotiation tests. ([PR #76](https://github.com/kerbymart/FuBi/pull/76))
 
 ## Milestone 8 — Isolated call worker
 
 Status: **In progress**
 Branch: `feat/10-isolated-call-worker`
 Depends on: M7
-Evidence: _None_
+Evidence: Worker isolation limits, failure protocol recovery, framework blocking, and architecture-specific selection evidence in [PR #80](https://github.com/kerbymart/FuBi/pull/80), [PR #82](https://github.com/kerbymart/FuBi/pull/82), [PR #84](https://github.com/kerbymart/FuBi/pull/84), and [PR #102](https://github.com/kerbymart/FuBi/pull/102).
 
 - [ ] M8-01 Split the runtime into `Fubi.exe` controller and `FubiWorker.exe`.
-- [ ] M8-02 Perform static catalog/profile/request validation before launching
-  the worker.
-- [ ] M8-03 Define a stable, versioned controller/worker protocol.
-- [ ] M8-04 Add architecture-specific worker selection.
-- [ ] M8-05 Enforce one-shot call timeouts.
-- [ ] M8-06 Return structured process exit, crash, and timeout information while
-  keeping controller stdout valid.
-- [ ] M8-07 Document that isolation is not a security sandbox and forced
-  termination may leak external resources.
-- [ ] M8-08 Pass crash and hang fixture tests while keeping the controller
-  responsive.
+- [x] M8-02 Perform static catalog/profile/request validation before launching
+  the worker. ([PR #24](https://github.com/kerbymart/FuBi/pull/24))
+- [x] M8-03 Define a stable, versioned controller/worker protocol. ([PR #24](https://github.com/kerbymart/FuBi/pull/24), [PR #49](https://github.com/kerbymart/FuBi/pull/49))
+- [x] M8-04 Add architecture-specific worker selection. ([PR #60](https://github.com/kerbymart/FuBi/pull/60), [PR #102](https://github.com/kerbymart/FuBi/pull/102))
+- [x] M8-05 Enforce one-shot call timeouts. ([PR #24](https://github.com/kerbymart/FuBi/pull/24))
+- [x] M8-06 Return structured process exit, crash, and timeout information while
+  keeping controller stdout valid. ([PR #49](https://github.com/kerbymart/FuBi/pull/49), [PR #82](https://github.com/kerbymart/FuBi/pull/82))
+- [x] M8-07 Document that isolation is not a security sandbox and forced
+  termination may leak external resources. ([PR #80](https://github.com/kerbymart/FuBi/pull/80))
+- [x] M8-08 Pass crash and hang fixture tests while keeping the controller
+  responsive. ([PR #82](https://github.com/kerbymart/FuBi/pull/82))
 
 ## Milestone 9 — Native x86 invocation
 
@@ -322,20 +322,20 @@ Evidence: Opt-in path, pinned identity, export/candidate checks, static describe
 
 ## Shared fixture and test backlog
 
-- [ ] T-01 Controlled x64 and x86 fixture DLLs.
-- [ ] T-02 Zero-argument and all supported integer-width returns.
+- [x] T-01 Controlled x64 and x86 fixture DLLs. See [PR #90](https://github.com/kerbymart/FuBi/pull/90) and [PR #102](https://github.com/kerbymart/FuBi/pull/102).
+- [x] T-02 Zero-argument and all supported integer-width returns. See [PR #68](https://github.com/kerbymart/FuBi/pull/68) and [PR #100](https://github.com/kerbymart/FuBi/pull/100).
 - [ ] T-03 Pointer/handle echo and C-string/wide-string length functions.
 - [x] T-04 Input checksum and output/inout buffer functions. String output and
   inout coverage is in [PR #64](https://github.com/kerbymart/FuBi/pull/64).
 - [x] T-05 Floating argument/return fixtures when floating support begins.
   Mixed ABI coverage is in [PR #68](https://github.com/kerbymart/FuBi/pull/68).
-- [ ] T-06 Named, ordinal-only, aliased, and forwarded exports.
-- [x] T-07 Internal non-exported function with a profile-known RVA.
-- [ ] T-08 Crash and hang functions.
+- [x] T-06 Named, ordinal-only, aliased, and forwarded exports. See [PR #17](https://github.com/kerbymart/FuBi/pull/17).
+- [x] T-07 Internal non-exported function with a profile-known RVA. See [PR #62](https://github.com/kerbymart/FuBi/pull/62).
+- [x] T-08 Crash and hang functions. See [PR #82](https://github.com/kerbymart/FuBi/pull/82).
 - [x] T-09 `DllMain` marker proving metadata commands never execute the target.
   Static catalog assertions are covered in [PR #62](https://github.com/kerbymart/FuBi/pull/62) and [PR #68](https://github.com/kerbymart/FuBi/pull/68).
-- [ ] T-10 Unit coverage for selectors, type parsing, validation, catalog merge,
-  callability transitions, JSON round trips, diagnostics, and exit codes.
+- [x] T-10 Unit coverage for selectors, type parsing, validation, catalog merge,
+  callability transitions, JSON round trips, diagnostics, and exit codes. See [PR #17](https://github.com/kerbymart/FuBi/pull/17), [PR #20](https://github.com/kerbymart/FuBi/pull/20), [PR #70](https://github.com/kerbymart/FuBi/pull/70), and [PR #78](https://github.com/kerbymart/FuBi/pull/78).
 - [x] T-11 Adversarial cases for truncated PE data, offsets, sizes, counts,
   profile data, and requests. See [PR #70](https://github.com/kerbymart/FuBi/pull/70).
 
@@ -343,32 +343,32 @@ Evidence: Opt-in path, pinned identity, export/candidate checks, static describe
 
 - [x] DOC-01 Document the catalog-first product workflow and safety model. See
   [PR #66](https://github.com/kerbymart/FuBi/pull/66).
-- [ ] DOC-02 Document text, one-shot JSON, JSONL session, and exit-code contracts.
-- [ ] DOC-03 Document the profile schema with hash-pinned export and RVA
-  examples.
+- [x] DOC-02 Document text, one-shot JSON, JSONL session, and exit-code contracts. See [PR #78](https://github.com/kerbymart/FuBi/pull/78).
+- [x] DOC-03 Document the profile schema with hash-pinned export and RVA
+  examples. See [PR #86](https://github.com/kerbymart/FuBi/pull/86).
 - [x] DOC-04 Explain that calling commands may execute `DllMain` and arbitrary
   target code. See [PR #66](https://github.com/kerbymart/FuBi/pull/66).
 - [ ] DOC-05 Preserve complete export enumeration, signature dumps, aliases,
   ordinals, forwarders, decorated-name recovery, and human-readable output.
 - [ ] DOC-06 Deprecate analysis-first language and general disassembly flags.
 - [ ] DOC-07 Keep broad PE diagnostics secondary under `--inspect`.
-- [ ] DOC-08 Record supported architecture, ABI, and type limitations.
+- [x] DOC-08 Record supported architecture, ABI, and type limitations. See [PR #88](https://github.com/kerbymart/FuBi/pull/88).
 
 ## Roadmap definition of done
 
 - [ ] DONE-01 Builds without Zydis, Zycore, network downloads, or new
   third-party runtime libraries.
-- [ ] DONE-02 The default command lists function candidates without executing
-  the target.
+- [x] DONE-02 The default command lists function candidates without executing
+  the target. See [PR #15](https://github.com/kerbymart/FuBi/pull/15) and [PR #17](https://github.com/kerbymart/FuBi/pull/17).
 - [ ] DONE-03 Every function exposes stable identity, evidence, exact prototype
   source, and callability status.
-- [ ] DONE-04 Exported x64 fixture functions can be invoked with validated typed
-  arguments.
-- [ ] DONE-05 Internal fixture functions require hash-pinned profiles and
-  explicit policy.
+- [x] DONE-04 Exported x64 fixture functions can be invoked with validated typed
+  arguments. See [PR #21](https://github.com/kerbymart/FuBi/pull/21) and [PR #68](https://github.com/kerbymart/FuBi/pull/68).
+- [x] DONE-05 Internal fixture functions require hash-pinned profiles and
+  explicit policy. See [PR #62](https://github.com/kerbymart/FuBi/pull/62).
 - [ ] DONE-06 Text, one-shot JSON, and JSONL session interfaces share one
   command model.
-- [ ] DONE-07 Crashes and hangs are isolated and reported structurally.
+- [x] DONE-07 Crashes and hangs are isolated and reported structurally. See [PR #82](https://github.com/kerbymart/FuBi/pull/82).
 - [ ] DONE-08 t1pidd exports and internal candidates are cataloged generically.
 - [ ] DONE-09 FuBi never claims an unknown t1pidd prototype is callable.
 - [ ] DONE-10 No t1pidd-specific address, name, or type is hard-coded in
