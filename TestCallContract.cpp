@@ -314,7 +314,7 @@ BOOST_AUTO_TEST_CASE(X64InvocationCoversStackArgumentsAndScalarWidths)
 #endif
 }
 
-BOOST_AUTO_TEST_CASE(X64InvocationRejectsUnsupportedTypeBeforeLoad)
+BOOST_AUTO_TEST_CASE(X64InvocationRejectsUnsupportedAggregateBeforeLoad)
 {
 #if defined(_M_X64)
     FunctionCatalog catalog;
@@ -327,12 +327,42 @@ BOOST_AUTO_TEST_CASE(X64InvocationRejectsUnsupportedTypeBeforeLoad)
     request.prototypeOverride.quality = PrototypeQuality::UserDeclared;
     request.prototypeOverride.abi = "x64";
     request.prototypeOverride.returnType = {TypeKind::Integer, 32};
-    request.prototypeOverride.parameters = {{TypeKind::Floating, 64}, {TypeKind::Integer, 32}};
-    request.arguments = {{{TypeKind::Floating, 64}, "1.0"}, {{TypeKind::Integer, 32}, "2"}};
+    request.prototypeOverride.parameters = {{TypeKind::Structure, 64}, {TypeKind::Integer, 32}};
+    request.arguments = {{{TypeKind::Structure, 64}, "1"}, {{TypeKind::Integer, 32}, "2"}};
     CallResult result;
     BOOST_CHECK(!InvokeX64Export(FixturePath(), request, catalog, result, error));
     BOOST_CHECK_EQUAL(result.status, "validation-failed");
     BOOST_CHECK(!result.diagnostics.empty());
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(X64InvocationCapturesFloatingPointArgumentsAndReturns)
+{
+#if defined(_M_X64)
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+    CallRequest request;
+    request.correlationId = "float-1";
+    request.selector = "AddFloats";
+    request.hasPrototypeOverride = true;
+    request.prototypeOverride.quality = PrototypeQuality::UserDeclared;
+    request.prototypeOverride.abi = "x64";
+    request.prototypeOverride.returnType = {TypeKind::Floating, 32};
+    request.prototypeOverride.parameters = {{TypeKind::Floating, 32}, {TypeKind::Floating, 32}};
+    request.arguments = {{{TypeKind::Floating, 32}, "1.25"}, {{TypeKind::Floating, 32}, "2.5"}};
+    CallResult result;
+    BOOST_REQUIRE_MESSAGE(InvokeX64Export(FixturePath(), request, catalog, result, error), error);
+    BOOST_CHECK_EQUAL(result.status, "completed");
+    BOOST_CHECK_EQUAL(result.returnValue, "3.75");
+
+    request.selector = "MultiplyDoubles";
+    request.prototypeOverride.returnType = {TypeKind::Floating, 64};
+    request.prototypeOverride.parameters = {{TypeKind::Floating, 64}, {TypeKind::Floating, 64}};
+    request.arguments = {{{TypeKind::Floating, 64}, "1.5"}, {{TypeKind::Floating, 64}, "4"}};
+    error.clear();
+    BOOST_REQUIRE_MESSAGE(InvokeX64Export(FixturePath(), request, catalog, result, error), error);
+    BOOST_CHECK_EQUAL(result.returnValue, "6");
 #endif
 }
 
