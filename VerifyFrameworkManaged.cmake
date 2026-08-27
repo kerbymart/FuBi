@@ -1,9 +1,13 @@
 if(NOT DEFINED FUBI OR NOT DEFINED FIXTURE OR NOT DEFINED OUTPUT_DIR)
     message(FATAL_ERROR "FUBI, FIXTURE, and OUTPUT_DIR are required")
 endif()
+if(NOT DEFINED ARCHITECTURE OR NOT ARCHITECTURE STREQUAL "x64")
+    message(STATUS "Framework-managed call test skipped: controlled fixture profile is x64-only")
+    return()
+endif()
 file(SHA256 "${FIXTURE}" HASH)
 set(PROFILE "${OUTPUT_DIR}/framework-profile.json")
-file(WRITE "${PROFILE}" "{\"schema_version\":1,\"module\":{\"sha256\":\"${HASH}\",\"architecture\":\"x64\"},\"functions\":[{\"rva\":4288,\"selector\":\"FxDriverEntryUm\",\"abi\":\"x64\",\"return_type\":{\"kind\":\"integer\",\"width\":32},\"parameters\":[],\"framework_managed\":true}]}")
+file(WRITE "${PROFILE}" "{\"schema_version\":1,\"module\":{\"sha256\":\"${HASH}\",\"architecture\":\"${ARCHITECTURE}\"},\"functions\":[{\"rva\":4288,\"selector\":\"FxDriverEntryUm\",\"abi\":\"${ARCHITECTURE}\",\"return_type\":{\"kind\":\"integer\",\"width\":32},\"parameters\":[],\"framework_managed\":true}]}")
 file(REMOVE "${OUTPUT_DIR}/static_fixture.executed")
 execute_process(COMMAND "${FUBI}" "${FIXTURE}" --call FxDriverEntryUm
     --profile "${PROFILE}" --json WORKING_DIRECTORY "${OUTPUT_DIR}"
