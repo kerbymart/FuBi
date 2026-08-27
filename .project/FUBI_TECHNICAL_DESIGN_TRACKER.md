@@ -99,7 +99,7 @@ Evidence: Local Boost resolution and offline configuration behavior are covered 
 - [ ] M1-01 Remove Zydis and Zycore configuration and linking from CMake.
 - [ ] M1-02 Remove network `FetchContent` behavior.
 - [x] M1-03 Resolve Boost through `FUBI_BOOST_ROOT` or `find_package(Boost)` and
-  emit an actionable configuration error when unavailable.
+  emit an actionable configuration error when unavailable. ([PR #43](https://github.com/kerbymart/FuBi/pull/43))
 - [ ] M1-04 Remove decoder-dependent source paths, records, CLI flags, and
   tests.
 - [ ] M1-05 Remove general disassembly and decoder-derived graph/xref/ABI
@@ -118,16 +118,16 @@ Depends on: M1
 Evidence: Catalog domain records, callability, export preservation, deterministic output, and static providers are covered by [PR #17](https://github.com/kerbymart/FuBi/pull/17), [PR #62](https://github.com/kerbymart/FuBi/pull/62), and [PR #70](https://github.com/kerbymart/FuBi/pull/70). Reference-module acceptance remains open.
 
 - [x] M2-01 Introduce `ModuleIdentity`, `FunctionId`, `FunctionRecord`,
-  `PrototypeSpec`, and `TypeSpec` domain records.
-- [x] M2-02 Implement explicit callability states and stable reason codes.
-- [x] M2-03 Add static export, x64 runtime-function, and Guard CF providers.
-- [x] M2-04 Merge evidence by module hash plus RVA, never by display name alone.
-- [x] M2-05 Preserve export names, aliases, ordinals, RVAs, and forwarders.
-- [x] M2-06 Adapt `SysExports` without rewriting working enumeration behavior.
+  `PrototypeSpec`, and `TypeSpec` domain records. ([PR #17](https://github.com/kerbymart/FuBi/pull/17))
+- [x] M2-02 Implement explicit callability states and stable reason codes. ([PR #17](https://github.com/kerbymart/FuBi/pull/17))
+- [x] M2-03 Add static export, x64 runtime-function, and Guard CF providers. ([PR #57](https://github.com/kerbymart/FuBi/pull/57))
+- [x] M2-04 Merge evidence by module hash plus RVA, never by display name alone. ([PR #17](https://github.com/kerbymart/FuBi/pull/17))
+- [x] M2-05 Preserve export names, aliases, ordinals, RVAs, and forwarders. ([PR #17](https://github.com/kerbymart/FuBi/pull/17))
+- [x] M2-06 Adapt `SysExports` without rewriting working enumeration behavior. ([PR #17](https://github.com/kerbymart/FuBi/pull/17))
 - [x] M2-07 Make `--list` the default and implement `--list-callable` and
-  `--describe`.
+  `--describe`. ([PR #15](https://github.com/kerbymart/FuBi/pull/15), [PR #17](https://github.com/kerbymart/FuBi/pull/17))
 - [x] M2-08 Produce deterministic text and versioned JSON without loading the
-  target.
+  target. ([PR #17](https://github.com/kerbymart/FuBi/pull/17), [PR #57](https://github.com/kerbymart/FuBi/pull/57))
 - [ ] M2-09 Verify existing export coverage and the reference t1pidd catalog
   baseline: 2 exports, 149 candidates, and source provenance.
 
@@ -151,7 +151,7 @@ Evidence: DbgHelp identity checks, profile validation, evidence merging, display
   invocation-grade. ([PR #35](https://github.com/kerbymart/FuBi/pull/35))
 - [x] M3-08 Ensure inferred or partial prototypes remain display-only. ([PR #30](https://github.com/kerbymart/FuBi/pull/30))
 - [x] M3-09 Verify profile mismatch rejection and that an exact fixture profile
-  or PDB can make a supported fixture callable. ([PR #35](https://github.com/kerbymart/FuBi/pull/35), [PR #86](https://github.com/kerbymart/FuBi/pull/86))
+  or PDB can make a supported fixture callable. ([PR #18](https://github.com/kerbymart/FuBi/pull/18), [PR #35](https://github.com/kerbymart/FuBi/pull/35))
 
 ## Milestone 4 — Typed call requests
 
@@ -330,12 +330,12 @@ Evidence: Opt-in path, pinned identity, export/candidate checks, static describe
 - [x] T-05 Floating argument/return fixtures when floating support begins.
   Mixed ABI coverage is in [PR #68](https://github.com/kerbymart/FuBi/pull/68).
 - [x] T-06 Named, ordinal-only, aliased, and forwarded exports. See [PR #17](https://github.com/kerbymart/FuBi/pull/17).
-- [x] T-07 Internal non-exported function with a profile-known RVA.
+- [x] T-07 Internal non-exported function with a profile-known RVA. See [PR #62](https://github.com/kerbymart/FuBi/pull/62).
 - [x] T-08 Crash and hang functions. See [PR #82](https://github.com/kerbymart/FuBi/pull/82).
 - [x] T-09 `DllMain` marker proving metadata commands never execute the target.
   Static catalog assertions are covered in [PR #62](https://github.com/kerbymart/FuBi/pull/62) and [PR #68](https://github.com/kerbymart/FuBi/pull/68).
 - [x] T-10 Unit coverage for selectors, type parsing, validation, catalog merge,
-  callability transitions, JSON round trips, diagnostics, and exit codes.
+  callability transitions, JSON round trips, diagnostics, and exit codes. See [PR #17](https://github.com/kerbymart/FuBi/pull/17), [PR #20](https://github.com/kerbymart/FuBi/pull/20), [PR #70](https://github.com/kerbymart/FuBi/pull/70), and [PR #78](https://github.com/kerbymart/FuBi/pull/78).
 - [x] T-11 Adversarial cases for truncated PE data, offsets, sizes, counts,
   profile data, and requests. See [PR #70](https://github.com/kerbymart/FuBi/pull/70).
 
@@ -359,16 +359,16 @@ Evidence: Opt-in path, pinned identity, export/candidate checks, static describe
 - [ ] DONE-01 Builds without Zydis, Zycore, network downloads, or new
   third-party runtime libraries.
 - [x] DONE-02 The default command lists function candidates without executing
-  the target.
+  the target. See [PR #15](https://github.com/kerbymart/FuBi/pull/15) and [PR #17](https://github.com/kerbymart/FuBi/pull/17).
 - [ ] DONE-03 Every function exposes stable identity, evidence, exact prototype
   source, and callability status.
 - [x] DONE-04 Exported x64 fixture functions can be invoked with validated typed
-  arguments.
+  arguments. See [PR #21](https://github.com/kerbymart/FuBi/pull/21) and [PR #68](https://github.com/kerbymart/FuBi/pull/68).
 - [x] DONE-05 Internal fixture functions require hash-pinned profiles and
-  explicit policy.
+  explicit policy. See [PR #62](https://github.com/kerbymart/FuBi/pull/62).
 - [ ] DONE-06 Text, one-shot JSON, and JSONL session interfaces share one
   command model.
-- [x] DONE-07 Crashes and hangs are isolated and reported structurally.
+- [x] DONE-07 Crashes and hangs are isolated and reported structurally. See [PR #82](https://github.com/kerbymart/FuBi/pull/82).
 - [ ] DONE-08 t1pidd exports and internal candidates are cataloged generically.
 - [ ] DONE-09 FuBi never claims an unknown t1pidd prototype is callable.
 - [ ] DONE-10 No t1pidd-specific address, name, or type is hard-coded in
