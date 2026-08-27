@@ -135,6 +135,12 @@ bool ValidateCallRequest(const CallRequest& request, const FunctionCatalog& cata
     if (!request.hasPrototypeOverride && record != nullptr && record->hasPrototype && record->prototype.quality != PrototypeQuality::UserDeclared && record->prototype.quality != PrototypeQuality::ExactSymbol) Diagnostic(diagnostics, "prototype-not-invocation-grade", "prototype", "catalog evidence is display-only");
     if (request.hasPrototypeOverride && !ValidPrototype(prototype)) Diagnostic(diagnostics, "invalid-prototype-override", "prototype_override", "override must be a complete invocation-grade prototype");
     if ((request.hasPrototypeOverride || (record != nullptr && record->hasPrototype)) && !ValidAbiForModule(prototype.abi, catalog.Module().architecture)) Diagnostic(diagnostics, "unsupported-abi", "prototype.abi", "ABI does not match module architecture");
+    if (prototype.returnType.kind == TypeKind::Handle)
+    {
+        const uint16_t expectedWidth = catalog.Module().architecture == "x86" ? 32 : 64;
+        if (prototype.returnType.width != expectedWidth)
+            Diagnostic(diagnostics, "architecture-mismatch", "prototype.return_type.width", "handle width does not match module architecture");
+    }
     if (!request.hasPrototypeOverride && record != nullptr && record->callability != Callability::Callable) Diagnostic(diagnostics, "target-not-callable", "selector", "catalog callability does not authorize invocation");
 #if defined(_M_IX86)
     if (prototype.abi == "__thiscall")
