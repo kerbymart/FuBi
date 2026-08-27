@@ -82,4 +82,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - Merge pull request #23 from kerbymart/feat/9-script-session-protocol
 - feat: add isolated invocation worker executable
 - feat: supervise calls in isolated worker process
+- fix: normalize isolated worker failures
 
