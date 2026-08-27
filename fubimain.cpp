@@ -64,11 +64,25 @@ int main(int argc, char* argv[])
     }
     if (options.action == "describe")
     {
-        const FunctionRecord* record = catalog.Find(options.selector);
-        if (record == nullptr)
+        const std::vector<const FunctionRecord*> matches = catalog.FindAll(options.selector);
+        if (matches.empty())
         {
             std::cerr << "Function selector not found: " << options.selector << "\n";
             return 4;
+        }
+        if (matches.size() > 1)
+        {
+            std::cerr << "Ambiguous function selector: " << options.selector << "\n";
+            for (const FunctionRecord* candidate : matches)
+                std::cerr << "  rva=0x" << std::hex << std::uppercase << candidate->startRva
+                          << std::dec << " name=" << candidate->displayName << "\n";
+            return 5;
+        }
+        const FunctionRecord* record = matches.front();
+        if (options.json)
+        {
+            catalog.WriteJsonDescribe(std::cout, *record);
+            return 0;
         }
         std::cout << "FuBi function description\n"
                   << "schema_version = " << FunctionCatalog::kSchemaVersion << "\n"

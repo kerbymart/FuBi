@@ -65,10 +65,15 @@ add_executable(
 target_link_libraries(static_catalog_tests PRIVATE fubi_boost_headers fubi_build_limits)
 add_dependencies(static_catalog_tests static_fixture export_fixture)
 
+add_executable(function_catalog_tests TestFunctionCatalog.cpp FunctionCatalog.cpp StaticExportCatalog.cpp PEImage.cpp)
+target_link_libraries(function_catalog_tests PRIVATE bcrypt fubi_boost_headers fubi_build_limits)
+add_dependencies(function_catalog_tests export_fixture)
+
 enable_testing()
 add_test(NAME signature_parser COMMAND tests)
 add_test(NAME export_enumeration COMMAND export_tests)
 add_test(NAME static_catalog COMMAND static_catalog_tests)
+add_test(NAME function_catalog COMMAND function_catalog_tests)
 add_test(
     NAME static_cli_no_execution
     COMMAND ${CMAKE_COMMAND}
