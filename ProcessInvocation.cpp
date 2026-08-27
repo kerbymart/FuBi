@@ -371,14 +371,16 @@ bool PersistentWorkerSession::Start(std::string& error)
         return false;
     }
 
-    const std::string command = Quote(workerPath) + " " + Quote(imagePath_) + " --session";
+    std::ostringstream protocolHandle;
+    protocolHandle << std::hex << reinterpret_cast<uintptr_t>(childOutputWrite);
+    const std::string command = Quote(workerPath) + " " + Quote(imagePath_) + " --session " + protocolHandle.str();
     std::vector<char> commandLine(command.begin(), command.end());
     commandLine.push_back('\0');
     STARTUPINFOA startup = {};
     startup.cb = sizeof(startup);
     startup.dwFlags = STARTF_USESTDHANDLES;
     startup.hStdInput = childInputRead;
-    startup.hStdOutput = childOutputWrite;
+    startup.hStdOutput = childErrorWrite;
     startup.hStdError = childErrorWrite;
     PROCESS_INFORMATION process = {};
     const BOOL created = CreateProcessA(nullptr, commandLine.data(), nullptr, nullptr,

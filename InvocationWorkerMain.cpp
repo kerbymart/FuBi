@@ -72,7 +72,18 @@ bool ParseWorkerPointer(const std::string& text, uint64_t& value)
     return true;
 }
 
-int RunSession(const char* imagePath)
+bool WriteProtocolLine(HANDLE protocol, const CallResult& result)
+{
+    std::ostringstream encoded;
+    WriteCallResultJson(encoded, result);
+    encoded << '\n';
+    const std::string line = encoded.str();
+    DWORD written = 0;
+    return WriteFile(protocol, line.data(), static_cast<DWORD>(line.size()), &written, nullptr) &&
+        written == line.size();
+}
+
+int RunSession(const char* imagePath, HANDLE protocol)
 {
     FunctionCatalog catalog;
     std::string error;
@@ -177,8 +188,7 @@ int RunSession(const char* imagePath)
                 }
             }
         }
-        WriteCallResultJson(std::cout, result);
-        std::cout << '\n' << std::flush;
+        if (!WriteProtocolLine(protocol, result)) break;
         if (request.action == "quit") break;
     }
     FreeLibrary(pinnedModule);
@@ -191,8 +201,13 @@ int RunSession(const char* imagePath)
 // terminate this process without leaving target code in its own address space.
 int main(int argc, char* argv[])
 {
-    if (argc == 3 && std::string(argv[2]) == "--session")
-        return RunSession(argv[1]);
+    if (argc == 4 && std::string(argv[2]) == "--session")
+    {
+        char* end = nullptr;
+        const unsigned long long value = std::strtoull(argv[3], &end, 16);
+        if (end == argv[3] || *end != '\0' || value == 0) return 2;
+        return RunSession(argv[1], reinterpret_cast<HANDLE>(static_cast<uintptr_t>(value)));
+    }
     if (argc != 4) return 2;
     std::ifstream input(argv[2], std::ios::binary | std::ios::ate);
     if (!input) return 3;
