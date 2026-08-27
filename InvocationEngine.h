@@ -18,7 +18,7 @@ struct NativeCallFrameX64
     uint64_t floatingReturnBits = 0;
 };
 
-bool InvokeNativeCallX64(const NativeCallFrameX64& frame, uintptr_t& returned,
+bool InvokeNativeCallX64(NativeCallFrameX64& frame, uintptr_t& returned,
     std::string& error);
 
 // Performs the only target-loading operation in this milestone. All request

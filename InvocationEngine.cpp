@@ -250,7 +250,7 @@ DWORD WINAPI CallWorker(void* raw)
 
 }
 
-bool InvokeNativeCallX64(const NativeCallFrameX64& frame, uintptr_t& returned,
+bool InvokeNativeCallX64(NativeCallFrameX64& frame, uintptr_t& returned,
     std::string& error)
 {
 #if !defined(_M_X64)
@@ -269,10 +269,9 @@ bool InvokeNativeCallX64(const NativeCallFrameX64& frame, uintptr_t& returned,
         error = "x64 native adapter supports at most eight arguments";
         return false;
     }
-    uint64_t floatingReturned = 0;
     NativeCallX64(frame.targetAddress, frame.arguments.data(), frame.argumentCount,
         frame.floatingArgumentMask, &returned,
-        &floatingReturned, frame.floatingReturn);
+        &frame.floatingReturnBits, frame.floatingReturn);
     return true;
 #endif
 }
