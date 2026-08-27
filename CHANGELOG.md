@@ -72,4 +72,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: reserve invocation worker capacity atomically
 - fix: release worker reservation on preflight failure
 - Merge pull request #21 from kerbymart/feat/7-native-invocation-x64
+- feat: authorize checked internal RVA calls
 
