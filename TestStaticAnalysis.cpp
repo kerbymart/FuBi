@@ -154,8 +154,26 @@ BOOST_AUTO_TEST_CASE(StaticAnalysisDoesNotExecuteDllMain)
         analysis.capabilities.begin(), analysis.capabilities.end(),
         [](const PeCapability& item)
         {
-            return item.name == "file I/O" && item.present;
+            return item.name == "file I/O" && item.state == "observed" &&
+                item.confidence == "high";
         }));
+    BOOST_CHECK(std::any_of(
+        analysis.capabilities.begin(), analysis.capabilities.end(),
+        [](const PeCapability& item)
+        {
+            return item.name == "WinUSB" && item.state == "not observed";
+        }));
+    BOOST_CHECK(std::any_of(
+        analysis.capabilities.begin(), analysis.capabilities.end(),
+        [](const PeCapability& item)
+        {
+            return item.name == "IddCx" && item.state == "unknown";
+        }));
+    BOOST_REQUIRE(!analysis.frameworkBindings.empty());
+    BOOST_CHECK_EQUAL(analysis.frameworkBindings.front().framework, "UMDF");
+    BOOST_CHECK_EQUAL(analysis.frameworkBindings.front().majorVersion, 2U);
+    BOOST_CHECK_EQUAL(analysis.frameworkBindings.front().minorVersion, 33U);
+    BOOST_CHECK_EQUAL(analysis.frameworkBindings.front().functionCount, 274U);
     BOOST_CHECK(!analysis.runtimeFunctions.empty());
     BOOST_CHECK(!analysis.functions.empty());
     const auto delayedFunction = std::find_if(
@@ -169,6 +187,31 @@ BOOST_AUTO_TEST_CASE(StaticAnalysisDoesNotExecuteDllMain)
         delayedFunction->importedCalls.begin(), delayedFunction->importedCalls.end(),
         [](const std::string& name) { return name.find("MessageBoxA") != std::string::npos; }));
 
+    const auto wdfFunction = std::find_if(
+        analysis.functions.begin(), analysis.functions.end(),
+        [](const PeFunction& function)
+        {
+            return function.name == "WdfUsbDispatchFixture";
+        });
+    BOOST_REQUIRE(wdfFunction != analysis.functions.end());
+    BOOST_CHECK_EQUAL(wdfFunction->nameSource, "pe-export");
+    BOOST_CHECK_EQUAL(wdfFunction->nameConfidence, "high");
+    BOOST_CHECK(std::any_of(
+        wdfFunction->instructions.begin(), wdfFunction->instructions.end(),
+        [](const PeInstruction& instruction)
+        {
+            return instruction.frameworkCall == "WdfUsbTargetDeviceCreate" &&
+                instruction.frameworkSlot == 202 &&
+                instruction.frameworkCallConfidence == "high";
+        }));
+    BOOST_CHECK(std::any_of(
+        analysis.capabilities.begin(), analysis.capabilities.end(),
+        [](const PeCapability& item)
+        {
+            return item.name == "WDF USB" && item.state == "observed" &&
+                item.confidence == "high";
+        }));
+
     const std::string jsonPath = FixturePath("static_fixture.analysis.json");
     BOOST_REQUIRE(AnalysisReport::WriteJsonFile(jsonPath, analysis, error));
     std::ifstream json(jsonPath);
@@ -177,6 +220,10 @@ BOOST_AUTO_TEST_CASE(StaticAnalysisDoesNotExecuteDllMain)
     BOOST_CHECK(contents.str().find("\"delay_imports\"") != std::string::npos);
     BOOST_CHECK(contents.str().find("NativeUSB UTF16") != std::string::npos);
     BOOST_CHECK(contents.str().find("\"instructions\"") != std::string::npos);
+    BOOST_CHECK(contents.str().find("\"state\":\"not observed\"") != std::string::npos);
+    BOOST_CHECK(contents.str().find("\"present\"") == std::string::npos);
+    BOOST_CHECK(contents.str().find("WdfUsbTargetDeviceCreate") != std::string::npos);
+    BOOST_CHECK(contents.str().find("\"framework_bindings\"") != std::string::npos);
 
     std::ostringstream functionReport;
     BOOST_REQUIRE(AnalysisReport::WriteFunctionReport(

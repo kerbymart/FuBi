@@ -22,6 +22,7 @@ private:
     void ParseStrings(const PEImage& image, PEAnalysis& analysis) const;
     void ParseDebug(const PEImage& image, PEAnalysis& analysis) const;
     void ParseRuntimeFunctions(const PEImage& image, PEAnalysis& analysis) const;
+    void ParseFrameworkBindings(const PEImage& image, PEAnalysis& analysis) const;
     void DisassembleFunctions(const PEImage& image, PEAnalysis& analysis) const;
     void BuildCallGraph(PEAnalysis& analysis) const;
     void ParseLoadConfig(const PEImage& image, PEAnalysis& analysis) const;
