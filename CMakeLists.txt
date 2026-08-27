@@ -242,6 +242,13 @@ add_test(
         -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
         -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyStaticCli.cmake)
 add_test(
+    NAME static_inspection_cli_no_execution
+    COMMAND ${CMAKE_COMMAND}
+        -DFUBI=$<TARGET_FILE:Fubi>
+        -DFIXTURE=$<TARGET_FILE:static_fixture>
+        -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyStaticInspectionCli.cmake)
+add_test(
     NAME jsonl_session
     COMMAND ${CMAKE_COMMAND}
         -DFUBI=$<TARGET_FILE:Fubi>

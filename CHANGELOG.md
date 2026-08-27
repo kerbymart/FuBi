@@ -183,4 +183,6 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - feat: add bounded inspect diagnostics
 - fix: report bounded delay imports
 - Merge pull request #141 from kerbymart/feat/136-inspect-diagnostics
+- test: prove static inspection CLI does not execute
+- Merge pull request #145 from kerbymart/test/144-static-inspection-cli
 
