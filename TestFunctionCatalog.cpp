@@ -32,6 +32,9 @@ BOOST_AUTO_TEST_CASE(MergesAliasesAndOrdinalsByRva)
     BOOST_CHECK_EQUAL(named->exportOrdinals[0], 1U);
     BOOST_CHECK_EQUAL(named->exportOrdinals[1], 2U);
     BOOST_CHECK_EQUAL(named->exportOrdinals[2], 4U);
+    std::ostringstream text;
+    catalog.WriteText(text);
+    BOOST_CHECK(text.str().find("export_count = 5") != std::string::npos);
 }
 
 BOOST_AUTO_TEST_CASE(SelectorsAreExplicitAndJsonIsDeterministic)
