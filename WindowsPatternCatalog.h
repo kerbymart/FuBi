@@ -2,6 +2,13 @@
 #include <cstdint>
 #include <string>
 #include <vector>
-struct WindowsPatternEvidence { uint32_t rva=0; std::string patternId; std::string provenance; };
+struct WindowsPatternEvidence
+{
+    uint32_t rva=0;
+    std::string patternId;
+    std::string provenance;
+    uint32_t targetRva=0;
+    std::string targetKind;
+};
 bool MatchWindowsPattern(const std::vector<uint8_t>& bytes, size_t offset, const std::string& patternId);
 bool ScanWindowsCallPatterns(const std::string& imagePath, std::vector<WindowsPatternEvidence>& evidence, std::string& error);
