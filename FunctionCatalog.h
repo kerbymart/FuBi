@@ -68,6 +68,8 @@ struct ModuleIdentity
     uint32_t timestamp = 0;
     uint32_t imageSize = 0;
     uint64_t preferredImageBase = 0;
+    std::string pdbGuid;
+    uint32_t pdbAge = 0;
 };
 
 struct FunctionId
@@ -103,6 +105,7 @@ struct FunctionRecord
     PrototypeSpec prototype;
     bool hasPrototype = false;
     std::vector<std::string> prototypeConflicts;
+    std::vector<PrototypeSpec> prototypeConflictEvidence;
     Callability callability = Callability::NotAddressable;
     std::vector<std::string> callabilityReasons;
     bool executable = false;
