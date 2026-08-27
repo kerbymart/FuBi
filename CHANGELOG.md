@@ -146,4 +146,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - test: verify framework-managed call blocking (#84)
 - docs: document prototype profile schema (#86)
 - docs: add capability matrix (#88)
+- feat: complete x86 worker invocation coverage (#90)
 

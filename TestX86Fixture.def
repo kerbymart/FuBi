@@ -1,0 +1,7 @@
+LIBRARY x86_fixture
+EXPORTS
+    CdeclZero @1
+    CdeclAdd @2
+    StdcallAdd @3
+    CdeclFour @4
+    CdeclEight @5
