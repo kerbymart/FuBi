@@ -85,6 +85,24 @@ BOOST_AUTO_TEST_CASE(StringLengthRejectsInsufficientTerminatorCapacity)
 #endif
 }
 
+BOOST_AUTO_TEST_CASE(StringLengthRejectsOversizedPayloadBeforeInvocation)
+{
+#if defined(_M_X64)
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+
+    const std::string oversized(16 * 1024 * 1024 + 1, 'x');
+    const CallRequest request = LengthRequest(
+        "NarrowStringLength", "cstr", oversized, oversized.size() + 1);
+    std::vector<CallDiagnostic> diagnostics;
+    BOOST_CHECK(!ValidateCallRequest(request, catalog, diagnostics));
+    BOOST_CHECK(std::any_of(diagnostics.begin(), diagnostics.end(), [](const auto& item) {
+        return item.code == "invalid-argument-value";
+    }));
+#endif
+}
+
 BOOST_AUTO_TEST_CASE(PointerEchoRejectsMismatchedPointerWidth)
 {
 #if defined(_M_X64)
