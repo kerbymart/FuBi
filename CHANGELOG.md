@@ -180,4 +180,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - Merge pull request #138 from kerbymart/chore/135-fetch-wording-cleanup
 - feat: add CLI format and session compatibility
 - Merge pull request #140 from kerbymart/feat/137-cli-format-session
+- feat: add bounded inspect diagnostics
 
