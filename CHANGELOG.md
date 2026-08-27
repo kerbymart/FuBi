@@ -99,4 +99,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: compile display-only PDB regression
 - Merge pull request #28 from kerbymart/feat/19-pdb-type-extraction
 - feat: validate bounded PDB type graphs
+- fix: keep incomplete PDB graphs display-only
 

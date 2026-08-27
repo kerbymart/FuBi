@@ -211,6 +211,25 @@ BOOST_AUTO_TEST_CASE(IncompletePdbTypeGraphRemainsDisplayOnly)
     BOOST_CHECK(static_cast<int>(catalog.Find("NamedExport")->prototype.quality) == static_cast<int>(PrototypeQuality::Inferred));
 }
 
+BOOST_AUTO_TEST_CASE(MismatchedPdbGraphCannotAuthorizeCalls)
+{
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+    const FunctionRecord* record = catalog.Find("NamedExport");
+    BOOST_REQUIRE(record != nullptr);
+    SymbolPrototypeEvidence evidence;
+    evidence.module = catalog.Module();
+    evidence.rva = record->startRva;
+    evidence.name = "NamedExport";
+    evidence.prototype.abi = catalog.Module().architecture == "x64" ? "x64" : "__cdecl";
+    evidence.prototype.quality = PrototypeQuality::Inferred;
+    evidence.prototype.source = "dbghelp-type-graph-display";
+    evidence.prototype.returnType = {TypeKind::Integer, 32};
+    BOOST_REQUIRE(catalog.ApplySymbolEvidence({evidence}, error));
+    BOOST_CHECK(static_cast<int>(catalog.Find("NamedExport")->callability) == static_cast<int>(Callability::RequiresPrototype));
+}
+
 BOOST_AUTO_TEST_CASE(InternalAuthorizationIsCatalogOwned)
 {
     FunctionCatalog catalog;
