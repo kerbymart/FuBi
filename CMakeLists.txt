@@ -39,6 +39,7 @@ set(SOURCES
     FunctionCatalog.cpp
     PrototypeProfile.cpp
     DbgHelpDll.cpp
+    CallContract.cpp
     fubimain.cpp
     stdafx.cpp)
 add_executable(Fubi ${SOURCES})
@@ -75,12 +76,17 @@ add_executable(prototype_profile_tests TestPrototypeProfile.cpp PrototypeProfile
 target_link_libraries(prototype_profile_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 add_dependencies(prototype_profile_tests export_fixture)
 
+add_executable(call_contract_tests TestCallContract.cpp CallContract.cpp FunctionCatalog.cpp PrototypeProfile.cpp DbgHelpDll.cpp StaticExportCatalog.cpp PEImage.cpp)
+target_link_libraries(call_contract_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
+add_dependencies(call_contract_tests export_fixture)
+
 enable_testing()
 add_test(NAME signature_parser COMMAND tests)
 add_test(NAME export_enumeration COMMAND export_tests)
 add_test(NAME static_catalog COMMAND static_catalog_tests)
 add_test(NAME function_catalog COMMAND function_catalog_tests)
 add_test(NAME prototype_profile COMMAND prototype_profile_tests)
+add_test(NAME call_contract COMMAND call_contract_tests)
 add_test(
     NAME static_cli_no_execution
     COMMAND ${CMAKE_COMMAND}
