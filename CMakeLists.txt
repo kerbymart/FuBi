@@ -241,6 +241,13 @@ add_test(
         -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
         -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyJsonlSession.cmake)
 add_test(
+    NAME cli_format_compatibility
+    COMMAND ${CMAKE_COMMAND}
+        -DFUBI=$<TARGET_FILE:Fubi>
+        -DFIXTURE=$<TARGET_FILE:export_fixture>
+        -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyCliFormatCompatibility.cmake)
+add_test(
     NAME opaque_session_references
     COMMAND ${CMAKE_COMMAND}
         -DFUBI=$<TARGET_FILE:Fubi>
