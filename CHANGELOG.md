@@ -157,4 +157,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - test: add opt-in t1pidd catalog acceptance (#106)
 - feat: add opaque session reference lifecycle (#113)
 - feat: add injectable invocation adapter seam (#115)
+- feat: support persistent JSONL pointer references (#119)
 
