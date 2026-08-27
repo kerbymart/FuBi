@@ -355,8 +355,9 @@ Evidence: Opt-in path, pinned identity, export/candidate checks, static describe
   examples. See [PR #86](https://github.com/kerbymart/FuBi/pull/86).
 - [x] DOC-04 Explain that calling commands may execute `DllMain` and arbitrary
   target code. See [PR #66](https://github.com/kerbymart/FuBi/pull/66).
-- [ ] DOC-05 Preserve complete export enumeration, signature dumps, aliases,
+- [x] DOC-05 Preserve complete export enumeration, signature evidence, aliases,
   ordinals, forwarders, decorated-name recovery, and human-readable output.
+  See [PR #147](https://github.com/kerbymart/FuBi/pull/147).
 - [x] DOC-06 Deprecate analysis-first language and general disassembly flags. ([PR #15](https://github.com/kerbymart/FuBi/pull/15))
 - [x] DOC-07 Keep broad PE diagnostics secondary under `--inspect`. See
   [PR #141](https://github.com/kerbymart/FuBi/pull/141).
