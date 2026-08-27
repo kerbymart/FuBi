@@ -5,31 +5,55 @@ OPTION CASEMAP:NONE
 
 PUBLIC NativeCallX64
 NativeCallX64 PROC
-    ; RCX = target, RDX = argument array, R8D = count, R9 = return storage.
+    ; RCX = target, RDX = argument array, R8D = count, R9D = floating mask.
+    ; [rsp+28h] = integer return storage, [rsp+30h] = floating return storage,
+    ; [rsp+38h] = floating return flag.
     ; Reserve shadow space, eight argument slots, and alignment padding.
     mov rax, rcx
     mov r10, rdx
     mov r11d, r8d
-    mov rdx, r9
-    sub rsp, 58h
-    mov qword ptr [rsp+50h], rdx
+    sub rsp, 68h
+    mov qword ptr [rsp+60h], r12
+    mov rdx, qword ptr [rsp+90h]
+    mov qword ptr [rsp+40h], rdx
+    mov rdx, qword ptr [rsp+98h]
+    mov qword ptr [rsp+48h], rdx
+    mov rdx, qword ptr [rsp+0A0h]
+    mov qword ptr [rsp+58h], rdx
+    mov r12d, r9d
 
     xor ecx, ecx
     xor edx, edx
     xor r8d, r8d
     xor r9d, r9d
+    test r12d, 1
+    jz integer_arg0
+    movq xmm0, qword ptr [r10]
+integer_arg0:
     cmp r11d, 1
     jb short arguments_ready
     mov rcx, qword ptr [r10]
     cmp r11d, 2
     jb short arguments_ready
     mov rdx, qword ptr [r10+8]
+    test r12d, 2
+    jz integer_arg1
+    movq xmm1, qword ptr [r10+8]
+integer_arg1:
     cmp r11d, 3
     jb short arguments_ready
     mov r8, qword ptr [r10+16]
+    test r12d, 4
+    jz integer_arg2
+    movq xmm2, qword ptr [r10+16]
+integer_arg2:
     cmp r11d, 4
     jb short arguments_ready
     mov r9, qword ptr [r10+24]
+    test r12d, 8
+    jz integer_arg3
+    movq xmm3, qword ptr [r10+24]
+integer_arg3:
 arguments_ready:
     cmp r11d, 5
     jb short stack_ready
@@ -53,9 +77,17 @@ stack_ready:
     mov rdx, qword ptr [r10+8]
 call_ready:
     call rax
-    mov r10, qword ptr [rsp+50h]
+    cmp qword ptr [rsp+58h], 0
+    je integer_return
+    mov r10, qword ptr [rsp+48h]
+    movq qword ptr [r10], xmm0
+    jmp short return_ready
+integer_return:
+    mov r10, qword ptr [rsp+40h]
     mov qword ptr [r10], rax
-    add rsp, 58h
+return_ready:
+    mov r12, qword ptr [rsp+60h]
+    add rsp, 68h
     ret
 NativeCallX64 ENDP
 END

@@ -9,6 +9,8 @@ EXPORTS
     ReturnWord @7
     ReturnDword @8
     ReturnQword @9
+    AddFloats @13
+    MultiplyDoubles @14
     PointerEcho @10
     CrashProcess @11
     HangProcess @12

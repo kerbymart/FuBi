@@ -128,4 +128,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: bound byte buffer decoding
 - Merge pull request #47 from kerbymart/feat/46-bounded-strings-byte-buffers
 - feat: report isolated worker outcomes
+- feat: support x64 floating point calls
 
