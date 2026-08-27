@@ -9,6 +9,8 @@ namespace
 {
 constexpr char kDirectCall[] = "win-x64-direct-call-rel32-v1";
 constexpr char kImportCall[] = "win-x64-rip-relative-iat-call-v1";
+constexpr char kWdfTableCall[] = "win-x64-wdf-table-call-v1";
+constexpr char kCfgDispatch[] = "win-x64-msvc-cfg-dispatch-v1";
 
 bool HasBytes(const std::vector<uint8_t>& bytes, size_t offset, size_t count)
 {
@@ -33,6 +35,22 @@ bool IsCallPattern(const std::vector<uint8_t>& bytes, size_t offset,
     {
         return HasBytes(bytes, offset, 6) && bytes[offset] == 0xff &&
             bytes[offset + 1] == 0x15;
+    }
+    if (id == kWdfTableCall)
+    {
+        // mov rax,[rip+disp32]; mov rax,[rax+rcx*8]; call rax
+        return HasBytes(bytes, offset, 13) && bytes[offset] == 0x48 &&
+            bytes[offset + 1] == 0x8b && bytes[offset + 2] == 0x05 &&
+            bytes[offset + 7] == 0x48 && bytes[offset + 8] == 0x8b &&
+            bytes[offset + 9] == 0x04 && bytes[offset + 10] == 0xc8 &&
+            bytes[offset + 11] == 0xff && bytes[offset + 12] == 0xd0;
+    }
+    if (id == kCfgDispatch)
+    {
+        // mov rax,[rip+disp32]; call rax, the bounded MSVC dispatch form.
+        return HasBytes(bytes, offset, 9) && bytes[offset] == 0x48 &&
+            bytes[offset + 1] == 0x8b && bytes[offset + 2] == 0x05 &&
+            bytes[offset + 7] == 0xff && bytes[offset + 8] == 0xd0;
     }
     return false;
 }
@@ -113,6 +131,22 @@ bool ScanWindowsCallPatterns(const std::string& path,
                 targetKind = "iat-slot";
                 instructionSize = 6;
                 displacementOffset = offset + 2;
+            }
+            else if (image.Headers().isPe32Plus && MatchWindowsPattern(
+                         image.Bytes(), offset, kWdfTableCall))
+            {
+                pattern = kWdfTableCall;
+                targetKind = "wdf-table";
+                instructionSize = 7;
+                displacementOffset = offset + 3;
+            }
+            else if (image.Headers().isPe32Plus && MatchWindowsPattern(
+                         image.Bytes(), offset, kCfgDispatch))
+            {
+                pattern = kCfgDispatch;
+                targetKind = "cfg-dispatch-target";
+                instructionSize = 7;
+                displacementOffset = offset + 3;
             }
             else
             {
