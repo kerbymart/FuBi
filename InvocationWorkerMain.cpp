@@ -11,6 +11,35 @@
 
 namespace
 {
+class TargetOutputSilencer final
+{
+public:
+    TargetOutputSilencer()
+    {
+        sink_ = CreateFileA("NUL", GENERIC_WRITE,
+            FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING,
+            FILE_ATTRIBUTE_NORMAL, nullptr);
+        if (sink_ == INVALID_HANDLE_VALUE) { sink_ = nullptr; return; }
+        previousOutput_ = GetStdHandle(STD_OUTPUT_HANDLE);
+        previousError_ = GetStdHandle(STD_ERROR_HANDLE);
+        SetStdHandle(STD_OUTPUT_HANDLE, sink_);
+        SetStdHandle(STD_ERROR_HANDLE, sink_);
+    }
+
+    ~TargetOutputSilencer()
+    {
+        if (sink_ == nullptr) return;
+        SetStdHandle(STD_OUTPUT_HANDLE, previousOutput_);
+        SetStdHandle(STD_ERROR_HANDLE, previousError_);
+        CloseHandle(sink_);
+    }
+
+private:
+    HANDLE sink_ = nullptr;
+    HANDLE previousOutput_ = nullptr;
+    HANDLE previousError_ = nullptr;
+};
+
 bool ParseWorkerPointer(const std::string& text, uint64_t& value)
 {
     if (text.rfind("opaque:0x", 0) != 0 || text.size() == 9) return false;
@@ -30,7 +59,11 @@ int RunSession(const char* imagePath)
     // Keep one module reference for the whole session. Individual invocation
     // calls may temporarily add/release a reference, but returned addresses
     // remain valid until this process exits or the session is terminated.
-    HMODULE pinnedModule = LoadLibraryA(imagePath);
+    HMODULE pinnedModule = nullptr;
+    {
+        TargetOutputSilencer silence;
+        pinnedModule = LoadLibraryA(imagePath);
+    }
     if (pinnedModule == nullptr) return 7;
     SessionReferences references;
     std::string line;
@@ -99,9 +132,11 @@ int RunSession(const char* imagePath)
                 result.status = "validation-failed";
                 result.diagnostics = std::move(diagnostics);
             }
-            else if (!InvokeX64Export(imagePath, request, catalog, result, error) && !error.empty())
+            else
             {
-                result.diagnostics.push_back({"worker-failed", "call", error});
+                TargetOutputSilencer silence;
+                if (!InvokeX64Export(imagePath, request, catalog, result, error) && !error.empty())
+                    result.diagnostics.push_back({"worker-failed", "call", error});
             }
             if (result.success && result.prototypeUsed.returnType.kind == TypeKind::Pointer)
             {
