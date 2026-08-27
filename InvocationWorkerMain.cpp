@@ -150,6 +150,14 @@ int RunSession(const char* imagePath, HANDLE protocol)
             bool referencesValid = true;
             for (CallArgument& argument : request.arguments)
             {
+                if (argument.type.kind == TypeKind::Handle &&
+                    argument.value.rfind("opaque:session-", 0) != 0)
+                {
+                    referencesValid = false;
+                    diagnostics.push_back({"raw-handle-rejected", "arguments",
+                        "handle values must use a worker-issued session reference"});
+                    break;
+                }
                 if ((argument.type.kind != TypeKind::Pointer && argument.type.kind != TypeKind::Handle) ||
                     argument.value.rfind("opaque:session-", 0) != 0) continue;
                 uint64_t address = 0;
@@ -167,6 +175,8 @@ int RunSession(const char* imagePath, HANDLE protocol)
                 pointer << "opaque:0x" << std::hex << address;
                 argument.value = pointer.str();
             }
+            if (referencesValid)
+                request.allowSessionReferences = true;
             if (!referencesValid)
             {
                 result.correlationId = request.correlationId;

@@ -36,6 +36,7 @@ struct CallRequest
     bool hasPrototypeOverride = false;
     uint32_t timeoutMs = 0;
     bool allowInternal = false;
+    bool allowSessionReferences = false;
 };
 
 struct CallDiagnostic

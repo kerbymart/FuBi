@@ -1,2 +1,3 @@
 EXPORTS
     CreateOwnedHandle @1
+    EchoHandle @2

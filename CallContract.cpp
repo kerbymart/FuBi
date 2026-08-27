@@ -172,6 +172,8 @@ bool ValidateCallRequest(const CallRequest& request, const FunctionCatalog& cata
         const CallArgument& argument=request.arguments[index];
         if (!EqualType(argument.type, prototype.parameters[index])) Diagnostic(diagnostics, "argument-type-mismatch", "arguments["+std::to_string(index)+"].type", "argument type does not match the prototype");
         if (argument.type.kind == TypeKind::Bytes && argument.type.direction != ParameterDirection::In && argument.bufferSize == 0) Diagnostic(diagnostics, "missing-output-buffer", "arguments["+std::to_string(index)+"].buffer_size", "output buffers require an explicit size");
+        if (argument.type.kind == TypeKind::Handle && !request.allowSessionReferences)
+            Diagnostic(diagnostics, "raw-handle-rejected", "arguments["+std::to_string(index)+"].value", "numeric handle values require a worker-issued session reference");
         if (!ArgumentValue(argument)) Diagnostic(diagnostics, "invalid-argument-value", "arguments["+std::to_string(index)+"].value", "value is invalid for its declared type");
         if (argument.bufferSize > kMaximumBufferBytes) Diagnostic(diagnostics, "buffer-too-large", "arguments["+std::to_string(index)+"].buffer_size", "buffer exceeds the hard cap");
         if (argument.type.elementCount != 0 && argument.type.width != 0 && argument.type.elementCount > kMaximumBufferBytes / argument.type.width) Diagnostic(diagnostics, "buffer-size-overflow", "arguments["+std::to_string(index)+"].type.element_count", "buffer size overflows the hard cap");
