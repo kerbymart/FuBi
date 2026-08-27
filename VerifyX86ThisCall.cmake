@@ -22,6 +22,7 @@ find_rva(ThisCallByte BYTE_RVA)
 find_rva(ThisCallWord WORD_RVA)
 find_rva(ThisCallDword DWORD_RVA)
 find_rva(ThisCallRepeated REPEATED_RVA)
+find_rva(ThisCallRegisterCheck REGISTER_RVA)
 
 set(PROFILE "${OUTPUT_DIR}/x86-thiscall-profile.json")
 file(WRITE "${PROFILE}"
@@ -30,6 +31,10 @@ file(WRITE "${PROFILE}"
     "{\"rva\":${WORD_RVA},\"selector\":\"ThisCallWord\",\"abi\":\"__thiscall\",\"return_type\":{\"kind\":\"integer\",\"width\":16},\"parameters\":[{\"kind\":\"pointer\",\"width\":32,\"pointer_depth\":1},{\"kind\":\"integer\",\"width\":16}],\"variadic\":false},"
     "{\"rva\":${DWORD_RVA},\"selector\":\"ThisCallDword\",\"abi\":\"__thiscall\",\"return_type\":{\"kind\":\"integer\",\"width\":32},\"parameters\":[{\"kind\":\"pointer\",\"width\":32,\"pointer_depth\":1},{\"kind\":\"integer\",\"width\":32},{\"kind\":\"integer\",\"width\":32},{\"kind\":\"integer\",\"width\":32},{\"kind\":\"integer\",\"width\":32}],\"variadic\":false},"
     "{\"rva\":${REPEATED_RVA},\"selector\":\"ThisCallRepeated\",\"abi\":\"__thiscall\",\"return_type\":{\"kind\":\"integer\",\"width\":32},\"parameters\":[{\"kind\":\"pointer\",\"width\":32,\"pointer_depth\":1},{\"kind\":\"integer\",\"width\":32}],\"variadic\":false}]}")
+
+file(READ "${PROFILE}" PROFILE_TEXT)
+string(REPLACE "}]" "}]},{\"rva\":${REGISTER_RVA},\"selector\":\"ThisCallRegisterCheck\",\"abi\":\"__thiscall\",\"return_type\":{\"kind\":\"integer\",\"width\":32},\"parameters\":[{\"kind\":\"pointer\",\"width\":32,\"pointer_depth\":1},{\"kind\":\"integer\",\"width\":32}],\"variadic\":false}]" PROFILE_TEXT "${PROFILE_TEXT}")
+file(WRITE "${PROFILE}" "${PROFILE_TEXT}")
 
 function(run_call SELECTOR EXPECTED)
     set(call_args --arg "pointer:opaque:0x13572468")
@@ -52,6 +57,7 @@ run_call(ThisCallWord 18577 --arg integer:4660)
 run_call(ThisCallDword 270549281 --arg integer:1 --arg integer:2 --arg integer:3 --arg integer:4)
 run_call(ThisCallRepeated 42 --arg integer:35)
 run_call(ThisCallRepeated 106 --arg integer:99)
+run_call(ThisCallRegisterCheck 305419899 --arg integer:305419896)
 
 execute_process(COMMAND "${FUBI}" "${FIXTURE}" --call "#1" --prototype-override "${PROFILE}"
     --arg "pointer:opaque:0x13572468" --json
@@ -65,6 +71,7 @@ file(WRITE "${OUTPUT_DIR}/invalid-thiscall.jsonl"
     "{\"schema_version\":1,\"action\":\"call\",\"correlation_id\":\"missing\",\"selector\":\"ThisCallByte\",\"has_prototype_override\":true,\"prototype_override\":{\"abi\":\"__thiscall\",\"quality\":\"user-declared\",\"return_type\":{\"kind\":\"integer\",\"width\":8},\"parameters\":[{\"kind\":\"pointer\",\"width\":32,\"pointer_depth\":1},{\"kind\":\"integer\",\"width\":8}]},\"arguments\":[]}\n"
     "{\"schema_version\":1,\"action\":\"call\",\"correlation_id\":\"null\",\"selector\":\"ThisCallByte\",\"has_prototype_override\":true,\"prototype_override\":{\"abi\":\"__thiscall\",\"quality\":\"user-declared\",\"return_type\":{\"kind\":\"integer\",\"width\":8},\"parameters\":[{\"kind\":\"pointer\",\"width\":32,\"pointer_depth\":1},{\"kind\":\"integer\",\"width\":8}]},\"arguments\":[{\"type\":{\"kind\":\"pointer\",\"width\":32,\"pointer_depth\":1},\"value\":\"opaque:0\"},{\"type\":{\"kind\":\"integer\",\"width\":8},\"value\":\"7\"}]}\n"
     "{\"schema_version\":1,\"action\":\"quit\",\"correlation_id\":\"quit\"}\n")
+file(REMOVE "${OUTPUT_DIR}/thiscall_fixture.loaded")
 set(SESSION_SCRIPT "${OUTPUT_DIR}/run-x86-thiscall-jsonl.cmd")
 file(WRITE "${SESSION_SCRIPT}"
     "@echo off\n"
@@ -80,5 +87,17 @@ string(FIND "${SESSION_OUTPUT}" "invalid-object-pointer" INVALID)
 if(MISSING LESS 0 OR INVALID LESS 0)
     message(FATAL_ERROR "invalid object pointer diagnostics missing: ${SESSION_OUTPUT}")
 endif()
+if(EXISTS "${OUTPUT_DIR}/thiscall_fixture.loaded")
+    message(FATAL_ERROR "invalid object-pointer requests loaded the target fixture")
+endif()
+execute_process(COMMAND "${FUBI}" "${FIXTURE}" --call ThisCallByte --prototype-override "${PROFILE}"
+    --arg pointer:malformed --json WORKING_DIRECTORY "${OUTPUT_DIR}"
+    RESULT_VARIABLE MALFORMED_RESULT OUTPUT_VARIABLE MALFORMED_OUTPUT ERROR_VARIABLE MALFORMED_ERROR)
+if(NOT MALFORMED_RESULT EQUAL 8 OR NOT MALFORMED_OUTPUT MATCHES "invalid-object-pointer")
+    message(FATAL_ERROR "malformed object pointer was not rejected: ${MALFORMED_RESULT}: ${MALFORMED_ERROR}: ${MALFORMED_OUTPUT}")
+endif()
+if(EXISTS "${OUTPUT_DIR}/thiscall_fixture.loaded")
+    message(FATAL_ERROR "malformed object-pointer request loaded the target fixture")
+endif()
 
-file(REMOVE "${PROFILE}" "${OUTPUT_DIR}/invalid-thiscall.jsonl" "${SESSION_SCRIPT}")
+file(REMOVE "${PROFILE}" "${OUTPUT_DIR}/invalid-thiscall.jsonl" "${SESSION_SCRIPT}" "${OUTPUT_DIR}/thiscall_fixture.loaded")

@@ -5,6 +5,7 @@ PUBLIC ThisCallByte
 PUBLIC ThisCallWord
 PUBLIC ThisCallDword
 PUBLIC ThisCallRepeated
+PUBLIC ThisCallRegisterCheck
 ThisCallByte PROC
     cmp ecx, 13572468h
     jne bad_byte
@@ -51,4 +52,29 @@ bad_repeated:
     xor eax, eax
     ret 4
 ThisCallRepeated ENDP
+ThisCallRegisterCheck PROC
+    push ebx
+    push esi
+    push edi
+    mov ebx, [esp+16]
+    mov esi, ebx
+    inc esi
+    mov edi, esi
+    inc edi
+    cmp ebx, [esp+16]
+    jne bad_registers
+    mov eax, ebx
+    xor eax, esi
+    xor eax, edi
+    pop edi
+    pop esi
+    pop ebx
+    ret 4
+bad_registers:
+    xor eax, eax
+    pop edi
+    pop esi
+    pop ebx
+    ret 4
+ThisCallRegisterCheck ENDP
 END
