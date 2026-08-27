@@ -419,7 +419,7 @@ BOOST_AUTO_TEST_CASE(ProcessWorkerReportsCrashExit)
     request.hasPrototypeOverride = true;
     request.prototypeOverride.quality = PrototypeQuality::UserDeclared;
     request.prototypeOverride.abi = "x64";
-    request.prototypeOverride.returnType = {TypeKind::Void, 0};
+    request.prototypeOverride.returnType = {TypeKind::Integer, 32, true};
     CallResult result;
     BOOST_CHECK(!InvokeX64ExportProcess(FixturePath(), request, catalog, result, error));
     BOOST_CHECK_EQUAL(result.status, "worker-crashed");
@@ -442,7 +442,7 @@ BOOST_AUTO_TEST_CASE(ProcessWorkerReportsTimeoutAndExit)
     request.hasPrototypeOverride = true;
     request.prototypeOverride.quality = PrototypeQuality::UserDeclared;
     request.prototypeOverride.abi = "x64";
-    request.prototypeOverride.returnType = {TypeKind::Void, 0};
+    request.prototypeOverride.returnType = {TypeKind::Integer, 32, true};
     CallResult result;
     BOOST_CHECK(!InvokeX64ExportProcess(FixturePath(), request, catalog, result, error));
     BOOST_CHECK_EQUAL(result.status, "timed-out");
