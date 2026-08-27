@@ -161,4 +161,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - feat: add opaque handle ownership contract (#120)
 - feat: define normalized x86 call frame
 - fix: route x86 workers through normalized frames
+- refactor: remove legacy x86 call dispatch
 
