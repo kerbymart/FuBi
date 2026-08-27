@@ -1,3 +1,5 @@
+#include <windows.h>
+
 extern "C" int NamedExport()
 {
     return 42;
@@ -32,6 +34,16 @@ extern "C" unsigned long long ReturnQword()
 extern "C" int* PointerEcho(int* value)
 {
     return value;
+}
+
+extern "C" void CrashProcess()
+{
+    TerminateProcess(GetCurrentProcess(), 0xC0000005U);
+}
+
+extern "C" void HangProcess()
+{
+    Sleep(INFINITE);
 }
 
 __declspec(dllexport) int AddNumbers(int left, int right)
