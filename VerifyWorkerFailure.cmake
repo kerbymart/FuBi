@@ -11,8 +11,8 @@ set(PROFILE "${OUTPUT_DIR}/worker-failure-profile.json")
 file(WRITE "${PROFILE}"
     "{\"schema_version\":1,\"module\":{\"sha256\":\"${FIXTURE_HASH}\",\"architecture\":\"${ARCHITECTURE}\"},\"functions\":["
     "{\"rva\":4096,\"selector\":\"NamedExport\",\"abi\":\"x64\",\"return_type\":{\"kind\":\"integer\",\"width\":32},\"parameters\":[],\"variadic\":false},"
-    "{\"rva\":4352,\"selector\":\"CrashProcess\",\"abi\":\"x64\",\"return_type\":{\"kind\":\"integer\",\"width\":32},\"parameters\":[],\"variadic\":false},"
-    "{\"rva\":4400,\"selector\":\"HangProcess\",\"abi\":\"x64\",\"return_type\":{\"kind\":\"integer\",\"width\":32},\"parameters\":[],\"variadic\":false}]}")
+    "{\"rva\":4480,\"selector\":\"CrashProcess\",\"abi\":\"x64\",\"return_type\":{\"kind\":\"integer\",\"width\":32},\"parameters\":[],\"variadic\":false},"
+    "{\"rva\":4528,\"selector\":\"HangProcess\",\"abi\":\"x64\",\"return_type\":{\"kind\":\"integer\",\"width\":32},\"parameters\":[],\"variadic\":false}]}")
 
 function(assert_one_json_line value label)
     string(REPLACE "\r\n" "\n" normalized "${value}")

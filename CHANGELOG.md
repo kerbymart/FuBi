@@ -169,3 +169,9 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - Merge pull request #126 from kerbymart/feat/123-x86-call-frame-adapter
 - Merge pull request #128 from kerbymart/docs/127-tracker-x86-frame-fixture
 
+### 2026-08-28
+
+- build: align invocation worker artifact names
+- test: refresh worker failure fixture RVAs
+- Merge pull request #130 from kerbymart/feat/129-worker-artifact-names
+
