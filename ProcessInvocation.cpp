@@ -184,7 +184,7 @@ bool InvokeX64ExportProcess(const std::string& imagePath, const CallRequest& req
     const FunctionRecord* selected = catalog.Find(request.selector);
     const PrototypeSpec& prototype = request.hasPrototypeOverride
         ? request.prototypeOverride : selected->prototype;
-    if (prototype.returnType.kind == TypeKind::Pointer && !allowPointerResults)
+    if ((prototype.returnType.kind == TypeKind::Pointer || prototype.returnType.kind == TypeKind::Handle) && !allowPointerResults)
     {
         result = {};
         result.correlationId = request.correlationId;
