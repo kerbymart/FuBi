@@ -49,8 +49,8 @@ add_executable(tests ${TEST_SOURCES})
 target_link_libraries(tests PRIVATE fubi_boost_headers)
 
 add_library(export_fixture SHARED TestExportsFixture.cpp TestExportsFixture.def)
-add_executable(export_tests TestExports.cpp SysExports.cpp DbgHelpDll.cpp PEImage.cpp stdafx.cpp)
-target_link_libraries(export_tests PRIVATE DbgHelp fubi_boost_headers fubi_build_limits)
+add_executable(export_tests TestExports.cpp SysExports.cpp DbgHelpDll.cpp PEImage.cpp FunctionCatalog.cpp PrototypeProfile.cpp StaticExportCatalog.cpp stdafx.cpp)
+target_link_libraries(export_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 add_dependencies(export_tests export_fixture)
 
 add_library(static_fixture SHARED TestStaticFixture.cpp TestStaticFixture.rc)

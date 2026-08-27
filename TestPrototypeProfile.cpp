@@ -157,6 +157,7 @@ BOOST_AUTO_TEST_CASE(ExactSymbolEvidenceMakesMatchingRecordCallable)
     const FunctionRecord* original = catalog.Find("NamedExport");
     BOOST_REQUIRE(original != nullptr);
     SymbolPrototypeEvidence evidence;
+    evidence.module = catalog.Module();
     evidence.rva = original->startRva;
     evidence.name = "NamedExport";
     evidence.prototype.abi = catalog.Module().architecture == "x64" ? "x64" : "__cdecl";
@@ -167,4 +168,5 @@ BOOST_AUTO_TEST_CASE(ExactSymbolEvidenceMakesMatchingRecordCallable)
     BOOST_REQUIRE(catalog.ApplySymbolEvidence(symbols, error));
     BOOST_CHECK(catalog.Find("NamedExport")->callability == Callability::Callable);
     BOOST_CHECK(catalog.Find("NamedExport")->prototype.quality == PrototypeQuality::ExactSymbol);
+    BOOST_CHECK_EQUAL(catalog.Find("NamedExport")->id.symbol, "NamedExport");
 }
