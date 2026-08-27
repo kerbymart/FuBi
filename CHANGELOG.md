@@ -63,4 +63,13 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: require trusted internal authorization provenance
 - fix: require catalog-owned internal authorization
 - Merge pull request #20 from kerbymart/feat/6-typed-call-request
+- feat: add x64 exported invocation engine
+- style: normalize invocation header
+- fix: harden x64 invocation safety checks
+- feat: bound invocation worker execution
+- fix: retain timed out invocation context
+- fix: cap retained timeout workers
+- fix: reserve invocation worker capacity atomically
+- fix: release worker reservation on preflight failure
+- Merge pull request #21 from kerbymart/feat/7-native-invocation-x64
 
