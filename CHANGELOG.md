@@ -114,4 +114,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: retain x86 worker ABI lifetime
 - Merge pull request #39 from kerbymart/feat/38-x86-calling-conventions
 - feat: recognize bounded x64 call patterns
+- fix: preserve call pattern target semantics
 
