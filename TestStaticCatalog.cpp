@@ -142,4 +142,37 @@ BOOST_AUTO_TEST_CASE(RejectsMalformedExportTablesAndCrossSectionReads)
     BOOST_CHECK(!StaticExportCatalog::Load(malformedPath, catalog, error));
     BOOST_CHECK_EQUAL(error, "Export table exceeds safety limit");
     DeleteFileA(malformedPath.c_str());
+
+    BOOST_REQUIRE(image.ReadRva(exportDirectory->rva, table));
+    table.Base = UINT32_MAX;
+    table.NumberOfFunctions = 2;
+    std::memcpy(bytes.data() + *exportOffset, &table, sizeof(table));
+    const std::string overflowPath = OutputPath("overflow_export_fixture.dll");
+    {
+        std::ofstream output(overflowPath, std::ios::binary | std::ios::trunc);
+        BOOST_REQUIRE(output.good());
+        output.write(reinterpret_cast<const char*>(bytes.data()), bytes.size());
+        BOOST_REQUIRE(output.good());
+    }
+    BOOST_CHECK(!StaticExportCatalog::Load(overflowPath, catalog, error));
+    BOOST_CHECK_EQUAL(error, "Export ordinal overflow");
+    DeleteFileA(overflowPath.c_str());
+}
+
+BOOST_AUTO_TEST_CASE(RejectsImagesAboveTheConfiguredSizeLimit)
+{
+    const std::string oversizedPath = OutputPath("oversized_fixture.dll");
+    {
+        std::ofstream output(oversizedPath, std::ios::binary | std::ios::trunc);
+        BOOST_REQUIRE(output.good());
+        output.seekp(static_cast<std::streamoff>(PEImage::kMaximumImageBytes));
+        output.put('\0');
+        BOOST_REQUIRE(output.good());
+    }
+
+    PEImage image;
+    std::string error;
+    BOOST_CHECK(!PEImage::Load(oversizedPath, image, error));
+    BOOST_CHECK_EQUAL(error, "PE file exceeds the configured maximum image size");
+    DeleteFileA(oversizedPath.c_str());
 }

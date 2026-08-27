@@ -10,6 +10,9 @@
 
 namespace
 {
+constexpr uint32_t kMaximumExportEntries = 100'000;
+constexpr size_t kMaximumExportTextBytes = 16 * 1024 * 1024;
+
 const PeDataDirectory* FindExportDirectory(const PEImage& image)
 {
     for (const PeDataDirectory& directory : image.Headers().dataDirectories)
@@ -51,11 +54,20 @@ bool StaticExportCatalog::Load(
         error = "Invalid export directory";
         return false;
     }
-    if (table.NumberOfFunctions > 1'000'000 || table.NumberOfNames > 1'000'000)
+    if (table.NumberOfFunctions > kMaximumExportEntries ||
+        table.NumberOfNames > kMaximumExportEntries)
     {
         error = "Export table exceeds safety limit";
         return false;
     }
+
+    size_t exportTextBytes = 0;
+    const auto consumeExportText = [&exportTextBytes](const std::string& value)
+    {
+        if (value.size() > kMaximumExportTextBytes - exportTextBytes) return false;
+        exportTextBytes += value.size();
+        return true;
+    };
 
     std::unordered_map<uint32_t, std::vector<std::string>> namesByIndex;
     for (uint32_t index = 0; index < table.NumberOfNames; ++index)
@@ -79,6 +91,11 @@ bool StaticExportCatalog::Load(
         if (!image.ReadCStringAtRva(nameRva, name))
         {
             error = "Invalid export name";
+            return false;
+        }
+        if (!consumeExportText(name))
+        {
+            error = "Export text exceeds safety limit";
             return false;
         }
         namesByIndex[functionIndex].push_back(std::move(name));
@@ -120,6 +137,11 @@ bool StaticExportCatalog::Load(
                 static_cast<size_t>(exportEnd - functionRva)))
         {
             error = "Invalid export forwarder";
+            return false;
+        }
+        if (!consumeExportText(item.forwarder))
+        {
+            error = "Export text exceeds safety limit";
             return false;
         }
         candidate.exports_.push_back(std::move(item));
