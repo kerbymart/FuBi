@@ -136,4 +136,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - test: verify hash-pinned internal RVA calls (#62)
 - feat: support bounded string output arguments (#64)
 - docs: document bounded string outputs (#66)
+- test: cover mixed x64 floating ABI calls (#68)
 
