@@ -130,4 +130,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - feat: report isolated worker outcomes
 - feat: support x64 floating point calls
 - test: verify JSONL malformed-line recovery
+- test: verify scanned call pattern evidence
 
