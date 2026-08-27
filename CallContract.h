@@ -28,7 +28,7 @@ struct CallRequest
     uint64_t modulePreferredImageBase = 0;
     std::string modulePdbGuid;
     uint32_t modulePdbAge = 0;
-    bool internalAuthorization = false;
+    std::string authorizationProvenance;
     std::vector<CallArgument> arguments;
     PrototypeSpec prototypeOverride;
     bool hasPrototypeOverride = false;
