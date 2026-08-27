@@ -131,4 +131,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - feat: support x64 floating point calls
 - test: verify JSONL malformed-line recovery
 - test: verify scanned call pattern evidence
+- feat: recognize bounded WDF and CFG call patterns
 
