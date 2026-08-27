@@ -239,11 +239,6 @@ struct CallContext
 #if defined(_M_X64)
     NativeCallFrameX64 frame;
 #else
-    FARPROC address;
-    const char* abi;
-    const uintptr_t* values;
-    size_t count;
-    uint64_t returned;
     NativeCallFrameX86 frame;
     std::string frameError;
 #endif
@@ -254,10 +249,6 @@ struct WorkerState
 {
     HMODULE module;
     std::vector<std::vector<unsigned char>> argumentStorage;
-#if defined(_M_IX86)
-    std::string abi;
-    uintptr_t values[8];
-#endif
     CallContext call;
 };
 
@@ -274,24 +265,8 @@ DWORD WINAPI CallWorker(void* raw)
 #if defined(_M_IX86)
         if (!InvokeNativeCallX86(context->frame, context->frameError))
             context->exceptionCode = ERROR_INVALID_PARAMETER;
-        else
-            context->returned = context->frame.returned;
         return 0;
-        if (std::strcmp(context->abi, "__stdcall") == 0)
-        {
-            switch(context->count){case 0:context->returned=reinterpret_cast<StdCall0>(context->address)();break;case 1:context->returned=reinterpret_cast<StdCall1>(context->address)(context->values[0]);break;case 2:context->returned=reinterpret_cast<StdCall2>(context->address)(context->values[0],context->values[1]);break;case 3:context->returned=reinterpret_cast<StdCall3>(context->address)(context->values[0],context->values[1],context->values[2]);break;case 4:context->returned=reinterpret_cast<StdCall4>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3]);break;case 5:context->returned=reinterpret_cast<StdCall5>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4]);break;case 6:context->returned=reinterpret_cast<StdCall6>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4],context->values[5]);break;case 7:context->returned=reinterpret_cast<StdCall7>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4],context->values[5],context->values[6]);break;default:context->returned=reinterpret_cast<StdCall8>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4],context->values[5],context->values[6],context->values[7]);break;}
-        }
-        else if (std::strcmp(context->abi, "__thiscall") == 0)
-        {
-            switch(context->count){case 1:context->returned=reinterpret_cast<ThisCall1>(context->address)(context->values[0]);break;case 2:context->returned=reinterpret_cast<ThisCall2>(context->address)(context->values[0],context->values[1]);break;case 3:context->returned=reinterpret_cast<ThisCall3>(context->address)(context->values[0],context->values[1],context->values[2]);break;case 4:context->returned=reinterpret_cast<ThisCall4>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3]);break;case 5:context->returned=reinterpret_cast<ThisCall5>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4]);break;case 6:context->returned=reinterpret_cast<ThisCall6>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4],context->values[5]);break;case 7:context->returned=reinterpret_cast<ThisCall7>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4],context->values[5],context->values[6]);break;default:context->returned=reinterpret_cast<ThisCall8>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4],context->values[5],context->values[6],context->values[7]);break;}
-        }
-        else if (std::strcmp(context->abi, "__fastcall") == 0)
-        {
-            switch(context->count){case 0:context->returned=reinterpret_cast<FastCall0>(context->address)();break;case 1:context->returned=reinterpret_cast<FastCall1>(context->address)(context->values[0]);break;case 2:context->returned=reinterpret_cast<FastCall2>(context->address)(context->values[0],context->values[1]);break;case 3:context->returned=reinterpret_cast<FastCall3>(context->address)(context->values[0],context->values[1],context->values[2]);break;case 4:context->returned=reinterpret_cast<FastCall4>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3]);break;case 5:context->returned=reinterpret_cast<FastCall5>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4]);break;case 6:context->returned=reinterpret_cast<FastCall6>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4],context->values[5]);break;case 7:context->returned=reinterpret_cast<FastCall7>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4],context->values[5],context->values[6]);break;default:context->returned=reinterpret_cast<FastCall8>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4],context->values[5],context->values[6],context->values[7]);break;}
-        }
-        else
 #endif
-        switch(context->count){case 0:context->returned=reinterpret_cast<Call0>(context->address)();break;case 1:context->returned=reinterpret_cast<Call1>(context->address)(context->values[0]);break;case 2:context->returned=reinterpret_cast<Call2>(context->address)(context->values[0],context->values[1]);break;case 3:context->returned=reinterpret_cast<Call3>(context->address)(context->values[0],context->values[1],context->values[2]);break;case 4:context->returned=reinterpret_cast<Call4>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3]);break;case 5:context->returned=reinterpret_cast<Call5>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4]);break;case 6:context->returned=reinterpret_cast<Call6>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4],context->values[5]);break;case 7:context->returned=reinterpret_cast<Call7>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4],context->values[5],context->values[6]);break;default:context->returned=reinterpret_cast<Call8>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4],context->values[5],context->values[6],context->values[7]);break;}
 #endif
     } __except(context->exceptionCode=GetExceptionCode(), EXCEPTION_EXECUTE_HANDLER) { }
     return 0;
@@ -518,9 +493,7 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     X86CallingConvention convention = X86CallingConvention::Cdecl;
     if (!ParseX86CallingConvention(prototype.abi, convention))
     { FreeLibrary(module); error = "unsupported x86 calling convention"; return false; }
-    WorkerState* state = new WorkerState(); state->module = module; state->abi = prototype.abi;
-    state->call.address = address;
-    state->call.count = request.arguments.size();
+    WorkerState* state = new WorkerState(); state->module = module;
     state->call.frame.targetAddress = reinterpret_cast<uintptr_t>(address);
     state->call.frame.argumentCount = static_cast<uint32_t>(request.arguments.size());
     state->call.frame.convention = convention;
@@ -528,18 +501,15 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     state->call.frame.stackBytes = state->call.frame.argumentCount > registerWords
         ? (state->call.frame.argumentCount - registerWords) * sizeof(uint32_t) : 0U;
     state->argumentStorage.resize(request.arguments.size());
-    state->call.abi = state->abi.c_str();
     for (size_t index = 0; index < request.arguments.size(); ++index)
     {
         if (request.arguments[index].type.kind == TypeKind::String || request.arguments[index].type.kind == TypeKind::Bytes)
         {
             if (!PrepareStorage(request.arguments[index], state->argumentStorage[index], error)) { delete state; retainedTimeoutWorkers.store(0, std::memory_order_release); FreeLibrary(module); return false; }
-            state->values[index] = reinterpret_cast<uintptr_t>(state->argumentStorage[index].data());
+            state->call.frame.arguments[index] = reinterpret_cast<uintptr_t>(state->argumentStorage[index].data());
         }
-        else state->values[index] = static_cast<uintptr_t>(values[index]);
-        state->call.frame.arguments[index] = static_cast<uintptr_t>(values[index]);
+        else state->call.frame.arguments[index] = static_cast<uintptr_t>(values[index]);
     }
-    state->call.values = state->values;
 #endif
     HANDLE worker=CreateThread(nullptr, 0, CallWorker, &state->call, 0, nullptr);
     if (worker == nullptr) { retainedTimeoutWorkers.store(0, std::memory_order_release); FreeLibrary(module); delete state; error="unable to create invocation worker"; return false; }
@@ -564,7 +534,7 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     const uint64_t returned=static_cast<uint64_t>(state->call.frame.targetAddress);
     const uint64_t floatingReturned=state->call.frame.floatingReturnBits;
 #else
-    const uint64_t returned=state->call.returned;
+    const uint64_t returned=state->call.frame.returned;
 #endif
     const int exceptionCode=state->call.exceptionCode;
     std::vector<CallArgument> outputValues;
