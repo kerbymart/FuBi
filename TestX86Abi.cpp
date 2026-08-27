@@ -11,6 +11,7 @@
 #include <fstream>
 #include <string>
 #include <vector>
+#include <cstdlib>
 
 namespace
 {
@@ -25,6 +26,11 @@ std::string DirectoryOfExecutable()
 std::string FixturePath()
 {
     return DirectoryOfExecutable() + "x86_abi_fixture.dll";
+}
+
+void ConfigureMarkerPath()
+{
+    _putenv_s("FUBI_X86_ABI_MARKER", (DirectoryOfExecutable() + "x86_abi_fixture.executed").c_str());
 }
 
 std::string WorkerPath()
@@ -79,6 +85,7 @@ void CheckCall(const FunctionCatalog& catalog, CallRequest request,
 
 BOOST_AUTO_TEST_CASE(ScalarReturnWidthsAndRepeatedConventionCalls)
 {
+    ConfigureMarkerPath();
     RemoveMarker();
     FunctionCatalog catalog;
     std::string error;
@@ -107,12 +114,14 @@ BOOST_AUTO_TEST_CASE(ScalarReturnWidthsAndRepeatedConventionCalls)
         CheckCall(catalog, Request("StdcallSum8", "__stdcall",
             {TypeKind::Integer, 32, true}, arguments), "36");
     }
-    BOOST_CHECK_EQUAL(GetFileAttributesA((DirectoryOfExecutable() +
+    BOOST_CHECK_NE(GetFileAttributesA((DirectoryOfExecutable() +
         "x86_abi_fixture.executed").c_str()), INVALID_FILE_ATTRIBUTES);
+    RemoveMarker();
 }
 
 BOOST_AUTO_TEST_CASE(ArchitectureRejectionHappensBeforeTargetLoad)
 {
+    ConfigureMarkerPath();
     RemoveMarker();
     FunctionCatalog catalog;
     std::string error;
@@ -130,6 +139,7 @@ BOOST_AUTO_TEST_CASE(ArchitectureRejectionHappensBeforeTargetLoad)
 
 BOOST_AUTO_TEST_CASE(MissingWorkerIsReportedBeforeTargetLoad)
 {
+    ConfigureMarkerPath();
     RemoveMarker();
     const std::string worker = WorkerPath();
     const std::string hidden = worker + ".missing";

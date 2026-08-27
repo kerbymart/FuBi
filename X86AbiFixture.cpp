@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <cstring>
 
 // This fixture deliberately keeps the two x86 calling conventions in separate
 // entry points.  The functions are small, deterministic probes for the
@@ -46,8 +47,13 @@ BOOL WINAPI DllMain(HINSTANCE, DWORD reason, LPVOID)
 {
     if (reason == DLL_PROCESS_ATTACH)
     {
+        char modulePath[MAX_PATH] = {};
+        GetModuleFileNameA(nullptr, modulePath, MAX_PATH);
+        char* slash = strrchr(modulePath, '\\');
+        if (slash != nullptr) *(slash + 1) = '\0';
+        strcat_s(modulePath, "x86_abi_fixture.executed");
         HANDLE marker = CreateFileA(
-            "x86_abi_fixture.executed", GENERIC_WRITE, 0, nullptr,
+            modulePath, GENERIC_WRITE, 0, nullptr,
             CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
         if (marker != INVALID_HANDLE_VALUE) CloseHandle(marker);
     }
