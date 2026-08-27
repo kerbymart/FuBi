@@ -1,5 +1,6 @@
 #include "stdafx.h"
 #include "FunctionCatalog.h"
+#include "PrototypeProfile.h"
 
 #include "PEImage.h"
 
@@ -376,6 +377,9 @@ void FunctionCatalog::WriteJson(std::ostream& output, bool callableOnly) const
                << ",\"prototype\":{\"has_prototype\":" << (record.hasPrototype ? "true" : "false") << ",\"source\":";
         WriteJsonString(output, record.hasPrototype ? record.prototype.source : "unknown");
         output << ",\"quality\":"; WriteJsonString(output, PrototypeQualityName(record.prototype.quality));
+        output << ",\"conflicts\":[";
+        for (size_t index = 0; index < record.prototypeConflicts.size(); ++index) { if (index) output << ','; WriteJsonString(output, record.prototypeConflicts[index]); }
+        output << "]";
         output << "},\"callability\":"; WriteJsonString(output, CallabilityName(record.callability));
         output << ",\"reason\":"; WriteJsonString(output, CallabilityReason(record.callability));
         output << ",\"forwarder\":"; WriteJsonString(output, record.forwarder); output << "}";
@@ -461,7 +465,34 @@ void FunctionCatalog::WriteJsonDescribe(std::ostream& output, const FunctionReco
            << ",\"prototype\":{\"has_prototype\":" << (record.hasPrototype ? "true" : "false") << ",\"source\":";
     WriteJsonString(output, record.hasPrototype ? record.prototype.source : "unknown");
     output << ",\"quality\":"; WriteJsonString(output, PrototypeQualityName(record.prototype.quality));
+    output << ",\"conflicts\":[";
+    for (size_t index = 0; index < record.prototypeConflicts.size(); ++index) { if (index) output << ','; WriteJsonString(output, record.prototypeConflicts[index]); }
+    output << "]";
     output << "},\"forwarder\":";
     WriteJsonString(output, record.forwarder);
     output << "}}\n";
+}
+
+bool FunctionCatalog::ApplyProfile(const PrototypeProfile& profile,
+    std::vector<ProfileValidationError>& errors)
+{
+    if (!ValidatePrototypeProfile(profile, *this, errors)) return false;
+    for (const ProfileFunction& item : profile.functions)
+    {
+        FunctionRecord* record = nullptr;
+        for (FunctionRecord& candidate : functions_)
+            if (candidate.startRva == item.rva) { record = &candidate; break; }
+        if (record == nullptr) continue;
+        if (item.frameworkManaged)
+        {
+            record->callability = Callability::FrameworkManaged;
+            record->callabilityReasons = {CallabilityReason(record->callability)};
+        }
+        if (!MergePrototypeEvidence(*record, item.prototype, "profile",
+            PrototypeQuality::UserDeclared))
+        {
+            errors.push_back({"prototype-conflict", "functions", "profile conflicts with existing evidence"});
+        }
+    }
+    return errors.empty();
 }
