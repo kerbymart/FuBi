@@ -68,6 +68,10 @@ struct PeInstruction
     bool indirectCall = false;
     uint32_t directTargetRva = 0;
     std::string annotation;
+    std::string frameworkCall;
+    uint32_t frameworkSlot = UINT32_MAX;
+    std::string frameworkCallConfidence = "none";
+    std::string frameworkCallProvenance;
     std::vector<uint32_t> referencedStringRvas;
 };
 
@@ -80,7 +84,9 @@ struct PeFunction
     std::string section;
     std::string name;
     std::string nameSource = "heuristic";
+    std::string nameConfidence = "low";
     std::string boundarySource = "exception-directory";
+    std::string boundaryConfidence = "high";
     std::vector<std::string> aliases;
     std::vector<uint32_t> callers;
     std::vector<uint32_t> callees;
@@ -90,6 +96,7 @@ struct PeFunction
     std::vector<std::string> abiConsumedRegisters;
     uint32_t inferredMinimumArguments = 0;
     std::string abiConfidence = "none";
+    std::string abiProvenance = "none";
 };
 
 struct PeSecurity
@@ -101,6 +108,8 @@ struct PeSecurity
     bool safeSeh = false;
     bool cetCompatible = false;
     uint32_t securityCookieRva = 0;
+    uint32_t guardCheckFunctionPointerRva = 0;
+    uint32_t guardDispatchFunctionPointerRva = 0;
     uint32_t guardFlags = 0;
     uint64_t guardFunctionCount = 0;
     std::vector<uint32_t> guardFunctionRvas;
@@ -127,8 +136,27 @@ struct PeClassification
 struct PeCapability
 {
     std::string name;
-    bool present = false;
-    std::vector<std::string> evidence;
+    std::string state = "not observed";
+    std::string confidence = "none";
+    struct Evidence
+    {
+        std::string source;
+        std::string detail;
+    };
+    std::vector<Evidence> evidence;
+};
+
+struct PeFrameworkBinding
+{
+    std::string framework;
+    uint32_t majorVersion = 0;
+    uint32_t minorVersion = 0;
+    uint32_t buildVersion = 0;
+    uint32_t functionCount = 0;
+    uint32_t functionTableRva = 0;
+    bool indirectFunctionTable = false;
+    std::string confidence = "none";
+    std::string provenance;
 };
 
 struct PEAnalysis
@@ -149,5 +177,6 @@ struct PEAnalysis
     PeResources resources;
     std::vector<PeClassification> classifications;
     std::vector<PeCapability> capabilities;
+    std::vector<PeFrameworkBinding> frameworkBindings;
     std::vector<std::string> warnings;
 };

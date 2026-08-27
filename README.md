@@ -19,6 +19,8 @@ An explicitly enabled legacy interactive mode is available for trusted DLLs.
 - Reports CodeView/PDB, VERSIONINFO, security, resource, and driver metadata.
 - Disassembles x86 and x64 code with Zydis.
 - Finds direct callers, callees, import references, and string references.
+- Recovers WDF bind metadata and resolves supported KMDF/UMDF USB dispatch
+  slots, including common Control Flow Guard call patterns.
 - Produces focused function reports with boundaries, calls, strings, and
   annotated disassembly.
 - Reports malformed or truncated structures without executing the input.
@@ -125,12 +127,19 @@ Text and JSON reports are generated from the same analysis model and include:
 - strings, debug/PDB records, x64 runtime-function boundaries, disassembly,
   call relationships, and cross-references
 - ASLR, NX, CFG, security-cookie, Guard CF, SafeSEH, and CET metadata
-- resource types, VERSIONINFO identity, classification evidence, capabilities,
-  and parser warnings
+- WDF framework version, table metadata, and recovered dispatch calls
+- resource types, VERSIONINFO identity, classification evidence, capability
+  states with confidence/provenance, and parser warnings
 
 Plain C export names do not encode return or parameter types. FuBi reports
 those prototypes as unknown unless definitive symbol information is available;
 it does not invent declarations.
+
+Capability states are evidence-based: `observed` means positive evidence was
+recovered, `inferred` identifies a heuristic conclusion, `not observed` means
+the analyzer found no supporting evidence, and `unknown` means the current
+analysis cannot determine the state reliably. `not observed` is never a hard
+`false`.
 
 ## Safety
 
@@ -183,6 +192,9 @@ ASLR-dependent loaded addresses are confined to explicit interactive mode.
   marked as heuristic.
 - Call graphs contain statically resolvable direct calls only. Unresolved
   indirect calls are labeled rather than guessed.
+- WDF resolution currently names published KMDF and UMDF USB function-table
+  slots. Other WDF and class-extension slots are reported by slot when their
+  table origin is recoverable, or remain unknown when it is not.
 - String references require a directly resolvable reference to the beginning
   of an extracted string.
 - ABI observations are conservative Windows x64 register-use evidence and are

@@ -296,7 +296,10 @@ void WriteJson(std::ostream& output, const PEAnalysis& analysis)
         const PeFunction& function = analysis.functions[index];
         output << "{\"name\":"; JsonString(output, function.name);
         output << ",\"name_source\":"; JsonString(output, function.nameSource);
+        output << ",\"name_confidence\":"; JsonString(output, function.nameConfidence);
         output << ",\"boundary_source\":"; JsonString(output, function.boundarySource);
+        output << ",\"boundary_confidence\":";
+        JsonString(output, function.boundaryConfidence);
         output << ",\"begin_rva\":" << function.beginRva
                << ",\"end_rva\":" << function.endRva
                << ",\"size\":" << (function.endRva - function.beginRva)
@@ -342,6 +345,8 @@ void WriteJson(std::ostream& output, const PEAnalysis& analysis)
         output << "],\"inferred_minimum_arguments\":" << function.inferredMinimumArguments
                << ",\"confidence\":";
         JsonString(output, function.abiConfidence);
+        output << ",\"provenance\":";
+        JsonString(output, function.abiProvenance);
         output << "},\"instructions\":[";
         for (size_t instructionIndex = 0;
              instructionIndex < function.instructions.size(); ++instructionIndex)
@@ -357,6 +362,15 @@ void WriteJson(std::ostream& output, const PEAnalysis& analysis)
                    << ",\"direct_target_rva\":" << instruction.directTargetRva
                    << ",\"annotation\":";
             JsonString(output, instruction.annotation);
+            output << ",\"framework_call\":";
+            JsonString(output, instruction.frameworkCall);
+            output << ",\"framework_slot\":";
+            if (instruction.frameworkSlot == UINT32_MAX) output << "null";
+            else output << instruction.frameworkSlot;
+            output << ",\"framework_call_confidence\":";
+            JsonString(output, instruction.frameworkCallConfidence);
+            output << ",\"framework_call_provenance\":";
+            JsonString(output, instruction.frameworkCallProvenance);
             output << '}';
         }
         output << "]}";
@@ -375,18 +389,42 @@ void WriteJson(std::ostream& output, const PEAnalysis& analysis)
         }
         output << "]}";
     }
+    output << "],\n  \"framework_bindings\":[";
+    for (size_t index = 0; index < analysis.frameworkBindings.size(); ++index)
+    {
+        if (index != 0) output << ',';
+        const PeFrameworkBinding& binding = analysis.frameworkBindings[index];
+        output << "{\"framework\":"; JsonString(output, binding.framework);
+        output << ",\"major_version\":" << binding.majorVersion
+               << ",\"minor_version\":" << binding.minorVersion
+               << ",\"build_version\":" << binding.buildVersion
+               << ",\"function_count\":" << binding.functionCount
+               << ",\"function_table_rva\":" << binding.functionTableRva
+               << ",\"indirect_function_table\":"
+               << (binding.indirectFunctionTable ? "true" : "false")
+               << ",\"confidence\":";
+        JsonString(output, binding.confidence);
+        output << ",\"provenance\":";
+        JsonString(output, binding.provenance);
+        output << '}';
+    }
     output << "],\n  \"capabilities\":[";
     for (size_t index = 0; index < analysis.capabilities.size(); ++index)
     {
         if (index != 0) output << ',';
         const PeCapability& item = analysis.capabilities[index];
         output << "{\"name\":"; JsonString(output, item.name);
-        output << ",\"present\":" << (item.present ? "true" : "false")
-               << ",\"evidence\":[";
+        output << ",\"state\":"; JsonString(output, item.state);
+        output << ",\"confidence\":"; JsonString(output, item.confidence);
+        output << ",\"evidence\":[";
         for (size_t evidenceIndex = 0; evidenceIndex < item.evidence.size(); ++evidenceIndex)
         {
             if (evidenceIndex != 0) output << ',';
-            JsonString(output, item.evidence[evidenceIndex]);
+            output << "{\"source\":";
+            JsonString(output, item.evidence[evidenceIndex].source);
+            output << ",\"detail\":";
+            JsonString(output, item.evidence[evidenceIndex].detail);
+            output << '}';
         }
         output << "]}";
     }
@@ -398,6 +436,10 @@ void WriteJson(std::ostream& output, const PEAnalysis& analysis)
            << ",\"safe_seh\":" << (analysis.security.safeSeh ? "true" : "false")
            << ",\"cet_compatible\":" << (analysis.security.cetCompatible ? "true" : "false")
            << ",\"security_cookie_rva\":" << analysis.security.securityCookieRva
+           << ",\"guard_check_function_pointer_rva\":"
+           << analysis.security.guardCheckFunctionPointerRva
+           << ",\"guard_dispatch_function_pointer_rva\":"
+           << analysis.security.guardDispatchFunctionPointerRva
            << ",\"guard_flags\":" << analysis.security.guardFlags
            << ",\"guard_function_count\":" << analysis.security.guardFunctionCount
            << ",\"guard_function_rvas\":[";
@@ -451,6 +493,10 @@ void AnalysisReport::WriteText(std::ostream& output, const PEAnalysis& analysis)
            << "safe_seh = " << YesNo(analysis.security.safeSeh) << "\n"
            << "cet_compatible = " << YesNo(analysis.security.cetCompatible) << "\n"
            << "security_cookie_rva = " << Hex(analysis.security.securityCookieRva) << "\n"
+           << "guard_check_pointer_rva = "
+           << Hex(analysis.security.guardCheckFunctionPointerRva) << "\n"
+           << "guard_dispatch_pointer_rva = "
+           << Hex(analysis.security.guardDispatchFunctionPointerRva) << "\n"
            << "guard_flags = " << Hex(analysis.security.guardFlags) << "\n"
            << "guard_function_count = " << analysis.security.guardFunctionCount << "\n";
 
@@ -495,7 +541,10 @@ void AnalysisReport::WriteText(std::ostream& output, const PEAnalysis& analysis)
                << " end=" << Hex(function.endRva)
                << " size=" << (function.endRva - function.beginRva)
                << " unwind=" << Hex(function.unwindRva)
-               << " source=" << function.boundarySource << "\n";
+               << " name_source=" << function.nameSource
+               << " name_confidence=" << function.nameConfidence
+               << " boundary_source=" << function.boundarySource
+               << " boundary_confidence=" << function.boundaryConfidence << "\n";
 
     output << "\nExports\n=======\n";
     if (analysis.exports.empty()) output << "unavailable\n";
@@ -531,10 +580,23 @@ void AnalysisReport::WriteText(std::ostream& output, const PEAnalysis& analysis)
     output << "\nCapability evidence\n===================\n";
     for (const PeCapability& item : analysis.capabilities)
     {
-        output << item.name << " = " << YesNo(item.present) << "\n";
-        for (const std::string& evidence : item.evidence)
-            output << "  evidence: " << evidence << "\n";
+        output << item.name << " = " << item.state
+               << " (confidence: " << item.confidence << ")\n";
+        for (const PeCapability::Evidence& evidence : item.evidence)
+            output << "  evidence [" << evidence.source << "]: "
+                   << evidence.detail << "\n";
     }
+
+    output << "\nFramework bindings\n==================\n";
+    if (analysis.frameworkBindings.empty()) output << "not observed\n";
+    for (const PeFrameworkBinding& binding : analysis.frameworkBindings)
+        output << binding.framework << ' ' << binding.majorVersion << '.'
+               << binding.minorVersion << '.' << binding.buildVersion
+               << " function_count=" << binding.functionCount
+               << " function_table_rva=" << Hex(binding.functionTableRva)
+               << " indirection=" << (binding.indirectFunctionTable ? "pointer" : "direct")
+               << " confidence=" << binding.confidence
+               << "\n  provenance: " << binding.provenance << "\n";
 
     output << "\nDebug information\n=================\n";
     if (analysis.debugEntries.empty()) output << "unavailable\n";
@@ -735,7 +797,9 @@ bool AnalysisReport::WriteFunctionReport(
 
     output << "Symbol information\n------------------\n"
            << "source        " << function->nameSource << "\n"
+           << "name confidence " << function->nameConfidence << "\n"
            << "boundary source " << function->boundarySource << "\n"
+           << "boundary confidence " << function->boundaryConfidence << "\n"
            << "prototype     "
            << (exported && !exported->signature.empty() ? exported->signature : "unknown") << "\n"
            << "signature source "
@@ -747,7 +811,8 @@ bool AnalysisReport::WriteFunctionReport(
         output << reg << " consumed before overwrite\n";
     if (function->inferredMinimumArguments != 0)
         output << "inferred minimum args = " << function->inferredMinimumArguments
-               << "\nconfidence = " << function->abiConfidence << "\n";
+               << "\nconfidence = " << function->abiConfidence
+               << "\nprovenance = " << function->abiProvenance << "\n";
     output << "These are ABI observations, not an exact prototype.\n\n";
 
     output << "Callers\n-------\n";
