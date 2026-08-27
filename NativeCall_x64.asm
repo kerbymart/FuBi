@@ -48,6 +48,10 @@ arguments_ready:
     mov rdx, qword ptr [r10+38h]
     mov qword ptr [rsp+38h], rdx
 stack_ready:
+    cmp r11d, 2
+    jb short call_ready
+    mov rdx, qword ptr [r10+8]
+call_ready:
     call rax
     mov r10, qword ptr [rsp+50h]
     mov qword ptr [r10], rax
