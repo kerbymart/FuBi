@@ -119,6 +119,12 @@ worker. x64 builds use `FubiInvocationWorker.exe`; an x86 build emits
 `FubiInvocationWorker_x86.exe`. A worker is rejected when it is unavailable or
 its PE bitness does not match the target.
 
+For explicit `--call` operations, `--timeout <ms>` sets the worker wait limit
+in milliseconds. It must be a decimal value that fits the protocol's unsigned
+32-bit range. A value of zero uses the default timeout. A timed-out worker may
+be forcibly terminated, but target-owned resources and external side effects
+cannot be rolled back.
+
 Worker isolation is an execution boundary, not a security sandbox. A target
 DLL may execute arbitrary code, access its permitted process resources, start
 threads, and perform external I/O. A timeout can force worker termination, but
