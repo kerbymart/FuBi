@@ -167,4 +167,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: route x86 workers through normalized frames
 - refactor: remove legacy x86 call dispatch
 - Merge pull request #126 from kerbymart/feat/123-x86-call-frame-adapter
+- Merge pull request #128 from kerbymart/docs/127-tracker-x86-frame-fixture
 
