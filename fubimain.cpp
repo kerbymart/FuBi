@@ -5,6 +5,7 @@
 #include "DbgHelpDll.h"
 #include "CallContract.h"
 #include "InvocationEngine.h"
+#include "ProcessInvocation.h"
 
 #include <fstream>
 #include <iostream>
@@ -207,7 +208,7 @@ int main(int argc, char* argv[])
             return 8;
         }
         std::string invocationError;
-        if (!InvokeX64Export(options.targetPath, request, catalog, result, invocationError))
+        if (!InvokeX64ExportProcess(options.targetPath, request, catalog, result, invocationError))
         {
             if (!invocationError.empty()) result.diagnostics.push_back({"invocation-failed", "call", invocationError});
             if (options.json) WriteCallResultJson(std::cout, result);
