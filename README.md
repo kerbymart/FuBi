@@ -96,6 +96,14 @@ aliases = Example
 forwarder = <none>
 ```
 
+## Exit-code contract
+
+The command-line interface uses stable numeric exit codes: `0` success, `2`
+usage, `3` catalog load failure, `4` selector not found, `5` ambiguous
+selector, `6` profile load or validation failure, `7` symbol load failure, `8`
+request validation failure, and `9` invocation failure. JSONL sessions return
+structured responses and normally exit `0` after processing the stream.
+
 ## Safety model
 
 - Listing reads only the target file and does not call `LoadLibrary`.
