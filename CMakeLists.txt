@@ -97,6 +97,8 @@ target_compile_options(export_fixture PRIVATE /Od /Zi)
 set_target_properties(export_fixture PROPERTIES LINK_FLAGS "/DEBUG:FULL")
 add_library(persistent_output_fixture SHARED TestPersistentOutputFixture.cpp TestPersistentOutputFixture.def)
 target_compile_options(persistent_output_fixture PRIVATE /Od)
+add_library(handle_fixture SHARED TestHandleFixture.cpp TestHandleFixture.def)
+target_compile_options(handle_fixture PRIVATE /Od)
 add_executable(export_tests TestExports.cpp SysExports.cpp DbgHelpDll.cpp PEImage.cpp FunctionCatalog.cpp PrototypeProfile.cpp StaticExportCatalog.cpp stdafx.cpp)
 target_link_libraries(export_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 add_dependencies(export_tests export_fixture)
@@ -244,6 +246,13 @@ add_test(
         -DNOISE_FIXTURE=$<TARGET_FILE:persistent_output_fixture>
         -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
         -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyPersistentSessionReferences.cmake)
+add_test(
+    NAME handle_session_references
+    COMMAND ${CMAKE_COMMAND}
+        -DFUBI=$<TARGET_FILE:Fubi>
+        -DFIXTURE=$<TARGET_FILE:handle_fixture>
+        -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyHandleSession.cmake)
 add_test(
     NAME exit_code_contract
     COMMAND ${CMAKE_COMMAND}
