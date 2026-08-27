@@ -7,6 +7,7 @@
 #include "InvocationEngine.h"
 #include "ProcessInvocation.h"
 #include "ExitCodes.h"
+#include "SessionReferences.h"
 
 #include <fstream>
 #include <iomanip>
@@ -214,6 +215,7 @@ int main(int argc, char* argv[])
     if (options.jsonl)
     {
         bool negotiated = false;
+        SessionReferences sessionReferences;
         std::string line;
         while (std::getline(std::cin, line))
         {
@@ -249,8 +251,12 @@ int main(int argc, char* argv[])
             }
             else if (request.action == "release")
             {
-                WriteSessionStatus(std::cout, "release", correlationId, catalog, false,
-                    "validation-failed", {{"reference-not-found", "reference", "reference is unknown or already released"}});
+                if (!sessionReferences.Release(request.reference))
+                    WriteSessionStatus(std::cout, "release", correlationId, catalog, false,
+                        "validation-failed", {{"reference-not-found", "reference", "reference is unknown or already released"}});
+                else
+                    WriteSessionStatus(std::cout, "release", correlationId, catalog, true,
+                        "released", {}, {}, request.reference);
             }
             else if (request.action == "quit")
             {
