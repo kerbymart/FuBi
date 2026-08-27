@@ -159,3 +159,15 @@ BOOST_AUTO_TEST_CASE(InternalInvocationRejectsForgedAuthorizationBeforeLoad)
     BOOST_CHECK_EQUAL(result.status, "validation-failed");
 #endif
 }
+
+BOOST_AUTO_TEST_CASE(RequestParserRejectsTrailingUnknownAndDuplicateFields)
+{
+    std::vector<CallDiagnostic> diagnostics;
+    CallRequest request;
+    BOOST_CHECK(!ParseCallRequestJson("{\"schema_version\":1,\"correlation_id\":\"x\",\"selector\":\"y\"} trailing", request, diagnostics));
+    BOOST_CHECK(!diagnostics.empty());
+    diagnostics.clear();
+    BOOST_CHECK(!ParseCallRequestJson("{\"schema_version\":1,\"correlation_id\":\"x\",\"selector\":\"y\",\"extra\":1}", request, diagnostics));
+    diagnostics.clear();
+    BOOST_CHECK(!ParseCallRequestJson("{\"schema_version\":1,\"correlation_id\":\"x\",\"selector\":\"y\",\"selector\":\"z\"}", request, diagnostics));
+}
