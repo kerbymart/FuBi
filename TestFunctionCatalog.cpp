@@ -46,6 +46,9 @@ BOOST_AUTO_TEST_CASE(SelectorsAreExplicitAndJsonIsDeterministic)
     catalog.WriteJson(first);
     catalog.WriteJson(second);
     BOOST_CHECK_EQUAL(first.str(), second.str());
+    BOOST_CHECK(catalog.Find("#-1") == nullptr);
+    BOOST_CHECK(catalog.Find(" 0x1010") == nullptr);
+    BOOST_CHECK(catalog.Find("0x100000000") == nullptr);
 }
 
 BOOST_AUTO_TEST_CASE(ForwardersAreNotCallable)
