@@ -22,6 +22,13 @@ struct CallRequest
     std::string correlationId;
     std::string selector;
     std::string moduleSha256;
+    std::string modulePath;
+    uint32_t moduleTimestamp = 0;
+    uint32_t moduleImageSize = 0;
+    uint64_t modulePreferredImageBase = 0;
+    std::string modulePdbGuid;
+    uint32_t modulePdbAge = 0;
+    bool internalAuthorization = false;
     std::vector<CallArgument> arguments;
     PrototypeSpec prototypeOverride;
     bool hasPrototypeOverride = false;

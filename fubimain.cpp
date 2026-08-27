@@ -127,6 +127,12 @@ int main(int argc, char* argv[])
         request.selector = options.selector;
         request.correlationId = "cli-call";
         request.moduleSha256 = catalog.Module().sha256;
+        request.modulePath = catalog.Module().canonicalPath;
+        request.moduleTimestamp = catalog.Module().timestamp;
+        request.moduleImageSize = catalog.Module().imageSize;
+        request.modulePreferredImageBase = catalog.Module().preferredImageBase;
+        request.modulePdbGuid = catalog.Module().pdbGuid;
+        request.modulePdbAge = catalog.Module().pdbAge;
         const FunctionRecord* record = catalog.Find(options.selector);
         if (!options.prototypeOverridePath.empty())
         {
@@ -141,7 +147,8 @@ int main(int argc, char* argv[])
             for (const auto& item : overrideProfile.functions) if (item.rva == record->startRva) { request.hasPrototypeOverride = true; request.prototypeOverride = item.prototype; break; }
             if (!request.hasPrototypeOverride) { std::cerr << "Prototype override has no matching function\n"; return 8; }
         }
-        if (record != nullptr && record->hasPrototype && record->prototype.parameters.size() == options.rawArguments.size())
+        const PrototypeSpec* argumentPrototype = request.hasPrototypeOverride ? &request.prototypeOverride : (record != nullptr && record->hasPrototype ? &record->prototype : nullptr);
+        if (argumentPrototype != nullptr && argumentPrototype->parameters.size() == options.rawArguments.size())
         {
             for (size_t index = 0; index < options.rawArguments.size(); ++index)
             {
@@ -149,9 +156,9 @@ int main(int argc, char* argv[])
                 const size_t separator = raw.find(':');
                 if (separator == std::string::npos) { CallResult malformed; malformed.correlationId="cli-call"; malformed.status="validation-failed"; malformed.diagnostics.push_back({"invalid-argument-syntax","arguments","--arg requires kind:value"}); if(options.json) WriteCallResultJson(std::cout,malformed); else std::cerr << "--arg requires kind:value\n"; return 8; }
                 CallArgument argument;
-                argument.type = record->prototype.parameters[index];
+                argument.type = argumentPrototype->parameters[index];
                 const std::string kind = raw.substr(0, separator);
-                if (kind != TypeKindName(argument.type.kind)) { std::cerr << "argument type does not match prototype\n"; return 8; }
+                if (kind != TypeKindName(argument.type.kind)) { CallResult malformed; malformed.correlationId="cli-call"; malformed.status="validation-failed"; malformed.diagnostics.push_back({"argument-type-mismatch","arguments","argument type does not match prototype"}); if(options.json) WriteCallResultJson(std::cout,malformed); else std::cerr << "argument type does not match prototype\n"; return 8; }
                 argument.value = raw.substr(separator + 1);
                 request.arguments.push_back(std::move(argument));
             }
