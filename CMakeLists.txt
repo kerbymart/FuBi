@@ -48,8 +48,8 @@ add_executable(tests ${TEST_SOURCES})
 target_link_libraries(tests PRIVATE fubi_boost_headers)
 
 add_library(export_fixture SHARED TestExportsFixture.cpp TestExportsFixture.def)
-add_executable(export_tests TestExports.cpp SysExports.cpp DbgHelpDll.cpp stdafx.cpp)
-target_link_libraries(export_tests PRIVATE DbgHelp fubi_boost_headers)
+add_executable(export_tests TestExports.cpp SysExports.cpp DbgHelpDll.cpp PEImage.cpp stdafx.cpp)
+target_link_libraries(export_tests PRIVATE DbgHelp fubi_boost_headers fubi_build_limits)
 add_dependencies(export_tests export_fixture)
 
 add_library(static_fixture SHARED TestStaticFixture.cpp TestStaticFixture.rc)
@@ -70,8 +70,8 @@ add_executable(function_catalog_tests TestFunctionCatalog.cpp FunctionCatalog.cp
 target_link_libraries(function_catalog_tests PRIVATE bcrypt fubi_boost_headers fubi_build_limits)
 add_dependencies(function_catalog_tests export_fixture)
 
-add_executable(prototype_profile_tests TestPrototypeProfile.cpp PrototypeProfile.cpp FunctionCatalog.cpp StaticExportCatalog.cpp PEImage.cpp)
-target_link_libraries(prototype_profile_tests PRIVATE bcrypt fubi_boost_headers fubi_build_limits)
+add_executable(prototype_profile_tests TestPrototypeProfile.cpp PrototypeProfile.cpp FunctionCatalog.cpp StaticExportCatalog.cpp PEImage.cpp DbgHelpDll.cpp)
+target_link_libraries(prototype_profile_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 add_dependencies(prototype_profile_tests export_fixture)
 
 enable_testing()

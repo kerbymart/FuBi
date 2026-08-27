@@ -2,6 +2,7 @@
 #include <boost/test/included/unit_test.hpp>
 
 #include "PrototypeProfile.h"
+#include "DbgHelpDll.h"
 
 #include <windows.h>
 #include <algorithm>
@@ -131,4 +132,19 @@ BOOST_AUTO_TEST_CASE(PdbIdentityAndTypeShapeAreRequiredWhenSupplied)
     invalid.returnType.width = 7;
     BOOST_CHECK(!MergePrototypeEvidence(record, invalid, "profile", PrototypeQuality::UserDeclared));
     BOOST_CHECK(!record.hasPrototype);
+}
+
+BOOST_AUTO_TEST_CASE(SymbolProviderRejectsUnavailableOrMismatchedCodeView)
+{
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+    DbgHelpDll symbols;
+    std::vector<SymbolPrototypeEvidence> evidence;
+    ModuleIdentity expected = catalog.Module();
+    expected.pdbGuid = "01234567-89AB-CDEF-0123-456789ABCDEF";
+    expected.pdbAge = 1;
+    BOOST_CHECK(!symbols.EnumerateExactFunctionSymbols(FixturePath(), expected, evidence, error));
+    BOOST_CHECK(evidence.empty());
+    BOOST_CHECK(!error.empty());
 }

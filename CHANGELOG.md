@@ -47,4 +47,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - feat: add hash-pinned prototype profiles
 - fix: harden prototype profile integration
 - fix: validate profile identities and type shapes
+- feat: add validated local PDB symbol evidence
 
