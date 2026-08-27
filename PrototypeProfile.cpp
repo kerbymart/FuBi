@@ -150,7 +150,7 @@ bool ValidType(const TypeSpec& type)
     case TypeKind::String: return type.pointerDepth == 1;
     case TypeKind::Bytes: return type.pointerDepth == 1 && type.width == 8;
     case TypeKind::Pointer: return type.pointerDepth >= 1;
-    case TypeKind::Handle: return (type.width == 32 || type.width == 64) && type.pointerDepth == 0 && (type.ownership == "borrowed" || type.ownership == "owned");
+    case TypeKind::Handle: return (type.width == 32 || type.width == 64) && type.pointerDepth == 0 && (type.ownership == "borrowed" || type.ownership == "owned") && (type.releaseAdapter.empty() || type.releaseAdapter == "CloseHandle") && (type.ownership != "owned" || !type.releaseAdapter.empty());
     case TypeKind::Structure: return type.width != 0;
     default: return false;
     }
@@ -168,7 +168,7 @@ bool CompletePrototype(const PrototypeSpec& prototype)
 bool ParseType(const JsonValue& value, TypeSpec& type, const std::string& path, std::vector<ProfileValidationError>& errors)
 {
     if (!ObjectValue(&value, path, errors)) return false;
-    HasOnly(value, {"kind", "width", "signed", "pointer_depth", "direction", "element_count", "encoding", "ownership", "layout"}, path, errors);
+    HasOnly(value, {"kind", "width", "signed", "pointer_depth", "direction", "element_count", "encoding", "ownership", "layout", "release_adapter"}, path, errors);
     std::string kind; if (!StringValue(Field(value, "kind"), kind, path + ".kind", errors)) return false;
     const std::map<std::string, TypeKind> kinds = {{"void",TypeKind::Void},{"bool",TypeKind::Bool},{"integer",TypeKind::Integer},{"floating",TypeKind::Floating},{"string",TypeKind::String},{"bytes",TypeKind::Bytes},{"pointer",TypeKind::Pointer},{"handle",TypeKind::Handle},{"structure",TypeKind::Structure}};
     auto found = kinds.find(kind); if (found == kinds.end()) { Error(errors, "unsupported-type", path + ".kind", "type kind is not supported"); return false; } type.kind = found->second;
@@ -180,6 +180,7 @@ bool ParseType(const JsonValue& value, TypeSpec& type, const std::string& path, 
     if (Field(value, "encoding") != nullptr) StringValue(Field(value, "encoding"), type.encoding, path + ".encoding", errors);
     if (Field(value, "ownership") != nullptr) StringValue(Field(value, "ownership"), type.ownership, path + ".ownership", errors);
     if (Field(value, "layout") != nullptr) StringValue(Field(value, "layout"), type.layout, path + ".layout", errors);
+    if (Field(value, "release_adapter") != nullptr) StringValue(Field(value, "release_adapter"), type.releaseAdapter, path + ".release_adapter", errors);
     if (!ValidType(type)) Error(errors, "invalid-type-shape", path, "type width or pointer depth is invalid");
     return true;
 }
@@ -191,13 +192,22 @@ bool ParsePrototypeProfile(const std::string& document, PrototypeProfile& profil
     if (document.size() > kMaxDocumentBytes) { Error(errors, "size-limit", "$", "profile is too large"); return false; }
     JsonValue root; std::string parseError; if (!JsonReader(document).Read(root, parseError)) { Error(errors, "invalid-json", "$", parseError); return false; }
     if (!ObjectValue(&root, "$", errors)) return false;
-    HasOnly(root, {"schema_version", "module", "functions"}, "$", errors);
+    HasOnly(root, {"schema_version", "module", "functions", "handle_release"}, "$", errors);
     if (!NumberValue(Field(root, "schema_version"), profile.schemaVersion, "$.schema_version", errors) || profile.schemaVersion != 1) Error(errors, "unsupported-schema", "$.schema_version", "supported version is 1");
     const JsonValue* module = Field(root, "module"); if (ObjectValue(module, "$.module", errors)) { HasOnly(*module, {"path", "sha256", "architecture", "timestamp", "image_size", "preferred_image_base", "pdb_guid", "pdb_age"}, "$.module", errors); StringValue(Field(*module, "sha256"), profile.module.sha256, "$.module.sha256", errors); StringValue(Field(*module, "architecture"), profile.module.architecture, "$.module.architecture", errors); if (Field(*module,"path")) StringValue(Field(*module,"path"), profile.module.canonicalPath, "$.module.path", errors); if (Field(*module,"timestamp")) NumberValue(Field(*module,"timestamp"), profile.module.timestamp, "$.module.timestamp", errors); if (Field(*module,"image_size")) NumberValue(Field(*module,"image_size"), profile.module.imageSize, "$.module.image_size", errors); if (Field(*module,"preferred_image_base")) { const JsonValue* base=Field(*module,"preferred_image_base"); if (base->kind != JsonValue::Kind::Number) Error(errors,"invalid-type","$.module.preferred_image_base","expected uint64"); else profile.module.preferredImageBase=base->number; } if (Field(*module,"pdb_guid")) StringValue(Field(*module,"pdb_guid"), profile.module.pdbGuid, "$.module.pdb_guid", errors); if (Field(*module,"pdb_age")) NumberValue(Field(*module,"pdb_age"), profile.module.pdbAge, "$.module.pdb_age", errors); }
     if (!HexHash(profile.module.sha256)) Error(errors, "invalid-hash", "$.module.sha256", "expected 64 hexadecimal characters");
     if (profile.module.architecture != "x86" && profile.module.architecture != "x64") Error(errors, "unsupported-architecture", "$.module.architecture", "architecture must be x86 or x64");
     if (!profile.module.pdbGuid.empty() && !PdbGuid(profile.module.pdbGuid)) Error(errors, "invalid-pdb-guid", "$.module.pdb_guid", "expected a GUID in canonical form");
     if (profile.module.pdbGuid.empty() && profile.module.pdbAge != 0) Error(errors, "invalid-pdb-age", "$.module.pdb_age", "PDB age requires a GUID");
+    const JsonValue* handleRelease = Field(root, "handle_release");
+    if (handleRelease != nullptr && ObjectValue(handleRelease, "$.handle_release", errors))
+    {
+        HasOnly(*handleRelease, {"selector"}, "$.handle_release", errors);
+        StringValue(Field(*handleRelease, "selector"), profile.handleReleaseAdapter.selector,
+            "$.handle_release.selector", errors);
+        if (profile.handleReleaseAdapter.selector.empty())
+            Error(errors, "invalid-value", "$.handle_release.selector", "selector must not be empty");
+    }
     const JsonValue* functions = Field(root, "functions"); if (functions == nullptr || functions->kind != JsonValue::Kind::Array) { Error(errors, "invalid-type", "$.functions", "expected array"); return false; }
     for (size_t index=0; index<functions->array.size(); ++index) { const JsonValue& item=functions->array[index]; const std::string path="$.functions["+std::to_string(index)+"]"; if (!ObjectValue(&item,path,errors)) continue; HasOnly(item,{"rva","selector","abi","return_type","parameters","variadic","framework_managed"},path,errors); ProfileFunction function; NumberValue(Field(item,"rva"),function.rva,path+".rva",errors); if(Field(item,"selector")) StringValue(Field(item,"selector"),function.selector,path+".selector",errors); StringValue(Field(item,"abi"),function.prototype.abi,path+".abi",errors); if(!SupportedAbi(function.prototype.abi)) Error(errors,"unsupported-abi",path+".abi","ABI is not supported"); const JsonValue* ret=Field(item,"return_type"); if(!ret) Error(errors,"incomplete-prototype",path+".return_type","return type is required"); else ParseType(*ret,function.prototype.returnType,path+".return_type",errors); const JsonValue* params=Field(item,"parameters"); if(params==nullptr||params->kind!=JsonValue::Kind::Array) Error(errors,"invalid-type",path+".parameters","expected array"); else for(size_t p=0;p<params->array.size();++p) { TypeSpec type; ParseType(params->array[p],type,path+".parameters["+std::to_string(p)+"]",errors); function.prototype.parameters.push_back(std::move(type)); } if(Field(item,"variadic")) BooleanValue(Field(item,"variadic"),function.prototype.variadic,path+".variadic",errors); if(Field(item,"framework_managed")) BooleanValue(Field(item,"framework_managed"),function.frameworkManaged,path+".framework_managed",errors); function.prototype.source="profile"; function.prototype.quality=PrototypeQuality::UserDeclared; profile.functions.push_back(std::move(function)); }
     return errors.empty();
@@ -207,6 +217,21 @@ bool ValidatePrototypeProfile(const PrototypeProfile& profile, const FunctionCat
 {
     errors.clear(); const ModuleIdentity& module=catalog.Module(); if(profile.schemaVersion!=1) Error(errors,"unsupported-schema","schema_version","supported version is 1"); if(profile.module.sha256!=module.sha256) Error(errors,"module-hash-mismatch","module.sha256","profile does not match catalog module"); if(profile.module.architecture!=module.architecture) Error(errors,"architecture-mismatch","module.architecture","profile does not match catalog module"); if(!profile.module.pdbGuid.empty() && module.pdbGuid.empty()) Error(errors,"pdb-identity-unavailable","module.pdb_guid","catalog has no CodeView identity"); if(!profile.module.pdbGuid.empty() && (profile.module.pdbGuid != module.pdbGuid || profile.module.pdbAge != module.pdbAge)) Error(errors,"pdb-identity-mismatch","module.pdb_guid","profile does not match CodeView identity"); std::set<uint32_t> rvas;
     for(size_t i=0;i<profile.functions.size();++i) { const ProfileFunction& item=profile.functions[i]; const std::string path="functions["+std::to_string(i)+"]"; if(!rvas.insert(item.rva).second) Error(errors,"duplicate-selector",path+".rva","RVA appears more than once"); if(!CompletePrototype(item.prototype)) Error(errors,"incomplete-prototype",path,"prototype is incomplete or uses an unsupported ABI"); const FunctionRecord* record=nullptr; for(const auto& candidate:catalog.Functions()) if(candidate.startRva==item.rva) {record=&candidate;break;} if(record==nullptr) {Error(errors,"unknown-rva",path+".rva","RVA is not in the catalog");continue;} if(!record->executable && record->forwarder.empty()) Error(errors,"non-executable-rva",path+".rva","RVA is not executable"); const bool x64=module.architecture=="x64"; if((x64 && item.prototype.abi!="x64" && item.prototype.abi!="win64") || (!x64 && (item.prototype.abi=="x64"||item.prototype.abi=="win64"))) Error(errors,"architecture-mismatch",path+".abi","ABI does not match module architecture"); if(!item.selector.empty()) { const auto matches=catalog.FindAll(item.selector); if(matches.size()!=1 || matches.front()->startRva!=item.rva) Error(errors,"ambiguous-selector",path+".selector","selector does not identify this RVA uniquely"); } }
+    if (!profile.handleReleaseAdapter.selector.empty())
+    {
+        const auto matches = catalog.FindAll(profile.handleReleaseAdapter.selector);
+        if (matches.size() != 1 || matches.front()->exportNames.empty())
+            Error(errors, "invalid-handle-release-adapter", "handle_release.selector",
+                "release adapter must identify one exported function");
+        const auto profileFunction = std::find_if(profile.functions.begin(), profile.functions.end(),
+            [&](const ProfileFunction& item) { return item.selector == profile.handleReleaseAdapter.selector; });
+        if (profileFunction == profile.functions.end() || profileFunction->prototype.parameters.size() != 1 ||
+            profileFunction->prototype.parameters.front().kind != TypeKind::Handle ||
+            profileFunction->prototype.returnType.kind != TypeKind::Integer ||
+            (profileFunction->prototype.returnType.width != 32 && profileFunction->prototype.returnType.width != 64))
+            Error(errors, "invalid-handle-release-prototype", "handle_release.selector",
+                "release adapter prototype must take one handle and return a 32-bit or 64-bit integer");
+    }
     return errors.empty();
 }
 
