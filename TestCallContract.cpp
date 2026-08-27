@@ -112,6 +112,59 @@ BOOST_AUTO_TEST_CASE(X64InvocationLoadsOnlyForExplicitCallAndMarshalsArguments)
 #endif
 }
 
+BOOST_AUTO_TEST_CASE(X64InvocationCoversStackArgumentsAndScalarWidths)
+{
+#if defined(_M_X64)
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+
+    CallRequest request;
+    request.correlationId = "invoke-matrix";
+    request.selector = "SumEight";
+    request.hasPrototypeOverride = true;
+    request.prototypeOverride.quality = PrototypeQuality::UserDeclared;
+    request.prototypeOverride.abi = "x64";
+    request.prototypeOverride.returnType = {TypeKind::Integer, 32, true};
+    request.prototypeOverride.parameters.assign(8, {TypeKind::Integer, 32, true});
+    for (int value = 1; value <= 8; ++value)
+        request.arguments.push_back({{TypeKind::Integer, 32, true}, std::to_string(value)});
+
+    CallResult result;
+    BOOST_REQUIRE_MESSAGE(InvokeX64Export(FixturePath(), request, catalog, result, error), error);
+    BOOST_CHECK_EQUAL(result.returnValue, "36");
+
+    struct WidthCase
+    {
+        const char* selector;
+        uint16_t width;
+        const char* expected;
+    };
+    const WidthCase cases[] = {
+        {"ReturnByte", 8, "165"},
+        {"ReturnWord", 16, "48879"},
+        {"ReturnDword", 32, "3735928559"},
+        {"ReturnQword", 64, "18364758544493064720"},
+    };
+    for (const WidthCase& item : cases)
+    {
+        CallRequest scalar;
+        scalar.correlationId = std::string("scalar-") + item.selector;
+        scalar.selector = item.selector;
+        scalar.hasPrototypeOverride = true;
+        scalar.prototypeOverride.quality = PrototypeQuality::UserDeclared;
+        scalar.prototypeOverride.abi = "x64";
+        scalar.prototypeOverride.returnType = {TypeKind::Integer, item.width, false};
+
+        CallResult scalarResult;
+        BOOST_REQUIRE_MESSAGE(InvokeX64Export(FixturePath(), scalar, catalog, scalarResult, error), error);
+        BOOST_CHECK_EQUAL(scalarResult.returnValue, item.expected);
+    }
+#else
+    BOOST_TEST_MESSAGE("x64 invocation matrix skipped for non-x64 build");
+#endif
+}
+
 BOOST_AUTO_TEST_CASE(X64InvocationRejectsUnsupportedTypeBeforeLoad)
 {
 #if defined(_M_X64)
