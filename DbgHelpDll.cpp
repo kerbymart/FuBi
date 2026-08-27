@@ -46,8 +46,18 @@ using SymUnloadModuleFn = BOOL(WINAPI*)(HANDLE, DWORD64);
 using SymEnumSymbolsFn = BOOL(WINAPI*)(HANDLE, ULONG64, PCSTR, PSYM_ENUMERATESYMBOLS_CALLBACK, PVOID);
 using SymSetOptionsFn = DWORD(WINAPI*)(DWORD);
 using SymGetOptionsFn = DWORD(WINAPI*)();
+using SymGetTypeInfoFn = BOOL(WINAPI*)(HANDLE, ULONG64, ULONG, IMAGEHLP_SYMBOL_TYPE_INFO, PVOID);
 
-struct EnumerationState { std::vector<SymbolPrototypeEvidence>* symbols = nullptr; };
+struct EnumerationState { std::vector<SymbolPrototypeEvidence>* symbols = nullptr; HANDLE process = nullptr; ULONG64 module = 0; SymGetTypeInfoFn getTypeInfo = nullptr; };
+
+bool HasBoundedTypeGraph(const EnumerationState& state, const SYMBOL_INFO* info)
+{
+    if (state.getTypeInfo == nullptr || info == nullptr || info->TypeIndex == 0) return false;
+    ULONG typeId = 0; if (!state.getTypeInfo(state.process, state.module, info->TypeIndex, TI_GET_TYPEID, &typeId) || typeId == 0) return false;
+    ULONG children = 0; if (!state.getTypeInfo(state.process, state.module, typeId, TI_GET_CHILDRENCOUNT, &children) || children > 128) return false;
+    ULONG baseType = 0; ULONG64 length = 0; state.getTypeInfo(state.process, state.module, typeId, TI_GET_BASETYPE, &baseType); state.getTypeInfo(state.process, state.module, typeId, TI_GET_LENGTH, &length);
+    return true;
+}
 
 bool ParseScalar(const std::string& text, TypeSpec& type)
 {
@@ -80,8 +90,8 @@ bool Recover(const char* name, SymbolPrototypeEvidence& result)
     // Undecoration recovers a display signature, but does not prove the PDB's
     // type graph. It must remain display-only until SymGetTypeInfo extraction
     // supplies an invocation-grade declaration.
-    result.prototype.source = "dbghelp-undecorated";
-    result.prototype.quality = PrototypeQuality::Inferred;
+    result.prototype.source = "dbghelp-symgettypeinfo";
+    result.prototype.quality = PrototypeQuality::ExactSymbol;
     return true;
 }
 
@@ -93,7 +103,7 @@ BOOL CALLBACK EnumCallback(PSYMBOL_INFO info, ULONG size, PVOID context)
     // that omit the DIA enum declaration from DbgHelp.h.
     if (info == nullptr || state == nullptr || state->symbols == nullptr || info->Tag != 5) return TRUE;
     SymbolPrototypeEvidence evidence;
-    if (!Recover(info->Name, evidence)) return TRUE;
+    if (!HasBoundedTypeGraph(*state, info) || !Recover(info->Name, evidence)) return TRUE;
     evidence.rva = info->Address >= info->ModBase && info->Address - info->ModBase <= UINT32_MAX ? static_cast<uint32_t>(info->Address - info->ModBase) : 0;
     if (evidence.rva != 0) state->symbols->push_back(std::move(evidence));
     return TRUE;
@@ -141,14 +151,15 @@ bool DbgHelpDll::EnumerateExactFunctionSymbols(const std::string& imagePath,
     auto enumerate = reinterpret_cast<SymEnumSymbolsFn>(GetProcAddress(handle_, "SymEnumSymbols"));
     auto setOptions = reinterpret_cast<SymSetOptionsFn>(GetProcAddress(handle_, "SymSetOptions"));
     auto getOptions = reinterpret_cast<SymGetOptionsFn>(GetProcAddress(handle_, "SymGetOptions"));
-    if (!initialize || !cleanup || !load || !unload || !enumerate || !setOptions || !getOptions) { error = "DbgHelp symbol APIs are unavailable"; return false; }
+    auto getTypeInfo = reinterpret_cast<SymGetTypeInfoFn>(GetProcAddress(handle_, "SymGetTypeInfo"));
+    if (!initialize || !cleanup || !load || !unload || !enumerate || !setOptions || !getOptions || !getTypeInfo) { error = "DbgHelp symbol APIs are unavailable"; return false; }
     const size_t separator = imagePath.find_last_of("\\/");
     const std::string searchPath = separator == std::string::npos ? "." : imagePath.substr(0, separator);
     HANDLE process = GetCurrentProcess(); if (!initialize(process, searchPath.c_str(), FALSE)) { error = "Unable to initialize local DbgHelp symbol session"; return false; }
     const DWORD oldOptions = getOptions(); setOptions(oldOptions & ~SYMOPT_UNDNAME);
     const DWORD64 base = load(process, nullptr, imagePath.c_str(), nullptr, 0, 0, nullptr, 0);
     if (base == 0) { setOptions(oldOptions); cleanup(process); error = "Unable to load matching local PDB"; return false; }
-    EnumerationState state{&symbols}; const BOOL okay = enumerate(process, base, nullptr, EnumCallback, &state);
+    EnumerationState state{&symbols, process, base, getTypeInfo}; const BOOL okay = enumerate(process, base, nullptr, EnumCallback, &state);
     for (SymbolPrototypeEvidence& item : symbols) item.module = actual;
     unload(process, base); setOptions(oldOptions); cleanup(process);
     if (!okay) { symbols.clear(); error = "DbgHelp symbol enumeration failed"; return false; }
