@@ -492,7 +492,7 @@ BOOST_AUTO_TEST_CASE(IsolatedInvocationRejectsPointerResultsBeforeWorkerLaunch)
     FunctionCatalog catalog;
     std::string error;
     const std::string fixture = FixturePath();
-    const std::string marker = fixture.substr(0, fixture.find_last_of("\\/")) + "\\export_fixture.executed";
+    const std::string marker = "export_fixture.executed";
     DeleteFileA(marker.c_str());
     BOOST_REQUIRE(FunctionCatalog::Load(fixture, catalog, error));
     CallRequest request;
