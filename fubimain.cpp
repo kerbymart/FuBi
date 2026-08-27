@@ -2,6 +2,7 @@
 
 #include "FunctionCatalog.h"
 #include "PrototypeProfile.h"
+#include "DbgHelpDll.h"
 
 #include <fstream>
 #include <iostream>
@@ -12,7 +13,7 @@ namespace
 void PrintUsage()
 {
     std::cerr << "Usage:\n"
-              << "  Fubi.exe <dll-file> [--list|--list-callable|--describe <name|#ordinal|0xRVA>] [--profile <file>] [--json]\n";
+              << "  Fubi.exe <dll-file> [--list|--list-callable|--describe <name|#ordinal|0xRVA>] [--profile <file>] [--symbols] [--json]\n";
 }
 
 struct Options
@@ -22,6 +23,7 @@ struct Options
     std::string selector;
     bool json = false;
     std::string profilePath;
+    bool symbols = false;
 };
 
 bool ParseOptions(int argc, char* argv[], Options& options)
@@ -48,6 +50,7 @@ bool ParseOptions(int argc, char* argv[], Options& options)
             if (!options.profilePath.empty()) return false;
             options.profilePath = argv[++index];
         }
+        else if (argument == "--symbols") options.symbols = true;
         else return false;
     }
     return true;
@@ -86,6 +89,17 @@ int main(int argc, char* argv[])
             for (const ProfileValidationError& item : profileErrors)
                 std::cerr << item.code << " at " << item.path << ": " << item.message << "\n";
             return 6;
+        }
+    }
+    if (options.symbols)
+    {
+        DbgHelpDll provider;
+        std::vector<SymbolPrototypeEvidence> evidence;
+        if (!provider.EnumerateExactFunctionSymbols(options.targetPath, catalog.Module(), evidence, error) ||
+            !catalog.ApplySymbolEvidence(evidence, error))
+        {
+            std::cerr << error << "\n";
+            return 7;
         }
     }
     if (options.action == "describe")

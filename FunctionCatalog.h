@@ -9,6 +9,7 @@
 
 struct PrototypeProfile;
 struct ProfileValidationError;
+struct SymbolPrototypeEvidence;
 
 enum class TypeKind
 {
@@ -139,6 +140,8 @@ public:
     const FunctionRecord* Find(const std::string& selector) const;
     bool ApplyProfile(const PrototypeProfile& profile,
         std::vector<ProfileValidationError>& errors);
+    bool ApplySymbolEvidence(const std::vector<SymbolPrototypeEvidence>& evidence,
+        std::string& error);
 
 private:
     ModuleIdentity module_;

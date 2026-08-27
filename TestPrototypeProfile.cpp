@@ -148,3 +148,23 @@ BOOST_AUTO_TEST_CASE(SymbolProviderRejectsUnavailableOrMismatchedCodeView)
     BOOST_CHECK(evidence.empty());
     BOOST_CHECK(!error.empty());
 }
+
+BOOST_AUTO_TEST_CASE(ExactSymbolEvidenceMakesMatchingRecordCallable)
+{
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+    const FunctionRecord* original = catalog.Find("NamedExport");
+    BOOST_REQUIRE(original != nullptr);
+    SymbolPrototypeEvidence evidence;
+    evidence.rva = original->startRva;
+    evidence.name = "NamedExport";
+    evidence.prototype.abi = catalog.Module().architecture == "x64" ? "x64" : "__cdecl";
+    evidence.prototype.returnType.kind = TypeKind::Integer;
+    evidence.prototype.returnType.width = 32;
+    evidence.prototype.parameters.push_back({TypeKind::Integer, 32});
+    std::vector<SymbolPrototypeEvidence> symbols = {evidence};
+    BOOST_REQUIRE(catalog.ApplySymbolEvidence(symbols, error));
+    BOOST_CHECK(catalog.Find("NamedExport")->callability == Callability::Callable);
+    BOOST_CHECK(catalog.Find("NamedExport")->prototype.quality == PrototypeQuality::ExactSymbol);
+}
