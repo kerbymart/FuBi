@@ -145,6 +145,20 @@ add_dependencies(string_output_tests static_fixture)
 add_executable(exit_code_tests TestExitCodes.cpp)
 target_link_libraries(exit_code_tests PRIVATE fubi_boost_headers)
 
+if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+    add_library(x86_abi_fixture SHARED X86AbiFixture.cpp X86AbiFixture.def)
+    target_compile_options(x86_abi_fixture PRIVATE /Od /Zi)
+    set_target_properties(x86_abi_fixture PROPERTIES
+        LINK_FLAGS "/DEBUG:FULL")
+    add_executable(x86_abi_tests TestX86Abi.cpp CallContract.cpp
+        ProcessInvocation.cpp InvocationEngine.cpp FunctionCatalog.cpp
+        PrototypeProfile.cpp StaticExportCatalog.cpp PEImage.cpp
+        DbgHelpDll.cpp stdafx.cpp)
+    target_link_libraries(x86_abi_tests PRIVATE bcrypt DbgHelp
+        fubi_boost_headers fubi_build_limits)
+    add_dependencies(x86_abi_tests x86_abi_fixture FubiInvocationWorker)
+endif()
+
 enable_testing()
 add_test(NAME signature_parser COMMAND tests)
 add_test(NAME export_enumeration COMMAND export_tests)
@@ -157,6 +171,16 @@ add_test(NAME internal_rva COMMAND internal_rva_tests)
 add_test(NAME mixed_floating COMMAND mixed_floating_tests)
 add_test(NAME string_output COMMAND string_output_tests)
 add_test(NAME exit_code_constants COMMAND exit_code_tests)
+if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+    add_test(NAME x86_abi_worker_guarantees COMMAND x86_abi_tests)
+    add_test(
+        NAME x86_abi_worker_diagnostics
+        COMMAND ${CMAKE_COMMAND}
+            -DTEST=$<TARGET_FILE:x86_abi_tests>
+            -DFIXTURE=$<TARGET_FILE:x86_abi_fixture>
+            -DWORKER=$<TARGET_FILE:FubiInvocationWorker>
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyX86Abi.cmake)
+endif()
 add_test(
     NAME static_cli_no_execution
     COMMAND ${CMAKE_COMMAND}
