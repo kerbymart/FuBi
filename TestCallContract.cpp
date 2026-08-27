@@ -38,12 +38,19 @@ BOOST_AUTO_TEST_CASE(ValidTypedRequestAndDeterministicResult)
     WriteCallRequestJson(first, request);
     WriteCallRequestJson(second, request);
     BOOST_CHECK_EQUAL(first.str(), second.str());
+    CallRequest parsed;
+    BOOST_REQUIRE(ParseCallRequestJson(first.str(), parsed, diagnostics));
+    BOOST_CHECK_EQUAL(parsed.correlationId, request.correlationId);
+    BOOST_CHECK_EQUAL(parsed.arguments.size(), request.arguments.size());
     CallResult result;
     result.correlationId = request.correlationId;
     result.diagnostics = diagnostics;
     std::ostringstream resultJson;
     WriteCallResultJson(resultJson, result);
     BOOST_CHECK(resultJson.str().find("not-executed") != std::string::npos);
+    CallResult parsedResult;
+    BOOST_REQUIRE(ParseCallResultJson(resultJson.str(), parsedResult, diagnostics));
+    BOOST_CHECK_EQUAL(parsedResult.correlationId, result.correlationId);
 }
 
 BOOST_AUTO_TEST_CASE(ValidationRejectsBadRangeCountAndDisplayOnlyPrototype)

@@ -3,6 +3,7 @@
 #include "FunctionCatalog.h"
 #include "PrototypeProfile.h"
 #include "DbgHelpDll.h"
+#include "CallContract.h"
 
 #include <fstream>
 #include <iostream>
@@ -13,7 +14,7 @@ namespace
 void PrintUsage()
 {
     std::cerr << "Usage:\n"
-              << "  Fubi.exe <dll-file> [--list|--list-callable|--describe <name|#ordinal|0xRVA>] [--profile <file>] [--symbols] [--json]\n";
+              << "  Fubi.exe <dll-file> [--list|--list-callable|--describe <name|#ordinal|0xRVA>|--call <selector>] [--arg <kind:value> ...] [--profile <file>] [--symbols] [--json]\n";
 }
 
 struct Options
@@ -24,6 +25,7 @@ struct Options
     bool json = false;
     std::string profilePath;
     bool symbols = false;
+    std::vector<std::string> rawArguments;
 };
 
 bool ParseOptions(int argc, char* argv[], Options& options)
@@ -43,6 +45,17 @@ bool ParseOptions(int argc, char* argv[], Options& options)
             if (options.action != "list") return false;
             options.action = "describe";
             options.selector = argv[++index];
+        }
+        else if (argument == "--call" && index + 1 < argc)
+        {
+            if (options.action != "list") return false;
+            options.action = "call";
+            options.selector = argv[++index];
+        }
+        else if (argument == "--arg" && index + 1 < argc)
+        {
+            if (options.action != "call") return false;
+            options.rawArguments.push_back(argv[++index]);
         }
         else if (argument == "--json") options.json = true;
         else if (argument == "--profile" && index + 1 < argc)
@@ -101,6 +114,37 @@ int main(int argc, char* argv[])
             std::cerr << error << "\n";
             return 7;
         }
+    }
+    if (options.action == "call")
+    {
+        CallRequest request;
+        request.selector = options.selector;
+        request.correlationId = "cli-call";
+        const FunctionRecord* record = catalog.Find(options.selector);
+        if (record != nullptr && record->hasPrototype && record->prototype.parameters.size() == options.rawArguments.size())
+        {
+            for (size_t index = 0; index < options.rawArguments.size(); ++index)
+            {
+                const std::string& raw = options.rawArguments[index];
+                const size_t separator = raw.find(':');
+                if (separator == std::string::npos) { std::cerr << "--arg requires kind:value\n"; return 2; }
+                CallArgument argument;
+                argument.type = record->prototype.parameters[index];
+                const std::string kind = raw.substr(0, separator);
+                if (kind != TypeKindName(argument.type.kind)) { std::cerr << "argument type does not match prototype\n"; return 8; }
+                argument.value = raw.substr(separator + 1);
+                request.arguments.push_back(std::move(argument));
+            }
+        }
+        std::vector<CallDiagnostic> diagnostics;
+        const bool valid = ValidateCallRequest(request, catalog, diagnostics);
+        CallResult result;
+        result.correlationId = request.correlationId;
+        result.success = false;
+        result.status = valid ? "not-executed" : "validation-failed";
+        result.diagnostics = diagnostics;
+        if (options.json) WriteCallResultJson(std::cout, result); else for (const CallDiagnostic& item : diagnostics) std::cerr << item.code << " at " << item.path << ": " << item.message << "\n";
+        return valid ? 9 : 8;
     }
     if (options.action == "describe")
     {
