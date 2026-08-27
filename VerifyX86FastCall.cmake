@@ -41,6 +41,11 @@ endfunction()
 run_call(FastCallByte 165)
 run_call(FastCallWord 23205 --arg integer:4660)
 run_call(FastCallDword 7 --arg integer:9320 --arg integer:3 --arg integer:4)
+# Two consecutive calls exercise callee stack cleanup on the stack-argument path.
+run_call(FastCallDword 7 --arg integer:9320 --arg integer:3 --arg integer:4)
+run_call(FastCallRegisterCheck 7 --arg integer:1 --arg integer:2 --arg integer:4)
+# Repeat the register-preservation fixture to make the nonvolatile guarantee
+# observable across independent worker invocations.
 run_call(FastCallRegisterCheck 7 --arg integer:1 --arg integer:2 --arg integer:4)
 execute_process(COMMAND "${FUBI}" "${FIXTURE}" --call "#1"
     --prototype-override "${PROFILE}" --arg pointer:opaque:0x13572468 --json
@@ -64,5 +69,15 @@ if(NOT SESSION_RESULT EQUAL 0 OR NOT SESSION_OUTPUT MATCHES "argument-count-mism
 endif()
 if(EXISTS "${OUTPUT_DIR}/fastcall_fixture.loaded")
     message(FATAL_ERROR "invalid fastcall request loaded the fixture")
+endif()
+execute_process(COMMAND "${FUBI}" "${FIXTURE}" --call FastCallWord
+    --prototype-override "${PROFILE}" --arg integer:1 --arg integer:4660 --json
+    WORKING_DIRECTORY "${OUTPUT_DIR}" RESULT_VARIABLE NON_POINTER_RESULT
+    OUTPUT_VARIABLE NON_POINTER_OUTPUT ERROR_VARIABLE NON_POINTER_ERROR)
+if(NOT NON_POINTER_RESULT EQUAL 8 OR NOT NON_POINTER_OUTPUT MATCHES "argument-type-mismatch")
+    message(FATAL_ERROR "non-pointer fastcall object argument was not rejected: ${NON_POINTER_RESULT}: ${NON_POINTER_ERROR}: ${NON_POINTER_OUTPUT}")
+endif()
+if(EXISTS "${OUTPUT_DIR}/fastcall_fixture.loaded")
+    message(FATAL_ERROR "non-pointer fastcall argument loaded the target fixture")
 endif()
 file(REMOVE "${PROFILE}" "${OUTPUT_DIR}/invalid-fastcall.jsonl" "${SESSION_SCRIPT}")
