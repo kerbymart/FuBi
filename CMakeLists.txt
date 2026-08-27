@@ -37,18 +37,20 @@ set(SOURCES
     PEImage.cpp
     StaticExportCatalog.cpp
     FunctionCatalog.cpp
+    PrototypeProfile.cpp
+    DbgHelpDll.cpp
     fubimain.cpp
     stdafx.cpp)
 add_executable(Fubi ${SOURCES})
-target_link_libraries(Fubi PRIVATE bcrypt fubi_build_limits)
+target_link_libraries(Fubi PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 
 set(TEST_SOURCES TestSignatureParser.cpp)
 add_executable(tests ${TEST_SOURCES})
 target_link_libraries(tests PRIVATE fubi_boost_headers)
 
 add_library(export_fixture SHARED TestExportsFixture.cpp TestExportsFixture.def)
-add_executable(export_tests TestExports.cpp SysExports.cpp DbgHelpDll.cpp stdafx.cpp)
-target_link_libraries(export_tests PRIVATE DbgHelp fubi_boost_headers)
+add_executable(export_tests TestExports.cpp SysExports.cpp DbgHelpDll.cpp PEImage.cpp FunctionCatalog.cpp PrototypeProfile.cpp StaticExportCatalog.cpp stdafx.cpp)
+target_link_libraries(export_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 add_dependencies(export_tests export_fixture)
 
 add_library(static_fixture SHARED TestStaticFixture.cpp TestStaticFixture.rc)
@@ -65,15 +67,20 @@ add_executable(
 target_link_libraries(static_catalog_tests PRIVATE fubi_boost_headers fubi_build_limits)
 add_dependencies(static_catalog_tests static_fixture export_fixture)
 
-add_executable(function_catalog_tests TestFunctionCatalog.cpp FunctionCatalog.cpp StaticExportCatalog.cpp PEImage.cpp)
+add_executable(function_catalog_tests TestFunctionCatalog.cpp FunctionCatalog.cpp PrototypeProfile.cpp StaticExportCatalog.cpp PEImage.cpp)
 target_link_libraries(function_catalog_tests PRIVATE bcrypt fubi_boost_headers fubi_build_limits)
 add_dependencies(function_catalog_tests export_fixture)
+
+add_executable(prototype_profile_tests TestPrototypeProfile.cpp PrototypeProfile.cpp FunctionCatalog.cpp StaticExportCatalog.cpp PEImage.cpp DbgHelpDll.cpp)
+target_link_libraries(prototype_profile_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
+add_dependencies(prototype_profile_tests export_fixture)
 
 enable_testing()
 add_test(NAME signature_parser COMMAND tests)
 add_test(NAME export_enumeration COMMAND export_tests)
 add_test(NAME static_catalog COMMAND static_catalog_tests)
 add_test(NAME function_catalog COMMAND function_catalog_tests)
+add_test(NAME prototype_profile COMMAND prototype_profile_tests)
 add_test(
     NAME static_cli_no_execution
     COMMAND ${CMAKE_COMMAND}

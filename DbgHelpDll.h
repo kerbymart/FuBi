@@ -8,6 +8,18 @@
 #pragma once
 
 #include <DbgHelp.h>
+#include "FunctionCatalog.h"
+
+#include <string>
+#include <vector>
+
+struct SymbolPrototypeEvidence
+{
+    ModuleIdentity module;
+    uint32_t rva = 0;
+    std::string name;
+    PrototypeSpec prototype;
+};
 
 class DbgHelpDll
 {
@@ -18,4 +30,10 @@ public:
 	~DbgHelpDll(void);
 public:
 	DWORD UnDecorateSymbolName(const char* DecoratedName, char* UnDecoratedName, DWORD UndecoratedLength, DWORD Flags);
+	bool EnumerateExactFunctionSymbols(const std::string& imagePath,
+	    const ModuleIdentity& expected, std::vector<SymbolPrototypeEvidence>& symbols,
+	    std::string& error);
+
+private:
+    HMODULE handle_ = nullptr;
 };
