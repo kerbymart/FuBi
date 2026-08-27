@@ -4,6 +4,8 @@
 
 #include <windows.h>
 #include <fstream>
+#include <mutex>
+#include <vector>
 
 namespace
 {
@@ -34,11 +36,38 @@ bool IsCrashExitCode(DWORD exitCode)
 {
     return (exitCode & 0xC0000000U) == 0xC0000000U;
 }
+struct RetainedWorker
+{
+    HANDLE process = nullptr;
+    HANDLE thread = nullptr;
+    std::string requestPath;
+    std::string resultPath;
+};
+std::mutex retainedWorkersMutex;
+std::vector<RetainedWorker> retainedWorkers;
+void ReapRetainedWorkers()
+{
+    std::lock_guard<std::mutex> lock(retainedWorkersMutex);
+    for (auto it = retainedWorkers.begin(); it != retainedWorkers.end();)
+    {
+        if (WaitForSingleObject(it->process, 0) != WAIT_OBJECT_0) { ++it; continue; }
+        CloseHandle(it->thread); CloseHandle(it->process);
+        DeleteFileA(it->requestPath.c_str()); DeleteFileA(it->resultPath.c_str());
+        it = retainedWorkers.erase(it);
+    }
+}
+void RetainWorker(PROCESS_INFORMATION& process, const char* requestPath, const char* resultPath)
+{
+    std::lock_guard<std::mutex> lock(retainedWorkersMutex);
+    retainedWorkers.push_back({process.hProcess, process.hThread, requestPath, resultPath});
+    process.hProcess = nullptr; process.hThread = nullptr;
+}
 }
 
 bool InvokeX64ExportProcess(const std::string& imagePath, const CallRequest& request,
     const FunctionCatalog& catalog, CallResult& result, std::string& error)
 {
+    ReapRetainedWorkers();
     auto failure = [&](const char* status, const char* code, const char* message)
     {
         result = {};
@@ -98,9 +127,12 @@ bool InvokeX64ExportProcess(const std::string& imagePath, const CallRequest& req
         result.diagnostics.push_back({terminated && stopped ? "timeout" : "termination-failed", "timeout_ms", terminated && stopped ? "worker process exceeded the invocation timeout" : "worker could not be terminated safely"});
         AddExitDiagnostic(result);
         if (!(terminated && stopped))
-            WaitForSingleObject(process.hProcess, INFINITE);
-        CloseHandle(process.hThread); CloseHandle(process.hProcess);
-        if (!cleanup()) result.diagnostics.push_back({"cleanup-failed", "ipc", "unable to remove worker IPC files"});
+            RetainWorker(process, requestPath, resultPath);
+        else
+        {
+            CloseHandle(process.hThread); CloseHandle(process.hProcess);
+            if (!cleanup()) result.diagnostics.push_back({"cleanup-failed", "ipc", "unable to remove worker IPC files"});
+        }
         error = terminated && stopped ? "invocation worker timed out" : "unable to terminate invocation worker";
         return false;
     }
