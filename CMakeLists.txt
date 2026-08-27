@@ -305,6 +305,7 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 8)
         COMMAND ${CMAKE_COMMAND}
             -DTEST=$<TARGET_FILE:call_contract_tests>
             -DFUBI=$<TARGET_FILE:Fubi>
+            -DX64_FIXTURE=$<TARGET_FILE:export_fixture>
             -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
             -DARCHITECTURE=x64
             -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyArchitectureConventionMatrix.cmake)
