@@ -70,6 +70,27 @@ They read bounded file or metadata bytes and do not load the target DLL or run
 [Exit-code contract](#exit-code-contract) for stable command-line results and
 structured JSONL process semantics.
 
+## Bounded inspection diagnostics
+
+Inspection is an explicit, secondary static workflow. It never loads the target
+DLL or runs `DllMain` and accepts one bounded mode at a time:
+
+```powershell
+.\build\Release\Fubi.exe target.dll --inspect exports
+.\build\Release\Fubi.exe target.dll --inspect imports --json
+.\build\Release\Fubi.exe target.dll --inspect runtime-functions
+.\build\Release\Fubi.exe target.dll --inspect debug
+.\build\Release\Fubi.exe target.dll --inspect wdf-bind
+```
+
+The `exports` mode reports the bounded export catalog. `imports` reports
+imported module and symbol names with thunk and IAT RVAs. `runtime-functions`
+reports validated exception-directory ranges, `debug` reports bounded debug
+and CodeView identity records, and `wdf-bind` reports only the documented
+Windows table-call pattern evidence. JSON output is versioned and includes all
+mode fields for deterministic scripting; unsupported modes are rejected before
+the target is read.
+
 ## Requirements
 
 - Windows

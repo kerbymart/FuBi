@@ -64,6 +64,7 @@ set(SOURCES
     InvocationEngine.cpp
     ProcessInvocation.cpp
     WindowsPatternCatalog.cpp
+    InspectionService.cpp
     fubimain.cpp
     stdafx.cpp)
 if(MSVC)
@@ -131,6 +132,12 @@ add_executable(
 target_link_libraries(static_catalog_tests PRIVATE fubi_boost_headers fubi_build_limits)
 add_dependencies(static_catalog_tests static_fixture export_fixture)
 
+add_executable(inspection_service_tests
+    TestInspectionService.cpp InspectionService.cpp WindowsPatternCatalog.cpp
+    StaticExportCatalog.cpp PEImage.cpp)
+target_link_libraries(inspection_service_tests PRIVATE fubi_boost_headers fubi_build_limits)
+add_dependencies(inspection_service_tests static_fixture export_fixture)
+
 add_executable(windows_pattern_tests TestWindowsPatternCatalog.cpp WindowsPatternCatalog.cpp PEImage.cpp)
 target_link_libraries(windows_pattern_tests PRIVATE fubi_boost_headers fubi_build_limits)
 add_dependencies(windows_pattern_tests static_fixture)
@@ -193,6 +200,7 @@ enable_testing()
 add_test(NAME signature_parser COMMAND tests)
 add_test(NAME export_enumeration COMMAND export_tests)
 add_test(NAME static_catalog COMMAND static_catalog_tests)
+add_test(NAME inspection_service COMMAND inspection_service_tests)
 add_test(NAME windows_patterns COMMAND windows_pattern_tests)
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     add_test(
