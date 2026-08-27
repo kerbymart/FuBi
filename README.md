@@ -1,115 +1,193 @@
 # FuBi
 
-FuBi is a static Windows PE inspection tool with a separate legacy DLL-calling
-mode. Static analysis reads the target as bytes: it does not call `LoadLibrary`,
-run `DllMain`, or execute exported functions.
+FuBi is a Windows command-line utility for inspecting Portable Executable (PE)
+files. It statically analyzes DLLs and executables, enumerates their complete
+export tables, derives signatures when symbol decoration provides enough
+information, and writes human-readable or JSON reports.
 
-## Static analysis
+Static analysis is the default and does not load or execute the target file.
+An explicitly enabled legacy interactive mode is available for trusted DLLs.
 
-Static inspection is the default. These commands do not execute the target:
+## Features
 
-```powershell
-Fubi.exe target.dll --analyze
-Fubi.exe target.dll --dump report.txt
-Fubi.exe target.dll --analyze --json report.json
-Fubi.exe target.dll --dump report.txt --json report.json
-Fubi.exe target.dll --strings --min-string-length 5
-Fubi.exe target.dll --disasm-function OpenTriggerDevice
-Fubi.exe target.dll --function-report OpenTriggerDevice
-Fubi.exe target.dll --callers OpenTriggerDevice
-Fubi.exe target.dll --callees OpenTriggerDevice
-Fubi.exe target.dll --xrefs OpenTriggerDevice
-Fubi.exe target.dll --xrefs-string "NativeUSB"
-Fubi.exe target.dll --xrefs-import CreateFileW
-```
+- Enumerates named, ordinal-only, aliased, and forwarded exports.
+- Derives C++ signatures from decorated names and records their provenance.
+- Dumps complete analysis results to formatted text and JSON files.
+- Parses PE32 and PE32+ headers, sections, directories, imports, and delay
+  imports.
+- Extracts ASCII and UTF-16LE strings with their RVA, file offset, and section.
+- Reports CodeView/PDB, VERSIONINFO, security, resource, and driver metadata.
+- Disassembles x86 and x64 code with Zydis.
+- Finds direct callers, callees, import references, and string references.
+- Produces focused function reports with boundaries, calls, strings, and
+  annotated disassembly.
+- Reports malformed or truncated structures without executing the input.
 
-With no option, `Fubi.exe target.dll` prints the static report to standard
-output.
+## Requirements
 
-The P0 report currently contains:
+- Windows
+- CMake 3.10 or later
+- A Visual Studio C++ toolchain with C++17 support
+- Git and network access for the initial dependency fetch
 
-- SHA-256 and file size
-- DOS, NT, PE32/PE32+, architecture, image, alignment, subsystem, timestamp,
-  checksum, and data-directory metadata
-- sections with RVA, raw-file ranges, permissions, characteristics, and entropy
-- named, ordinal-only, aliased, and forwarded exports
-- decoration-derived C++ signatures with explicit provenance
-- normal imports and delay imports, including names/ordinals, hints, thunk RVAs,
-  and IAT RVAs
-- ASCII and UTF-16LE strings with RVA, file offset, section, and encoding
-- debug-directory and CodeView RSDS/NB10 PDB metadata
-- x64 `.pdata` runtime-function boundaries and unwind RVAs
-- Zydis-based x86/x64 static disassembly
-- confirmed direct callers/callees, import xrefs, and string xrefs
-- function reports combining symbols, boundaries, ABI observations, calls,
-  strings, and annotated disassembly
-- ASLR, NX, CFG, security-cookie, Guard CF table, SafeSEH, and CET metadata
-- resource types and VERSIONINFO identity
-- evidence-based driver classification and an explicit API capability matrix
-- warnings for malformed or truncated structures
-- human-readable and machine-readable JSON output
+CMake uses a local `boost_1_87_0` directory when available; otherwise, it
+downloads Boost 1.87 headers. Zydis 4.1.1 is fetched during configuration.
 
-Plain C export names do not contain parameter or return-type information. FuBi
-reports those prototypes as unknown unless definitive symbol information is
-available; it does not guess declarations.
+## Build
 
-## Interactive runtime mode
-
-Interactive mode is explicitly opt-in and may execute target code while loading
-the DLL or calling an export:
+Open a Developer PowerShell for Visual Studio from the repository root:
 
 ```powershell
-Fubi.exe target.dll --interactive
-```
-
-Do not use `--interactive` with untrusted, proprietary, driver-related, or
-otherwise unsafe DLLs. Static report options cannot be combined with
-`--interactive`.
-
-## Architecture
-
-- `PEImage` owns immutable file bytes, validates PE headers/sections, and is the
-  only module responsible for bounded file reads and RVA-to-file translation.
-- `PEAnalyzer` converts a validated image into transparent report records for
-  exports, imports, delay imports, strings, hashes, debug metadata, runtime
-  functions, disassembly, xrefs, security, resources, and classification.
-- `AnalysisReport` serializes the same analysis data to text or JSON.
-- `SysExports`, `DbgHelpDll`, and `Fubi` preserve the legacy loaded-module and
-  interactive-call path.
-
-This boundary keeps stable RVAs and file offsets canonical in static mode.
-ASLR-dependent loaded addresses appear only in explicit runtime mode.
-
-## Build and test
-
-FuBi requires Windows, CMake, and a Visual Studio C++ toolchain. Boost headers
-are used by the legacy signature parser; CMake uses a local `boost_1_87_0`
-directory when present and otherwise downloads Boost 1.87. Zydis 4.1.1 is
-fetched by CMake for instruction decoding.
-
-```powershell
-cmake -S . -B build -G "Visual Studio 18 2026" -A x64
+cmake -S . -B build -A x64
 cmake --build build --config Release --parallel
+```
+
+The executable is generated under the configuration-specific build directory,
+typically `build\Release\Fubi.exe`.
+
+## Basic usage
+
+Run FuBi with a PE file to print a complete static report to standard output:
+
+```powershell
+.\build\Release\Fubi.exe C:\path\to\target.dll
+```
+
+Write the formatted report to a file:
+
+```powershell
+.\build\Release\Fubi.exe C:\path\to\target.dll --dump target-report.txt
+```
+
+Write both formatted text and machine-readable JSON reports:
+
+```powershell
+.\build\Release\Fubi.exe C:\path\to\target.dll `
+  --dump target-report.txt `
+  --json target-report.json
+```
+
+List extracted strings with a custom minimum length:
+
+```powershell
+.\build\Release\Fubi.exe C:\path\to\target.dll `
+  --strings --min-string-length 6
+```
+
+Inspect a specific exported function by name or RVA:
+
+```powershell
+.\build\Release\Fubi.exe C:\path\to\target.dll `
+  --function-report OpenTriggerDevice
+
+.\build\Release\Fubi.exe C:\path\to\target.dll `
+  --disasm-function 0x1234 --disasm-bytes 128
+```
+
+Paths containing spaces must be enclosed in double quotes.
+
+## Command-line reference
+
+```text
+Fubi.exe <pe-file> [options]
+```
+
+| Option | Description |
+| --- | --- |
+| `--analyze` | Print the complete static analysis report. This is also the default when no option is supplied. |
+| `--dump <file>` | Write the complete formatted text report, including all detected exports and signatures. |
+| `--json <file>` | Write the complete analysis as JSON. May be combined with `--dump`. |
+| `--strings` | Print extracted ASCII and UTF-16LE strings. |
+| `--min-string-length <N>` | Set the minimum extracted string length; `N` must be at least 2. The default is 5. |
+| `--disasm-function <name-or-rva>` | Disassemble a function selected by export name or RVA. `--disasm` is an alias. |
+| `--disasm-bytes <N>` | Limit requested disassembly to `N` bytes; `N` must be at least 2. |
+| `--function-report <name-or-rva>` | Print a focused report for one function. |
+| `--callers <name-or-rva>` | Print confirmed direct callers. |
+| `--callees <name-or-rva>` | Print confirmed direct callees. |
+| `--xrefs <name-or-rva>` | Print both direct callers and callees. |
+| `--xrefs-string <value>` | Print direct references to an extracted string. |
+| `--xrefs-import <name>` | Print direct references to an imported function. |
+| `--interactive` | Load a trusted DLL and enter the legacy export-calling mode. |
+
+Static report options can be combined where applicable, but they cannot be
+combined with `--interactive`.
+
+## Report contents
+
+Text and JSON reports are generated from the same analysis model and include:
+
+- SHA-256, file size, architecture, image base, subsystem, timestamp, checksum,
+  alignment, and data directories
+- section RVA and raw-file ranges, permissions, characteristics, and entropy
+- complete export and import records, including names, ordinals, aliases,
+  forwarders, hints, thunk RVAs, and IAT RVAs
+- decorated-name signature evidence and explicit unknown prototypes
+- strings, debug/PDB records, x64 runtime-function boundaries, disassembly,
+  call relationships, and cross-references
+- ASLR, NX, CFG, security-cookie, Guard CF, SafeSEH, and CET metadata
+- resource types, VERSIONINFO identity, classification evidence, capabilities,
+  and parser warnings
+
+Plain C export names do not encode return or parameter types. FuBi reports
+those prototypes as unknown unless definitive symbol information is available;
+it does not invent declarations.
+
+## Safety
+
+Default static analysis reads the target as bytes. It does not call
+`LoadLibrary`, run `DllMain`, or invoke exported functions.
+
+`--interactive` does load the DLL and may execute target code during loading or
+when calling an export:
+
+```powershell
+.\build\Release\Fubi.exe C:\path\to\trusted.dll --interactive
+```
+
+Only use interactive mode with DLLs you trust. Do not use it for untrusted,
+proprietary, driver-related, or otherwise unsafe files.
+
+## Testing
+
+Build the project, then run the Release test suite:
+
+```powershell
 ctest --test-dir build -C Release --output-on-failure
 ```
 
-Tests cover legacy export behavior, PE32 and PE32+ parsing, imports, delay
-imports, forwarded and ordinal exports, CodeView data, ASCII/UTF-16 strings,
-malformed/truncated files, and static non-execution. The non-execution fixture
-creates a marker from `DllMain`; both API and end-to-end CLI tests verify that
-static analysis never creates it.
+The tests cover signature parsing, complete export enumeration, PE32/PE32+
+analysis, imports and delay imports, forwarded and ordinal exports, CodeView
+data, strings, malformed input, and static non-execution. The non-execution
+fixture attempts to create a marker from `DllMain`; API and end-to-end tests
+verify that static analysis never creates it.
 
-## Current limitations
+## Architecture
 
-- `.pdata` records are runtime/unwind boundaries, not guaranteed semantic C/C++
-  functions. Export-only leaf boundaries are explicitly marked heuristic.
-- Call graphs include only statically resolvable direct calls. Unresolved
+- `PEImage` owns immutable file bytes, validates headers and sections, performs
+  bounded reads, and translates RVAs to file offsets.
+- `PEAnalyzer` converts a validated image into report records.
+- `AnalysisReport` serializes analysis records as text or JSON and serves
+  focused queries.
+- `SysExports`, `DbgHelpDll`, and `Fubi` provide the legacy loaded-module and
+  interactive-call path.
+
+This separation keeps static analysis based on stable RVAs and file offsets;
+ASLR-dependent loaded addresses are confined to explicit interactive mode.
+
+## Limitations
+
+- Decorated names can expose C++ signature information, but undecorated C names
+  generally cannot provide exact parameter or return types.
+- `.pdata` entries describe runtime/unwind boundaries and are not guaranteed to
+  represent semantic C or C++ functions. Export-only leaf boundaries are
+  marked as heuristic.
+- Call graphs contain statically resolvable direct calls only. Unresolved
   indirect calls are labeled rather than guessed.
-- String xrefs currently require a directly resolvable memory reference to the
-  beginning of an extracted string.
-- ABI observations are conservative Windows-x64 register-use evidence with low
-  confidence; they are never promoted to exact declarations.
-- FuBi reports PDB identity but does not yet download PDBs or resolve private
-  source/type records from a matching local PDB.
-- Resource enumeration reports type-level entries and VERSIONINFO rather than
+- String references require a directly resolvable reference to the beginning
+  of an extracted string.
+- ABI observations are conservative Windows x64 register-use evidence and are
+  not promoted to exact declarations.
+- FuBi reports PDB identity but does not download PDBs or resolve private type
+  and source records from local PDB files.
+- Resource analysis reports type-level entries and VERSIONINFO rather than
   recursively dumping binary resource payloads.
