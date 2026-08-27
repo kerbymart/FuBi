@@ -25,3 +25,11 @@ FuBi has not yet published versioned releases, so all project history is recorde
 
 - Updated README source file list section
 
+### 2026-08-27
+
+- feat: enumerate and dump complete DLL exports
+- feat: add static PE reverse-engineering analysis
+- docs: standardize README and usage guide
+- fix: make capability analysis evidence-aware
+- Merge pull request #1 from kerbymart/feat/static-pe-analysis
+
