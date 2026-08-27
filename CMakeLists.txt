@@ -82,11 +82,11 @@ add_executable(Fubi ${SOURCES})
 target_sources(Fubi PRIVATE ${NATIVE_CALL_SOURCES})
 target_link_libraries(Fubi PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 
-add_executable(FubiInvocationWorker InvocationWorkerMain.cpp InvocationEngine.cpp CallContract.cpp FunctionCatalog.cpp PrototypeProfile.cpp DbgHelpDll.cpp StaticExportCatalog.cpp PEImage.cpp SessionReferences.cpp stdafx.cpp ${NATIVE_CALL_SOURCES})
+add_executable(FubiWorker InvocationWorkerMain.cpp InvocationEngine.cpp CallContract.cpp FunctionCatalog.cpp PrototypeProfile.cpp DbgHelpDll.cpp StaticExportCatalog.cpp PEImage.cpp SessionReferences.cpp stdafx.cpp ${NATIVE_CALL_SOURCES})
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
-    set_target_properties(FubiInvocationWorker PROPERTIES OUTPUT_NAME "FubiInvocationWorker_x86")
+    set_target_properties(FubiWorker PROPERTIES OUTPUT_NAME "FubiWorker_x86")
 endif()
-target_link_libraries(FubiInvocationWorker PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
+target_link_libraries(FubiWorker PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 
 set(TEST_SOURCES TestSignatureParser.cpp)
 add_executable(tests ${TEST_SOURCES})
@@ -145,11 +145,11 @@ add_dependencies(prototype_profile_tests export_fixture)
 
 add_executable(call_contract_tests TestCallContract.cpp CallContract.cpp InvocationEngine.cpp ProcessInvocation.cpp FunctionCatalog.cpp PrototypeProfile.cpp DbgHelpDll.cpp StaticExportCatalog.cpp PEImage.cpp ${NATIVE_CALL_SOURCES})
 target_link_libraries(call_contract_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
-add_dependencies(call_contract_tests export_fixture FubiInvocationWorker)
+add_dependencies(call_contract_tests export_fixture FubiWorker)
 
 add_executable(invocation_adapter_tests TestInvocationAdapter.cpp CallContract.cpp InvocationEngine.cpp ProcessInvocation.cpp FunctionCatalog.cpp PrototypeProfile.cpp DbgHelpDll.cpp StaticExportCatalog.cpp PEImage.cpp ${NATIVE_CALL_SOURCES})
 target_link_libraries(invocation_adapter_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
-add_dependencies(invocation_adapter_tests export_fixture FubiInvocationWorker)
+add_dependencies(invocation_adapter_tests export_fixture FubiWorker)
 
 add_executable(internal_rva_tests TestInternalRva.cpp CallContract.cpp InvocationEngine.cpp FunctionCatalog.cpp PrototypeProfile.cpp StaticExportCatalog.cpp PEImage.cpp ${NATIVE_CALL_SOURCES})
 target_link_libraries(internal_rva_tests PRIVATE bcrypt fubi_boost_headers fubi_build_limits)
@@ -186,7 +186,7 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 4)
         DbgHelpDll.cpp stdafx.cpp)
     target_link_libraries(x86_abi_tests PRIVATE bcrypt DbgHelp
         fubi_boost_headers fubi_build_limits)
-    add_dependencies(x86_abi_tests x86_abi_fixture FubiInvocationWorker)
+    add_dependencies(x86_abi_tests x86_abi_fixture FubiWorker)
 endif()
 
 enable_testing()
@@ -223,7 +223,7 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 4)
         COMMAND ${CMAKE_COMMAND}
             -DTEST=$<TARGET_FILE:x86_abi_tests>
             -DFIXTURE=$<TARGET_FILE:x86_abi_fixture>
-            -DWORKER=$<TARGET_FILE:FubiInvocationWorker>
+            -DWORKER=$<TARGET_FILE:FubiWorker>
             -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyX86Abi.cmake)
 endif()
 add_test(
@@ -344,7 +344,7 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 4)
             -DX86_FIXTURE=$<TARGET_FILE:x86_fixture>
             -DTHISCALL_FIXTURE=$<TARGET_FILE:thiscall_fixture>
             -DFASTCALL_FIXTURE=$<TARGET_FILE:fastcall_fixture>
-            -DWORKER=$<TARGET_FILE:FubiInvocationWorker>
+            -DWORKER=$<TARGET_FILE:FubiWorker>
             -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
             -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyX86ConventionMatrix.cmake)
     add_test(

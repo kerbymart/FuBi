@@ -146,7 +146,7 @@ bool SelectInvocationWorker(const std::string& targetArchitecture,
     }
 #endif
     const std::string fileName = targetArchitecture == "x86"
-        ? "FubiInvocationWorker_x86.exe" : "FubiInvocationWorker.exe";
+        ? "FubiWorker_x86.exe" : "FubiWorker.exe";
     workerPath = ControllerDirectory() + fileName;
     if (!BinaryMatchesArchitecture(workerPath, targetArchitecture))
     {
