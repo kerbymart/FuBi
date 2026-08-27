@@ -50,9 +50,14 @@ bool ArgumentValue(const CallArgument& argument)
     case TypeKind::Integer: return Integer(argument.value, argument.type.width, argument.type.isSigned);
     case TypeKind::Floating: { if (argument.value.empty()) return false; char* end=nullptr; errno=0; const double value=std::strtod(argument.value.c_str(),&end); return errno != ERANGE && end != argument.value.c_str() && *end == '\0' && std::isfinite(value); }
     case TypeKind::String:
-        if (argument.type.pointerDepth != 1 || argument.type.direction != ParameterDirection::In || argument.value.empty() || argument.value.find('\0') != std::string::npos) return false;
+        if (argument.type.pointerDepth != 1 || argument.value.find('\0') != std::string::npos) return false;
+        if (argument.type.direction != ParameterDirection::In && argument.bufferSize == 0) return false;
+        if (argument.type.direction != ParameterDirection::In &&
+            (argument.type.encoding == "utf16" || argument.type.encoding == "wstr") &&
+            argument.bufferSize % 2 != 0) return false;
+        if (argument.type.direction == ParameterDirection::Out && !argument.value.empty()) return false;
         if (argument.value.size() > static_cast<size_t>(INT_MAX)) return false;
-        if (MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, argument.value.data(), static_cast<int>(argument.value.size()), nullptr, 0) <= 0) return false;
+        if (!argument.value.empty() && MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, argument.value.data(), static_cast<int>(argument.value.size()), nullptr, 0) <= 0) return false;
         return
             (argument.type.encoding == "cstr" || argument.type.encoding == "utf8" || argument.type.encoding == "utf16" || argument.type.encoding == "wstr") && argument.value.size() <= kMaximumBufferBytes;
     case TypeKind::Bytes:
