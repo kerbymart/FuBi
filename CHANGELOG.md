@@ -63,4 +63,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: require trusted internal authorization provenance
 - fix: require catalog-owned internal authorization
 - Merge pull request #20 from kerbymart/feat/6-typed-call-request
+- feat: add x64 exported invocation engine
 
