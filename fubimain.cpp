@@ -362,7 +362,7 @@ int main(int argc, char* argv[])
         if (options.json)
         {
             catalog.WriteJsonDescribe(std::cout, *record);
-            return 0;
+            return FubiExitCode::Success;
         }
         std::cout << "FuBi function description\n"
                   << "schema_version = " << FunctionCatalog::kSchemaVersion << "\n"
@@ -374,5 +374,5 @@ int main(int argc, char* argv[])
     }
     else if (options.json) catalog.WriteJson(std::cout, options.action == "list-callable");
     else catalog.WriteText(std::cout, options.action == "list-callable");
-    return 0;
+    return FubiExitCode::Success;
 }
