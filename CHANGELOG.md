@@ -61,4 +61,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: complete call result transport and policy
 - fix: enforce complete call identity contracts
 - fix: require trusted internal authorization provenance
+- fix: require catalog-owned internal authorization
 

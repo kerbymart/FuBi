@@ -530,8 +530,19 @@ bool FunctionCatalog::ApplyProfile(const PrototypeProfile& profile,
         }
     }
     if (!applyErrors.empty()) { errors.insert(errors.end(), applyErrors.begin(), applyErrors.end()); return false; }
+    candidate.trustedProfileProvenance_ = "profile:" + candidate.module_.sha256;
+    candidate.trustedProfileRvas_.clear();
+    for (const ProfileFunction& item : profile.functions)
+        candidate.trustedProfileRvas_.push_back(item.rva);
     *this = std::move(candidate);
     return true;
+}
+
+bool FunctionCatalog::HasTrustedInternalAuthorization(
+    uint32_t rva, const std::string& provenance) const
+{
+    return provenance == trustedProfileProvenance_ &&
+        std::find(trustedProfileRvas_.begin(), trustedProfileRvas_.end(), rva) != trustedProfileRvas_.end();
 }
 
 bool FunctionCatalog::ApplySymbolEvidence(
