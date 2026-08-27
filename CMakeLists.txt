@@ -174,6 +174,13 @@ add_test(
         -DFIXTURE=$<TARGET_FILE:export_fixture>
         -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyExitCodes.cmake)
 add_test(
+    NAME worker_failure_protocol
+    COMMAND ${CMAKE_COMMAND}
+        -DFUBI=$<TARGET_FILE:Fubi>
+        -DFIXTURE=$<TARGET_FILE:export_fixture>
+        -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyWorkerFailure.cmake)
+add_test(
     NAME acceptance_static_catalog
     COMMAND ${CMAKE_COMMAND}
         -DFUBI=$<TARGET_FILE:Fubi>
