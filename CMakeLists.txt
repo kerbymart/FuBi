@@ -286,6 +286,28 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 4)
             -DWORKER=$<TARGET_FILE:FubiInvocationWorker>
             -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
             -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyX86ConventionMatrix.cmake)
+    add_test(
+        NAME architecture_convention_matrix
+        COMMAND ${CMAKE_COMMAND}
+            -DTEST=$<TARGET_FILE:call_contract_tests>
+            -DFUBI=$<TARGET_FILE:Fubi>
+            -DX86_FIXTURE=$<TARGET_FILE:x86_fixture>
+            -DTHISCALL_FIXTURE=$<TARGET_FILE:thiscall_fixture>
+            -DFASTCALL_FIXTURE=$<TARGET_FILE:fastcall_fixture>
+            -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
+            -DARCHITECTURE=x86
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyArchitectureConventionMatrix.cmake)
+endif()
+
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    add_test(
+        NAME architecture_convention_matrix
+        COMMAND ${CMAKE_COMMAND}
+            -DTEST=$<TARGET_FILE:call_contract_tests>
+            -DFUBI=$<TARGET_FILE:Fubi>
+            -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
+            -DARCHITECTURE=x64
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyArchitectureConventionMatrix.cmake)
 endif()
 
 message(STATUS "Compiler version: ${CMAKE_CXX_COMPILER_VERSION}")

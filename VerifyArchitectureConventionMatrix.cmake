@@ -1,0 +1,30 @@
+if(NOT DEFINED TEST OR NOT DEFINED FUBI OR NOT DEFINED ARCHITECTURE OR
+   NOT DEFINED OUTPUT_DIR)
+    message(FATAL_ERROR "TEST, FUBI, ARCHITECTURE, and OUTPUT_DIR are required")
+endif()
+
+execute_process(COMMAND "${TEST}" "--run_test=WorkerSelection*"
+    RESULT_VARIABLE SELECTION_RESULT OUTPUT_VARIABLE SELECTION_OUTPUT
+    ERROR_VARIABLE SELECTION_ERROR WORKING_DIRECTORY "${OUTPUT_DIR}")
+if(NOT SELECTION_RESULT EQUAL 0)
+    message(FATAL_ERROR "${ARCHITECTURE} worker selection matrix failed: ${SELECTION_RESULT}: ${SELECTION_ERROR}: ${SELECTION_OUTPUT}")
+endif()
+
+if(ARCHITECTURE STREQUAL "x86")
+    foreach(required X86_FIXTURE THISCALL_FIXTURE FASTCALL_FIXTURE)
+        if(NOT DEFINED ${required})
+            message(FATAL_ERROR "${required} is required for the x86 convention matrix")
+        endif()
+    endforeach()
+    execute_process(COMMAND "${CMAKE_COMMAND}"
+        "-DFUBI=${FUBI}" "-DX86_FIXTURE=${X86_FIXTURE}"
+        "-DTHISCALL_FIXTURE=${THISCALL_FIXTURE}"
+        "-DFASTCALL_FIXTURE=${FASTCALL_FIXTURE}"
+        "-DOUTPUT_DIR=${OUTPUT_DIR}" "-P"
+        "${CMAKE_CURRENT_LIST_DIR}/VerifyX86ConventionMatrix.cmake"
+        WORKING_DIRECTORY "${OUTPUT_DIR}" RESULT_VARIABLE MATRIX_RESULT
+        OUTPUT_VARIABLE MATRIX_OUTPUT ERROR_VARIABLE MATRIX_ERROR)
+    if(NOT MATRIX_RESULT EQUAL 0)
+        message(FATAL_ERROR "x86 convention matrix failed: ${MATRIX_RESULT}: ${MATRIX_ERROR}: ${MATRIX_OUTPUT}")
+    endif()
+endif()
