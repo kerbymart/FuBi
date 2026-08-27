@@ -183,8 +183,10 @@ bool InvokeX64ExportProcess(const std::string& imagePath, const CallRequest& req
     input.close(); const bool clean = cleanup(); diagnostics.clear();
     if (!ParseCallResultJson(document, result, diagnostics))
     {
-        result = {}; result.correlationId = request.correlationId; result.status = "worker-failed"; result.diagnostics = diagnostics;
-        result.diagnostics.push_back({"malformed-result", "worker", "worker result was malformed"});
+        result = {}; result.correlationId = request.correlationId;
+        result.status = gotExitCode && IsCrashExitCode(exitCode) ? "worker-crashed" : "worker-failed";
+        result.diagnostics = diagnostics;
+        result.diagnostics.push_back({result.status == "worker-crashed" ? "worker-crashed" : "malformed-result", "worker", result.status == "worker-crashed" ? "worker exited abnormally before writing a result" : "worker result was malformed"});
         if (gotExitCode) { result.hasWorkerExitCode = true; result.workerExitCode = exitCode; }
         if (!clean) result.diagnostics.push_back({"cleanup-failed", "ipc", "unable to remove worker IPC files"});
         error = "worker result was malformed"; return false;
