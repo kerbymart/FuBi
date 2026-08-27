@@ -172,4 +172,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 ### 2026-08-28
 
 - build: align invocation worker artifact names
+- test: refresh worker failure fixture RVAs
 
