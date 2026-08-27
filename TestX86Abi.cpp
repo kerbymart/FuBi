@@ -36,7 +36,7 @@ void ConfigureMarkerPath()
 
 std::string WorkerPath()
 {
-    return DirectoryOfExecutable() + "FubiInvocationWorker_x86.exe";
+    return DirectoryOfExecutable() + "FubiWorker_x86.exe";
 }
 
 std::string WrongArchitectureWorkerPath()
@@ -45,7 +45,7 @@ std::string WrongArchitectureWorkerPath()
     const size_t marker = path.find("build-x86");
     if (marker == std::string::npos) return {};
     path.replace(marker, 9, "build");
-    return path + "FubiInvocationWorker.exe";
+    return path + "FubiWorker.exe";
 }
 
 void RemoveMarker()

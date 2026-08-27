@@ -44,7 +44,7 @@ additional evidence, but parsing a type does not make it callable.
 | Strings and byte buffers | Narrow `cstr` or `utf8`, wide `utf16` or `wstr`; `in`, `out`, and `inout` require explicit buffer rules | Narrow `cstr` or `utf8`, wide `utf16` or `wstr`; `in`, `out`, and `inout` require explicit buffer rules |
 | Buffer limit | 16 MiB per string or byte buffer | 16 MiB per string or byte buffer |
 | Pointer arguments | Input opaque references only, with no output buffer or ownership descriptor | Input opaque references only, with no output buffer or ownership descriptor |
-| Invocation worker | `FubiInvocationWorker.exe`, validated as x64 before launch | `FubiInvocationWorker_x86.exe`, validated as x86 before launch |
+| Invocation worker | `FubiWorker.exe`, validated as x64 before launch | `FubiWorker_x86.exe`, validated as x86 before launch |
 
 Profiles use the schema documented in [Prototype profiles](#prototype-profiles).
 Every call still needs a complete invocation-grade prototype and arguments
@@ -275,8 +275,8 @@ structured responses and normally exit `0` after processing the stream.
 - Process isolation limits failure propagation; it is not a security sandbox.
 
 The isolated controller validates the target architecture before launching a
-worker. x64 builds use `FubiInvocationWorker.exe`; an x86 build emits
-`FubiInvocationWorker_x86.exe`. A worker is rejected when it is unavailable or
+worker. x64 builds use `FubiWorker.exe`; an x86 build emits
+`FubiWorker_x86.exe`. A worker is rejected when it is unavailable or
 its PE bitness does not match the target.
 
 For explicit `--call` operations, `--timeout <ms>` sets the worker wait limit
