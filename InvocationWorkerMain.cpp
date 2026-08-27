@@ -117,7 +117,9 @@ int RunSession(const char* imagePath, HANDLE protocol)
             result.action = "release";
             result.correlationId = request.correlationId;
             result.resolvedModule = catalog.Module();
-            if (references.Release(request.reference))
+            const bool released = references.Release(request.reference) ||
+                references.ReleaseHandle(request.reference, catalog.Module().sha256, catalog.Module().architecture);
+            if (released)
             {
                 result.success = true;
                 result.status = "released";
@@ -186,10 +188,23 @@ int RunSession(const char* imagePath, HANDLE protocol)
                 }
                 else
                 {
-                    result.returnValue = result.prototypeUsed.returnType.kind == TypeKind::Handle
-                        ? references.IssueHandle(address, {result.prototypeUsed.returnType.width, catalog.Module().sha256, catalog.Module().architecture, result.prototypeUsed.returnType.ownership, {}})
-                        : references.Issue(address);
-                    result.issuedReferences.push_back(result.returnValue);
+                    if (result.prototypeUsed.returnType.kind == TypeKind::Handle &&
+                        result.prototypeUsed.returnType.ownership == "owned")
+                    {
+                        result.success = false;
+                        result.status = "validation-failed";
+                        result.returnValue.clear();
+                        result.diagnostics.push_back({"handle-release-unconfigured", "return_value",
+                            "owned handles require an explicitly configured release adapter"});
+                    }
+                    else
+                    {
+                        result.returnValue = result.prototypeUsed.returnType.kind == TypeKind::Handle
+                            ? references.IssueHandle(address, {result.prototypeUsed.returnType.width, catalog.Module().sha256, catalog.Module().architecture, result.prototypeUsed.returnType.ownership, {}})
+                            : references.Issue(address);
+                    }
+                    if (!result.returnValue.empty())
+                        result.issuedReferences.push_back(result.returnValue);
                 }
             }
         }
