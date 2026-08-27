@@ -406,3 +406,47 @@ BOOST_AUTO_TEST_CASE(ProcessWorkerReturnsStructuredResult)
     BOOST_CHECK_EQUAL(result.returnValue,"9");
 #endif
 }
+
+BOOST_AUTO_TEST_CASE(ProcessWorkerReportsCrashExit)
+{
+#if defined(_M_X64)
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+    CallRequest request;
+    request.correlationId = "worker-crash";
+    request.selector = "CrashProcess";
+    request.hasPrototypeOverride = true;
+    request.prototypeOverride.quality = PrototypeQuality::UserDeclared;
+    request.prototypeOverride.abi = "x64";
+    request.prototypeOverride.returnType = {TypeKind::Integer, 32, true};
+    CallResult result;
+    BOOST_CHECK(!InvokeX64ExportProcess(FixturePath(), request, catalog, result, error));
+    BOOST_CHECK_EQUAL(result.status, "worker-crashed");
+    BOOST_CHECK(result.hasWorkerExitCode);
+    BOOST_CHECK_NE(result.workerExitCode, 0U);
+    BOOST_CHECK(std::any_of(result.diagnostics.begin(), result.diagnostics.end(), [](const CallDiagnostic& item) { return item.code == "worker-crashed"; }));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(ProcessWorkerReportsTimeoutAndExit)
+{
+#if defined(_M_X64)
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+    CallRequest request;
+    request.correlationId = "worker-timeout";
+    request.selector = "HangProcess";
+    request.timeoutMs = 100;
+    request.hasPrototypeOverride = true;
+    request.prototypeOverride.quality = PrototypeQuality::UserDeclared;
+    request.prototypeOverride.abi = "x64";
+    request.prototypeOverride.returnType = {TypeKind::Integer, 32, true};
+    CallResult result;
+    BOOST_CHECK(!InvokeX64ExportProcess(FixturePath(), request, catalog, result, error));
+    BOOST_CHECK_EQUAL(result.status, "timed-out");
+    BOOST_CHECK(result.hasWorkerExitCode);
+    BOOST_CHECK_EQUAL(result.workerExitCode, static_cast<uint32_t>(ERROR_TIMEOUT));
+#endif
+}
