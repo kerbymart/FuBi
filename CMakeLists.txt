@@ -71,6 +71,10 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
 else()
     set(NATIVE_CALL_SOURCES)
 endif()
+set(FUBI_TEST_ARCHITECTURE x86)
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    set(FUBI_TEST_ARCHITECTURE x64)
+endif()
 add_executable(Fubi ${SOURCES})
 target_sources(Fubi PRIVATE ${NATIVE_CALL_SOURCES})
 target_link_libraries(Fubi PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
@@ -179,6 +183,7 @@ add_test(
         -DFUBI=$<TARGET_FILE:Fubi>
         -DFIXTURE=$<TARGET_FILE:export_fixture>
         -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
+        -DARCHITECTURE=${FUBI_TEST_ARCHITECTURE}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyWorkerFailure.cmake)
 add_test(
     NAME acceptance_static_catalog

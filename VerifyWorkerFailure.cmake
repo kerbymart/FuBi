@@ -1,11 +1,15 @@
 if(NOT DEFINED FUBI OR NOT DEFINED FIXTURE OR NOT DEFINED OUTPUT_DIR)
     message(FATAL_ERROR "FUBI, FIXTURE, and OUTPUT_DIR are required")
 endif()
+if(NOT DEFINED ARCHITECTURE OR NOT ARCHITECTURE STREQUAL "x64")
+    message(STATUS "Worker failure protocol skipped: controlled RVA profile is x64-only")
+    return()
+endif()
 
 file(SHA256 "${FIXTURE}" FIXTURE_HASH)
 set(PROFILE "${OUTPUT_DIR}/worker-failure-profile.json")
 file(WRITE "${PROFILE}"
-    "{\"schema_version\":1,\"module\":{\"sha256\":\"${FIXTURE_HASH}\",\"architecture\":\"x64\"},\"functions\":["
+    "{\"schema_version\":1,\"module\":{\"sha256\":\"${FIXTURE_HASH}\",\"architecture\":\"${ARCHITECTURE}\"},\"functions\":["
     "{\"rva\":4096,\"selector\":\"NamedExport\",\"abi\":\"x64\",\"return_type\":{\"kind\":\"integer\",\"width\":32},\"parameters\":[],\"variadic\":false},"
     "{\"rva\":4352,\"selector\":\"CrashProcess\",\"abi\":\"x64\",\"return_type\":{\"kind\":\"integer\",\"width\":32},\"parameters\":[],\"variadic\":false},"
     "{\"rva\":4400,\"selector\":\"HangProcess\",\"abi\":\"x64\",\"return_type\":{\"kind\":\"integer\",\"width\":32},\"parameters\":[],\"variadic\":false}]}")
