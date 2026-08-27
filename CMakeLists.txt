@@ -65,8 +65,10 @@ set(SOURCES
     WindowsPatternCatalog.cpp
     fubimain.cpp
     stdafx.cpp)
-if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+if(MSVC)
     enable_language(ASM_MASM)
+endif()
+if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     set(NATIVE_CALL_SOURCES NativeCall_x64.asm)
 else()
     set(NATIVE_CALL_SOURCES)
@@ -95,6 +97,16 @@ set_target_properties(export_fixture PROPERTIES LINK_FLAGS "/DEBUG:FULL")
 add_executable(export_tests TestExports.cpp SysExports.cpp DbgHelpDll.cpp PEImage.cpp FunctionCatalog.cpp PrototypeProfile.cpp StaticExportCatalog.cpp stdafx.cpp)
 target_link_libraries(export_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 add_dependencies(export_tests export_fixture)
+
+if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+    add_library(x86_register_fixture SHARED
+        X86RegisterSentinel.asm X86RegisterFixture.cpp)
+    set_target_properties(x86_register_fixture PROPERTIES
+        OUTPUT_NAME "x86_register_fixture")
+    target_link_options(x86_register_fixture PRIVATE
+        "/EXPORT:X86CdeclRegisterSentinel=X86CdeclRegisterSentinel"
+        "/EXPORT:X86StdcallRegisterSentinel=X86StdcallRegisterSentinel")
+endif()
 
 set(STATIC_FIXTURE_SOURCES TestStaticFixture.cpp TestStaticFixture.rc)
 if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -232,5 +244,14 @@ add_test(
         -DACCEPTANCE_FILE=${FUBI_ACCEPTANCE_BINARY}
         -DSHA256=${FUBI_ACCEPTANCE_SHA256}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyAcceptance.cmake)
+if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+    add_test(
+        NAME x86_nonvolatile_registers
+        COMMAND ${CMAKE_COMMAND}
+            -DFUBI=$<TARGET_FILE:Fubi>
+            -DFIXTURE=$<TARGET_FILE:x86_register_fixture>
+            -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyX86NonvolatileRegisters.cmake)
+endif()
 
 message(STATUS "Compiler version: ${CMAKE_CXX_COMPILER_VERSION}")
