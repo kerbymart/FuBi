@@ -31,6 +31,16 @@ extern "C" unsigned long long ReturnQword()
     return 0xFEDCBA9876543210ULL;
 }
 
+extern "C" float AddFloats(float left, float right)
+{
+    return left + right;
+}
+
+extern "C" double MultiplyDoubles(double left, double right)
+{
+    return left * right;
+}
+
 extern "C" int* PointerEcho(int* value)
 {
     return value;
