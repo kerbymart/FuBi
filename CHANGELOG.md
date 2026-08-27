@@ -94,4 +94,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - Merge pull request #26 from kerbymart/feat/12-windows-call-pattern-catalog
 - test: add opt-in hash-pinned acceptance harness
 - Merge pull request #27 from kerbymart/test/13-t1pidd-catalog-acceptance
+- feat: extract bounded PDB type metadata
 
