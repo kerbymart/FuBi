@@ -3,3 +3,4 @@ EXPORTS
     NamedExport @1
     OrdinalOnly=NamedExport @2 NONAME
     ForwardedSleep=KERNEL32.Sleep @3
+    AliasNamedExport=NamedExport @4
