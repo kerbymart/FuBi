@@ -30,6 +30,9 @@ binding, and typed invocation.
 
 FuBi never downloads build dependencies. By default CMake uses the local
 `boost_1_87_0` directory. Set `FUBI_BOOST_ROOT` when the headers live elsewhere.
+Static image reads are capped at 64 MiB by default; set
+`FUBI_MAX_IMAGE_BYTES` at CMake configuration time to choose a different hard
+limit.
 
 ## Build
 
