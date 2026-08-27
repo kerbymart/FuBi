@@ -90,8 +90,8 @@ bool Recover(const char* name, SymbolPrototypeEvidence& result)
     // Undecoration recovers a display signature, but does not prove the PDB's
     // type graph. It must remain display-only until SymGetTypeInfo extraction
     // supplies an invocation-grade declaration.
-    result.prototype.source = "dbghelp-symgettypeinfo";
-    result.prototype.quality = PrototypeQuality::ExactSymbol;
+    result.prototype.source = "dbghelp-type-metadata-display";
+    result.prototype.quality = PrototypeQuality::Inferred;
     return true;
 }
 
