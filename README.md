@@ -166,6 +166,50 @@ forwarder = <none>
 
 ## Prototype profiles
 
+## Export and signature evidence
+
+The static catalog keeps export identity separate from callable-prototype
+evidence. Use `--list` for the complete catalog or `--describe` for one
+selected record:
+
+```powershell
+.\build\Release\Fubi.exe target.dll --list
+.\build\Release\Fubi.exe target.dll --list --json
+.\build\Release\Fubi.exe target.dll --describe Example --json
+.\build\Release\Fubi.exe target.dll --list --symbols --json
+```
+
+Each function record retains the canonical RVA and, when present, the PE
+export ordinal, every exported name, and all aliases that resolve to that
+record. An ordinal-only export is represented with an empty name list rather
+than an invented name. Forwarded exports retain their forwarder string and
+are reported as `forwarded`; FuBi does not treat a forwarder as a local code
+address. Records also retain address and boundary evidence such as
+`pe-export`, `exception-directory`, and `guard-cf`, plus the executable-state
+check used by the callability decision.
+
+Text output exposes `export_names`, `ordinals`, `aliases`, `forwarders`,
+`address_sources`, `boundary_sources`, `prototype_source`,
+`prototype_quality`, `callability`, and its stable `reason`. Versioned JSON
+uses the corresponding `export_names`, `export_ordinals`, `aliases`,
+`forwarders`, `address_sources`, `boundary_sources`, `prototype`,
+`callability`, and `reason` fields. The arrays are normalized and emitted in
+deterministic order, so aliases and evidence can be compared by value.
+
+When `--symbols` is supplied, the project-owned DbgHelp adapter may add
+signature evidence after validating the module identity and matching PDB
+CodeView identity. A decorated symbol can be undecorated for display, but
+that recovered declaration is `inferred` and remains display-only. Only an
+exact PDB type-graph declaration or an explicit user profile is
+`invocation-grade`. If evidence sources disagree, the catalog records a
+prototype conflict and does not silently select one. Unknown or partial
+signatures remain unknown in the callability result.
+
+Cataloging, describing, and symbol-evidence collection read bounded file and
+metadata bytes only. They do not load the target DLL or execute `DllMain`.
+An export name, ordinal, RVA, or recovered display signature is evidence of
+identity, not permission to invoke the target.
+
 Use `--profile <file>` to add an explicit, invocation-grade prototype to a
 catalog entry. Profile schema version `1` is a JSON object with exactly these
 top-level fields:
