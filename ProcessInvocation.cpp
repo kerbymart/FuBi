@@ -345,6 +345,7 @@ bool PersistentWorkerSession::Start(std::string& error)
     SECURITY_ATTRIBUTES security = {sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
     HANDLE childInputRead = nullptr;
     HANDLE childOutputWrite = nullptr;
+    HANDLE childErrorWrite = nullptr;
     HANDLE parentInputWrite = nullptr;
     HANDLE parentOutputRead = nullptr;
     if (!CreatePipe(&childInputRead, &parentInputWrite, &security, 0) ||
@@ -359,6 +360,16 @@ bool PersistentWorkerSession::Start(std::string& error)
     }
     SetHandleInformation(parentInputWrite, HANDLE_FLAG_INHERIT, 0);
     SetHandleInformation(parentOutputRead, HANDLE_FLAG_INHERIT, 0);
+    childErrorWrite = CreateFileA("NUL", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+        &security, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (childErrorWrite == INVALID_HANDLE_VALUE)
+    {
+        childErrorWrite = nullptr;
+        CloseHandle(childInputRead); CloseHandle(parentInputWrite);
+        CloseHandle(parentOutputRead); CloseHandle(childOutputWrite);
+        error = "unable to create persistent worker diagnostic sink";
+        return false;
+    }
 
     const std::string command = Quote(workerPath) + " " + Quote(imagePath_) + " --session";
     std::vector<char> commandLine(command.begin(), command.end());
@@ -368,12 +379,13 @@ bool PersistentWorkerSession::Start(std::string& error)
     startup.dwFlags = STARTF_USESTDHANDLES;
     startup.hStdInput = childInputRead;
     startup.hStdOutput = childOutputWrite;
-    startup.hStdError = childOutputWrite;
+    startup.hStdError = childErrorWrite;
     PROCESS_INFORMATION process = {};
     const BOOL created = CreateProcessA(nullptr, commandLine.data(), nullptr, nullptr,
         TRUE, CREATE_NO_WINDOW, nullptr, nullptr, &startup, &process);
     CloseHandle(childInputRead);
     CloseHandle(childOutputWrite);
+    CloseHandle(childErrorWrite);
     if (!created)
     {
         CloseHandle(parentInputWrite);

@@ -1,5 +1,5 @@
-if(NOT DEFINED FUBI OR NOT DEFINED FIXTURE OR NOT DEFINED OUTPUT_DIR)
-    message(FATAL_ERROR "FUBI, FIXTURE, and OUTPUT_DIR are required")
+if(NOT DEFINED FUBI OR NOT DEFINED FIXTURE OR NOT DEFINED NOISE_FIXTURE OR NOT DEFINED OUTPUT_DIR)
+    message(FATAL_ERROR "FUBI, FIXTURE, NOISE_FIXTURE, and OUTPUT_DIR are required")
 endif()
 
 set(INPUT_FILE "${OUTPUT_DIR}/persistent-session-input.txt")
@@ -73,4 +73,27 @@ endif()
 string(FIND "${OUTPUT}" "opaque:0x" PUBLIC_ADDRESS_POSITION)
 if(NOT PUBLIC_ADDRESS_POSITION LESS 0)
     message(FATAL_ERROR "numeric pointer leaked into persistent session output: ${OUTPUT}")
+endif()
+
+set(NOISE_INPUT "${OUTPUT_DIR}/persistent-output-input.txt")
+set(NOISE_OUTPUT "${OUTPUT_DIR}/persistent-output-output.txt")
+file(WRITE "${NOISE_INPUT}"
+    "{\"schema_version\":1,\"action\":\"hello\",\"correlation_id\":\"noise-hello\"}\n"
+    "{\"schema_version\":1,\"action\":\"call\",\"correlation_id\":\"noise-call\",\"selector\":\"EmitStdout\",\"has_prototype_override\":true,\"prototype_override\":{\"abi\":\"x64\",\"quality\":\"user-declared\",\"return_type\":{\"kind\":\"integer\",\"width\":32},\"parameters\":[]},\"arguments\":[]}\n"
+    "{\"schema_version\":1,\"action\":\"quit\",\"correlation_id\":\"noise-quit\"}\n")
+execute_process(
+    COMMAND powershell -NoProfile -NonInteractive -Command
+        "$process = Start-Process -FilePath '${FUBI}' -ArgumentList @('${NOISE_FIXTURE}','--jsonl') -RedirectStandardInput '${NOISE_INPUT}' -RedirectStandardOutput '${NOISE_OUTPUT}' -NoNewWindow -PassThru -Wait; exit $process.ExitCode"
+    OUTPUT_VARIABLE NOISE_PROCESS_OUTPUT ERROR_VARIABLE NOISE_ERRORS RESULT_VARIABLE NOISE_RESULT)
+if(EXISTS "${NOISE_OUTPUT}")
+    file(READ "${NOISE_OUTPUT}" NOISE_PROTOCOL)
+endif()
+file(REMOVE "${NOISE_INPUT}" "${NOISE_OUTPUT}")
+if(NOT NOISE_RESULT EQUAL 0)
+    message(FATAL_ERROR "persistent output isolation run failed with ${NOISE_RESULT}: ${NOISE_ERRORS}")
+endif()
+string(FIND "${NOISE_PROTOCOL}" "\"correlation_id\":\"noise-call\"" NOISE_CALL_POSITION)
+string(FIND "${NOISE_PROTOCOL}" "target-output-must-not-reach-protocol" NOISE_LEAK_POSITION)
+if(NOISE_CALL_POSITION LESS 0 OR NOT NOISE_LEAK_POSITION LESS 0)
+    message(FATAL_ERROR "target stdout corrupted or leaked into JSONL protocol: ${NOISE_PROTOCOL}")
 endif()

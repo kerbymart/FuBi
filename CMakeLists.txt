@@ -95,6 +95,8 @@ target_link_libraries(tests PRIVATE fubi_boost_headers)
 add_library(export_fixture SHARED TestExportsFixture.cpp TestExportsFixture.def)
 target_compile_options(export_fixture PRIVATE /Od /Zi)
 set_target_properties(export_fixture PROPERTIES LINK_FLAGS "/DEBUG:FULL")
+add_library(persistent_output_fixture SHARED TestPersistentOutputFixture.cpp TestPersistentOutputFixture.def)
+target_compile_options(persistent_output_fixture PRIVATE /Od)
 add_executable(export_tests TestExports.cpp SysExports.cpp DbgHelpDll.cpp PEImage.cpp FunctionCatalog.cpp PrototypeProfile.cpp StaticExportCatalog.cpp stdafx.cpp)
 target_link_libraries(export_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 add_dependencies(export_tests export_fixture)
@@ -239,6 +241,7 @@ add_test(
     COMMAND ${CMAKE_COMMAND}
         -DFUBI=$<TARGET_FILE:Fubi>
         -DFIXTURE=$<TARGET_FILE:export_fixture>
+        -DNOISE_FIXTURE=$<TARGET_FILE:persistent_output_fixture>
         -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
         -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyPersistentSessionReferences.cmake)
 add_test(

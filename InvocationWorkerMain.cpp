@@ -5,7 +5,10 @@
 #include "SessionReferences.h"
 
 #include <fstream>
+#include <cstdio>
+#include <fcntl.h>
 #include <iostream>
+#include <io.h>
 #include <sstream>
 #include <windows.h>
 
@@ -16,6 +19,15 @@ class TargetOutputSilencer final
 public:
     TargetOutputSilencer()
     {
+        std::fflush(nullptr);
+        savedOutputFd_ = _dup(_fileno(stdout));
+        savedErrorFd_ = _dup(_fileno(stderr));
+        _sopen_s(&sinkFd_, "NUL", _O_WRONLY | _O_BINARY, _SH_DENYNO, 0);
+        if (savedOutputFd_ >= 0 && savedErrorFd_ >= 0 && sinkFd_ >= 0)
+        {
+            _dup2(sinkFd_, _fileno(stdout));
+            _dup2(sinkFd_, _fileno(stderr));
+        }
         sink_ = CreateFileA("NUL", GENERIC_WRITE,
             FILE_SHARE_READ | FILE_SHARE_WRITE, nullptr, OPEN_EXISTING,
             FILE_ATTRIBUTE_NORMAL, nullptr);
@@ -28,6 +40,12 @@ public:
 
     ~TargetOutputSilencer()
     {
+        std::fflush(nullptr);
+        if (savedOutputFd_ >= 0) _dup2(savedOutputFd_, _fileno(stdout));
+        if (savedErrorFd_ >= 0) _dup2(savedErrorFd_, _fileno(stderr));
+        if (savedOutputFd_ >= 0) _close(savedOutputFd_);
+        if (savedErrorFd_ >= 0) _close(savedErrorFd_);
+        if (sinkFd_ >= 0) _close(sinkFd_);
         if (sink_ == nullptr) return;
         SetStdHandle(STD_OUTPUT_HANDLE, previousOutput_);
         SetStdHandle(STD_ERROR_HANDLE, previousError_);
@@ -38,6 +56,9 @@ private:
     HANDLE sink_ = nullptr;
     HANDLE previousOutput_ = nullptr;
     HANDLE previousError_ = nullptr;
+    int savedOutputFd_ = -1;
+    int savedErrorFd_ = -1;
+    int sinkFd_ = -1;
 };
 
 bool ParseWorkerPointer(const std::string& text, uint64_t& value)
