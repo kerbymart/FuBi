@@ -320,7 +320,8 @@ Evidence: Opt-in path, pinned identity, export/candidate checks, static describe
 - [ ] M11-05 Record PDB identity/path and UMDF 2.15 bind metadata with 257 slots.
 - [ ] M11-06 Mark plain exports `requires-prototype` and `FxDriverEntryUm`
   `framework-managed` unless approved evidence changes their status.
-- [ ] M11-07 Prove `--list`, `--describe`, and `--inspect` never load the target.
+- [x] M11-07 Prove `--list`, `--describe`, and `--inspect` never load the target.
+  See issue [#144](https://github.com/kerbymart/FuBi/issues/144).
 - [x] M11-08 Provide a profile skeleton with no unverified prototype and do not
   add an automated t1pidd call test until its exact contract and safe test
   environment are known.
