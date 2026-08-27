@@ -151,4 +151,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - test: verify x86 nonvolatile register preservation (#94)
 - feat: add x86 thiscall invocation support (#96)
 - feat: add x86 fastcall invocation coverage (#98)
+- test: add x86 convention matrix verification (#100)
 
