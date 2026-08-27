@@ -20,6 +20,25 @@ namespace
 {
 constexpr uint32_t kMaximumRuntimeFunctions = 1'000'000;
 constexpr uint32_t kMaximumGuardFunctions = 1'000'000;
+constexpr DWORD kMaximumCanonicalPath = 1u << 20;
+
+bool CanonicalPath(const std::string& path, std::string& result)
+{
+    DWORD capacity = MAX_PATH;
+    for (;;)
+    {
+        std::vector<char> buffer(capacity, '\0');
+        const DWORD length = GetFullPathNameA(path.c_str(), capacity, buffer.data(), nullptr);
+        if (length == 0) return false;
+        if (length < capacity - 1)
+        {
+            result.assign(buffer.data(), length);
+            return true;
+        }
+        if (length >= kMaximumCanonicalPath || length == UINT32_MAX) return false;
+        capacity = length + 1;
+    }
+}
 
 std::string Hex(const uint8_t* bytes, size_t count)
 {
@@ -246,11 +265,11 @@ bool FunctionCatalog::Load(const std::string& path, FunctionCatalog& catalog, st
     std::string hash;
     if (!Sha256(image.Bytes(), hash)) { error = "Unable to calculate module SHA-256"; return false; }
     FunctionCatalog candidate;
-    char canonicalPath[MAX_PATH] = {};
-    if (GetFullPathNameA(image.SourceName().c_str(), MAX_PATH, canonicalPath, nullptr) != 0)
-        candidate.module_.canonicalPath = canonicalPath;
-    else
-        candidate.module_.canonicalPath = image.SourceName();
+    if (!CanonicalPath(image.SourceName(), candidate.module_.canonicalPath))
+    {
+        error = "Unable to canonicalize module path";
+        return false;
+    }
     candidate.module_.sha256 = hash;
     candidate.module_.architecture = Architecture(image);
     candidate.module_.timestamp = image.Headers().timestamp;
@@ -300,7 +319,7 @@ void FunctionCatalog::WriteText(std::ostream& output, bool callableOnly) const
 {
     size_t exportCount = 0;
     for (const FunctionRecord& record : functions_)
-        if (std::find(record.addressSources.begin(), record.addressSources.end(), "pe-export") != record.addressSources.end()) ++exportCount;
+        exportCount += record.exportOrdinals.size();
     output << "FuBi function catalog\nversion = " << kSchemaVersion << "\n"
         << "module = " << module_.canonicalPath << "\nsha256 = " << module_.sha256
         << "\narchitecture = " << module_.architecture << "\nexport_count = " << exportCount << "\nfunction_count = ";
