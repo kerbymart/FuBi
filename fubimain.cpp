@@ -4,6 +4,7 @@
 #include "PrototypeProfile.h"
 #include "DbgHelpDll.h"
 #include "CallContract.h"
+#include "InvocationEngine.h"
 
 #include <fstream>
 #include <iostream>
@@ -172,8 +173,21 @@ int main(int argc, char* argv[])
         result.success = false;
         result.status = valid ? "not-executed" : "validation-failed";
         result.diagnostics = diagnostics;
-        if (options.json) WriteCallResultJson(std::cout, result); else for (const CallDiagnostic& item : diagnostics) std::cerr << item.code << " at " << item.path << ": " << item.message << "\n";
-        return valid ? 9 : 8;
+        if (!valid)
+        {
+            if (options.json) WriteCallResultJson(std::cout, result); else for (const CallDiagnostic& item : diagnostics) std::cerr << item.code << " at " << item.path << ": " << item.message << "\n";
+            return 8;
+        }
+        std::string invocationError;
+        if (!InvokeX64Export(options.targetPath, request, catalog, result, invocationError))
+        {
+            if (!invocationError.empty()) result.diagnostics.push_back({"invocation-failed", "call", invocationError});
+            if (options.json) WriteCallResultJson(std::cout, result);
+            else for (const CallDiagnostic& item : result.diagnostics) std::cerr << item.code << " at " << item.path << ": " << item.message << "\n";
+            return 9;
+        }
+        if (options.json) WriteCallResultJson(std::cout, result);
+        return 0;
     }
     if (options.action == "describe")
     {
