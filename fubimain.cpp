@@ -34,7 +34,8 @@ void WriteJsonString(std::ostream& output, const std::string& value)
 
 void WriteSessionStatus(std::ostream& output, const std::string& action,
     const std::string& correlationId, const FunctionCatalog& catalog,
-    bool success, const std::string& status, const std::vector<CallDiagnostic>& diagnostics = {})
+    bool success, const std::string& status, const std::vector<CallDiagnostic>& diagnostics = {},
+    const std::vector<std::string>& issued = {}, const std::string& released = {})
 {
     CallResult response;
     response.action = action;
@@ -43,6 +44,8 @@ void WriteSessionStatus(std::ostream& output, const std::string& action,
     response.success = success;
     response.status = status;
     response.diagnostics = diagnostics;
+    response.issuedReferences = issued;
+    response.releasedReference = released;
     WriteCallResultJson(output, response);
     output << '\n';
 }
@@ -198,6 +201,7 @@ int main(int argc, char* argv[])
     }
     if (options.jsonl)
     {
+        bool negotiated = false;
         std::string line;
         while (std::getline(std::cin, line))
         {
@@ -212,8 +216,15 @@ int main(int argc, char* argv[])
                     correlationId, catalog, false, "validation-failed", diagnostics);
                 continue;
             }
+            if (request.action != "hello" && !negotiated)
+            {
+                WriteSessionStatus(std::cout, request.action, correlationId, catalog, false,
+                    "validation-failed", {{"session-not-negotiated", "action", "hello is required before session actions"}});
+                continue;
+            }
             if (request.action == "hello")
             {
+                negotiated = true;
                 WriteSessionStatus(std::cout, "hello", correlationId, catalog, true, "ready");
             }
             else if (request.action == "list")
@@ -226,7 +237,8 @@ int main(int argc, char* argv[])
             }
             else if (request.action == "release")
             {
-                WriteSessionStatus(std::cout, "release", correlationId, catalog, true, "released");
+                WriteSessionStatus(std::cout, "release", correlationId, catalog, false,
+                    "validation-failed", {{"reference-not-found", "reference", "reference is unknown or already released"}});
             }
             else if (request.action == "quit")
             {
