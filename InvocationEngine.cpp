@@ -340,6 +340,7 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
 #if defined(_M_IX86)
     if (prototype.abi != "__cdecl" && prototype.abi != "__stdcall" && prototype.abi != "__thiscall" && prototype.abi != "__fastcall") { result={}; result.correlationId=request.correlationId; result.status="validation-failed"; result.diagnostics.push_back({"unsupported-abi","prototype.abi","x86 adapter supports __cdecl, __stdcall, __thiscall, and __fastcall"}); error="unsupported x86 calling convention"; return false; }
     if (prototype.abi == "__thiscall" && request.arguments.empty()) { result={}; result.correlationId=request.correlationId; result.status="validation-failed"; result.diagnostics.push_back({"missing-object-pointer","arguments[0]","__thiscall requires the object pointer as the first argument"}); error="__thiscall requires an object pointer"; return false; }
+    if (prototype.returnType.kind == TypeKind::Floating) { result={}; result.correlationId=request.correlationId; result.status="validation-failed"; result.diagnostics.push_back({"unsupported-return-type","prototype.return_type","x86 adapter supports integer, bool, and pointer returns only"}); error="unsupported x86 return type"; return false; }
 #endif
     if (prototype.returnType.kind == TypeKind::Structure || prototype.returnType.kind == TypeKind::Void)
     { result={}; result.correlationId=request.correlationId; result.status="validation-failed"; result.diagnostics.push_back({"unsupported-return-type","prototype.return_type","x64 adapter supports scalar integer, bool, and pointer returns only"}); error="unsupported x64 return type"; return false; }
@@ -456,7 +457,13 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     delete state;
     retainedTimeoutWorkers.store(0, std::memory_order_release);
     if (exceptionCode != 0) { FreeLibrary(module); result={}; result.correlationId=request.correlationId; result.status="crashed"; result.diagnostics.push_back({"target-exception","call","target raised a structured exception"}); error="target raised a structured exception"; return false; }
-    FreeLibrary(module); result={}; result.correlationId=request.correlationId; result.success=true; result.status="completed"; result.returnValue=prototype.returnType.kind == TypeKind::Floating ? FloatingReturnValue(floatingReturned, prototype.returnType) : ReturnValue(returned,prototype.returnType); result.returnType=prototype.returnType; result.prototypeUsed=prototype; result.resolvedModule=catalog.Module();
+    FreeLibrary(module); result={}; result.correlationId=request.correlationId; result.success=true; result.status="completed";
+#if defined(_M_X64)
+    result.returnValue=prototype.returnType.kind == TypeKind::Floating ? FloatingReturnValue(floatingReturned, prototype.returnType) : ReturnValue(returned,prototype.returnType);
+#else
+    result.returnValue=ReturnValue(returned,prototype.returnType);
+#endif
+    result.returnType=prototype.returnType; result.prototypeUsed=prototype; result.resolvedModule=catalog.Module();
     result.outputValues = std::move(outputValues);
     return true;
 #endif
