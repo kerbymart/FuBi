@@ -46,4 +46,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - Merge pull request #17 from kerbymart/refactor/4-function-catalog-core
 - feat: add hash-pinned prototype profiles
 - fix: harden prototype profile integration
+- fix: validate profile identities and type shapes
 

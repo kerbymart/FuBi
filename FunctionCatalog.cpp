@@ -103,11 +103,13 @@ void ReadPdbIdentity(const PEImage& image, ModuleIdentity& module)
     for (uint32_t index = 0; index < count; ++index)
     {
         IMAGE_DEBUG_DIRECTORY debug = {};
-        const uint64_t rva = static_cast<uint64_t>(directory->rva) +
-            static_cast<uint64_t>(index) * sizeof(debug);
+        const uint64_t offset = static_cast<uint64_t>(index) * sizeof(debug);
+        if (offset > UINT32_MAX - directory->rva) return;
+        const uint64_t rva = static_cast<uint64_t>(directory->rva) + offset;
         if (rva > UINT32_MAX || !image.ReadRva(static_cast<uint32_t>(rva), debug)) return;
         if (debug.Type != IMAGE_DEBUG_TYPE_CODEVIEW || debug.AddressOfRawData == 0 || debug.SizeOfData < 24) continue;
         uint32_t signature = 0; GUID guid = {}; uint32_t age = 0;
+        if (debug.AddressOfRawData > UINT32_MAX - sizeof(signature) - sizeof(guid)) continue;
         if (!image.ReadRva(debug.AddressOfRawData, signature) || signature != 0x53445352 ||
             !image.ReadRva(debug.AddressOfRawData + sizeof(signature), guid) ||
             !image.ReadRva(debug.AddressOfRawData + sizeof(signature) + sizeof(guid), age)) continue;
@@ -115,7 +117,9 @@ void ReadPdbIdentity(const PEImage& image, ModuleIdentity& module)
         text << std::hex << std::setfill('0') << std::uppercase
             << std::setw(8) << guid.Data1 << '-' << std::setw(4) << guid.Data2 << '-'
             << std::setw(4) << guid.Data3 << '-';
-        for (uint8_t byte : guid.Data4) text << std::setw(2) << static_cast<unsigned>(byte);
+        for (size_t byte = 0; byte < 2; ++byte) text << std::setw(2) << static_cast<unsigned>(guid.Data4[byte]);
+        text << '-';
+        for (size_t byte = 2; byte < 8; ++byte) text << std::setw(2) << static_cast<unsigned>(guid.Data4[byte]);
         module.pdbGuid = text.str(); module.pdbAge = age; return;
     }
 }
