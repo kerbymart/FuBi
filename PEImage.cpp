@@ -58,10 +58,10 @@ bool PEImage::Load(
     }
 
     const std::streamoff length = input.tellg();
-    if (length < 0 || static_cast<uint64_t>(length) >
-            static_cast<uint64_t>(std::numeric_limits<size_t>::max()))
+    if (length < 0 || static_cast<uint64_t>(length) > kMaximumImageBytes ||
+        static_cast<uint64_t>(length) > static_cast<uint64_t>(std::numeric_limits<size_t>::max()))
     {
-        error = "PE file size is unsupported";
+        error = "PE file exceeds the configured maximum image size";
         return false;
     }
 
@@ -105,7 +105,9 @@ bool PEImage::ReadFile(uint64_t offset, void* destination, size_t size) const
 bool PEImage::ReadRva(uint32_t rva, void* destination, size_t size) const
 {
     const std::optional<uint32_t> offset = RvaToFileOffset(rva);
-    return offset.has_value() && ReadFile(*offset, destination, size);
+    const std::optional<size_t> available = MappedRvaLength(rva);
+    return offset.has_value() && available.has_value() && size <= *available &&
+        ReadFile(*offset, destination, size);
 }
 
 std::optional<uint32_t> PEImage::RvaToFileOffset(uint32_t rva) const
@@ -151,12 +153,38 @@ const PeSection* PEImage::FindSection(uint32_t rva) const
     return nullptr;
 }
 
+std::optional<size_t> PEImage::MappedRvaLength(uint32_t rva) const
+{
+    if (rva < headers_.headersSize && rva < bytes_.size())
+    {
+        return std::min<size_t>(headers_.headersSize, bytes_.size()) - rva;
+    }
+
+    for (const PeSection& section : sections_)
+    {
+        const uint64_t mappedSize = std::max(section.virtualSize, section.rawSize);
+        const uint64_t sectionEnd = static_cast<uint64_t>(section.rva) + mappedSize;
+        if (rva < section.rva || rva >= sectionEnd) continue;
+
+        const uint64_t delta = static_cast<uint64_t>(rva) - section.rva;
+        if (delta >= section.rawSize) return std::nullopt;
+
+        const uint64_t offset = static_cast<uint64_t>(section.rawOffset) + delta;
+        if (offset >= bytes_.size()) return std::nullopt;
+        return std::min<size_t>(section.rawSize - static_cast<size_t>(delta),
+            bytes_.size() - static_cast<size_t>(offset));
+    }
+    return std::nullopt;
+}
+
 bool PEImage::ReadCStringAtRva(
     uint32_t rva, std::string& value, size_t maximumLength) const
 {
     const std::optional<uint32_t> offset = RvaToFileOffset(rva);
-    if (!offset.has_value()) return false;
-	return ReadCStringAtFileOffset(*offset, value, maximumLength);
+    const std::optional<size_t> available = MappedRvaLength(rva);
+    if (!offset.has_value() || !available.has_value()) return false;
+
+    return ReadCStringAtFileOffset(*offset, value, std::min(maximumLength, *available));
 }
 
 bool PEImage::ReadCStringAtFileOffset(
