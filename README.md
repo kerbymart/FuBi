@@ -27,6 +27,49 @@ by two. Returned string buffers are converted to deterministic UTF-8 text up
 to the first null terminator. FuBi does not automatically free DLL-owned
 memory or follow opaque pointers.
 
+## Capability matrix
+
+The table describes the implemented invocation boundary. A profile can parse
+additional evidence, but parsing a type does not make it callable.
+
+| Capability | x64 | x86 |
+| --- | --- | --- |
+| Supported ABI names | `x64`, `win64` | `__cdecl`, `__stdcall`, `__thiscall`, `__fastcall` |
+| Integer widths | 8, 16, 32, 64 bits | 8, 16, 32, 64 bits |
+| Scalar arguments | Boolean, integer, floating point, and pointer values | Boolean, integer, floating point, and pointer values |
+| Scalar returns | Integer, Boolean, and floating point values; pointer returns are rejected by the worker boundary | Integer, Boolean, and floating point values; pointer returns are rejected by the worker boundary |
+| Structure and `void` returns | Rejected by the native adapter | Rejected by the native adapter |
+| Structures and aggregates as arguments | Rejected by the native adapter | Rejected by the native adapter |
+| Variadic prototypes | Not supported as an invocation contract | Not supported as an invocation contract |
+| Strings and byte buffers | Narrow `cstr` or `utf8`, wide `utf16` or `wstr`; `in`, `out`, and `inout` require explicit buffer rules | Narrow `cstr` or `utf8`, wide `utf16` or `wstr`; `in`, `out`, and `inout` require explicit buffer rules |
+| Buffer limit | 16 MiB per string or byte buffer | 16 MiB per string or byte buffer |
+| Pointer arguments | Input opaque references only, with no output buffer or ownership descriptor | Input opaque references only, with no output buffer or ownership descriptor |
+| Invocation worker | `FubiInvocationWorker.exe`, validated as x64 before launch | `FubiInvocationWorker_x86.exe`, validated as x86 before launch |
+
+Profiles use the schema documented in [Prototype profiles](#prototype-profiles).
+Every call still needs a complete invocation-grade prototype and arguments
+whose types, widths, direction, encoding, and buffer sizes match it. A
+function's export name or discovered RVA is evidence of identity, not proof of
+its ABI.
+
+For strings, narrow encodings use UTF-8 text and reject embedded NUL bytes.
+Wide encodings use UTF-16 and require output or inout buffer sizes divisible by
+two. `out` arguments start zeroed, while `inout` arguments preserve the input
+within the supplied size. Every string or byte buffer is capped at exactly
+16 MiB, and oversized or overflowing descriptors are rejected before loading.
+
+Internal RVAs require a hash-pinned profile, an executable catalog RVA, a
+complete module identity match, and explicit internal-call authorization.
+Framework-managed entries are rejected by default. Returned pointers are
+reported only as opaque values and are not dereferenced, followed, or freed;
+the isolated worker rejects pointer-return prototypes before launch.
+
+Listing, describing, cataloging, and profile validation are static operations.
+They read bounded file or metadata bytes and do not load the target DLL or run
+`DllMain`. Only an explicit call action can load the target. See the
+[Exit-code contract](#exit-code-contract) for stable command-line results and
+structured JSONL process semantics.
+
 ## Requirements
 
 - Windows
