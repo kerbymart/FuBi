@@ -35,7 +35,7 @@ BOOST_AUTO_TEST_CASE(WorkerSelectionValidatesSupportedArchitectures)
 #if defined(_M_X64)
     BOOST_CHECK(SelectInvocationWorker("x64", workerPath, error));
     BOOST_CHECK(!workerPath.empty());
-    BOOST_CHECK(workerPath.find("FubiInvocationWorker.exe") != std::string::npos);
+    BOOST_CHECK(workerPath.find("FubiWorker.exe") != std::string::npos);
 
     workerPath.clear();
     error.clear();
@@ -46,7 +46,7 @@ BOOST_AUTO_TEST_CASE(WorkerSelectionValidatesSupportedArchitectures)
 #else
     BOOST_CHECK(SelectInvocationWorker("x86", workerPath, error));
     BOOST_CHECK(!workerPath.empty());
-    BOOST_CHECK(workerPath.find("FubiInvocationWorker_x86.exe") != std::string::npos);
+    BOOST_CHECK(workerPath.find("FubiWorker_x86.exe") != std::string::npos);
     workerPath.clear();
     error.clear();
     BOOST_CHECK(!SelectInvocationWorker("x64", workerPath, error));
