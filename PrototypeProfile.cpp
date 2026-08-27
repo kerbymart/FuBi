@@ -148,6 +148,7 @@ bool ValidType(const TypeSpec& type)
     case TypeKind::Integer: return std::set<uint16_t>{8, 16, 32, 64}.count(type.width) != 0;
     case TypeKind::Floating: return std::set<uint16_t>{32, 64}.count(type.width) != 0;
     case TypeKind::String: return type.pointerDepth >= 1;
+    case TypeKind::Bytes: return type.pointerDepth >= 1 && type.width == 8;
     case TypeKind::Pointer: return type.pointerDepth >= 1;
     case TypeKind::Structure: return type.width != 0;
     default: return false;
@@ -168,7 +169,7 @@ bool ParseType(const JsonValue& value, TypeSpec& type, const std::string& path, 
     if (!ObjectValue(&value, path, errors)) return false;
     HasOnly(value, {"kind", "width", "signed", "pointer_depth", "direction", "element_count", "encoding", "ownership", "layout"}, path, errors);
     std::string kind; if (!StringValue(Field(value, "kind"), kind, path + ".kind", errors)) return false;
-    const std::map<std::string, TypeKind> kinds = {{"void",TypeKind::Void},{"bool",TypeKind::Bool},{"integer",TypeKind::Integer},{"floating",TypeKind::Floating},{"string",TypeKind::String},{"pointer",TypeKind::Pointer},{"structure",TypeKind::Structure}};
+    const std::map<std::string, TypeKind> kinds = {{"void",TypeKind::Void},{"bool",TypeKind::Bool},{"integer",TypeKind::Integer},{"floating",TypeKind::Floating},{"string",TypeKind::String},{"bytes",TypeKind::Bytes},{"pointer",TypeKind::Pointer},{"structure",TypeKind::Structure}};
     auto found = kinds.find(kind); if (found == kinds.end()) { Error(errors, "unsupported-type", path + ".kind", "type kind is not supported"); return false; } type.kind = found->second;
     uint32_t number = 0; if (Field(value, "width") != nullptr && NumberValue(Field(value, "width"), number, path + ".width", errors)) { if (number > UINT16_MAX) Error(errors, "range", path + ".width", "width exceeds uint16"); else type.width = static_cast<uint16_t>(number); }
     if (Field(value, "signed") != nullptr) BooleanValue(Field(value, "signed"), type.isSigned, path + ".signed", errors);

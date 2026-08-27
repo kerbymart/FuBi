@@ -8,6 +8,7 @@
 #include <sstream>
 #include <algorithm>
 #include <atomic>
+#include <vector>
 
 namespace
 {
@@ -36,6 +37,91 @@ bool Value(const CallArgument& argument, uint64_t& value)
     if (argument.type.kind == TypeKind::Pointer) { if (argument.value.rfind("opaque:", 0) != 0) return false; return Number(argument.value.substr(7), 0, value); }
     if (argument.type.isSigned) { if (argument.value.empty()) return false; errno=0; char* end=nullptr; const long long parsed=std::strtoll(argument.value.c_str(),&end,0); if(errno==ERANGE||end==argument.value.c_str()||*end!='\0') return false; value=static_cast<uint64_t>(parsed); return true; }
     return Number(argument.value, 0, value);
+}
+
+bool DecodeHex(const std::string& text, std::vector<unsigned char>& bytes)
+{
+    if (text.size() % 2 != 0) return false;
+    bytes.clear();
+    bytes.reserve(text.size() / 2);
+    for (size_t i = 0; i < text.size(); i += 2)
+    {
+        const auto nibble = [](char value) -> int {
+            if (value >= '0' && value <= '9') return value - '0';
+            if (value >= 'a' && value <= 'f') return value - 'a' + 10;
+            if (value >= 'A' && value <= 'F') return value - 'A' + 10;
+            return -1;
+        };
+        const int high = nibble(text[i]);
+        const int low = nibble(text[i + 1]);
+        if (high < 0 || low < 0) return false;
+        bytes.push_back(static_cast<unsigned char>((high << 4) | low));
+    }
+    return true;
+}
+
+std::string EncodeHex(const std::vector<unsigned char>& bytes)
+{
+    static constexpr char digits[] = "0123456789abcdef";
+    std::string result;
+    result.reserve(bytes.size() * 2);
+    for (unsigned char value : bytes)
+    {
+        result.push_back(digits[value >> 4]);
+        result.push_back(digits[value & 0x0f]);
+    }
+    return result;
+}
+
+bool PrepareStorage(const CallArgument& argument, std::vector<unsigned char>& storage,
+    std::string& error)
+{
+    if (argument.type.kind == TypeKind::String)
+    {
+        if (argument.type.direction != ParameterDirection::In)
+        {
+            error = "string output parameters are not supported yet";
+            return false;
+        }
+        if (argument.type.encoding == "utf16" || argument.type.encoding == "wstr")
+        {
+            const int required = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+                argument.value.data(), static_cast<int>(argument.value.size()), nullptr, 0);
+            if (required <= 0) { error = "string is not valid UTF-8"; return false; }
+            storage.resize((static_cast<size_t>(required) + 1) * sizeof(wchar_t));
+            if (MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, argument.value.data(),
+                static_cast<int>(argument.value.size()), reinterpret_cast<wchar_t*>(storage.data()), required) != required)
+            { error = "unable to convert UTF-8 string"; return false; }
+        }
+        else if (argument.type.encoding == "cstr" || argument.type.encoding == "utf8")
+        {
+            if (argument.value.find('\0') != std::string::npos) { error = "narrow string contains an embedded NUL"; return false; }
+            storage.assign(argument.value.begin(), argument.value.end());
+            storage.push_back(0);
+        }
+        else { error = "string encoding must be cstr, utf8, utf16, or wstr"; return false; }
+        return storage.size() <= 16 * 1024 * 1024;
+    }
+    if (argument.type.kind != TypeKind::Bytes)
+    {
+        error = "storage is only valid for strings and byte buffers";
+        return false;
+    }
+    if (!DecodeHex(argument.value, storage)) { error = "byte buffer value must be hexadecimal"; return false; }
+    if (argument.type.direction == ParameterDirection::Out)
+    {
+        if (argument.bufferSize == 0) { error = "output buffer size is required"; return false; }
+        storage.assign(static_cast<size_t>(argument.bufferSize), 0);
+    }
+    else if (argument.type.direction == ParameterDirection::InOut)
+    {
+        if (argument.bufferSize == 0) { error = "inout buffer size is required"; return false; }
+        if (storage.size() > argument.bufferSize) { error = "inout value exceeds its buffer size"; return false; }
+        storage.resize(static_cast<size_t>(argument.bufferSize), 0);
+    }
+    else if (argument.bufferSize != 0 && storage.size() > argument.bufferSize)
+    { error = "input value exceeds its buffer size"; return false; }
+    return storage.size() <= 16 * 1024 * 1024;
 }
 
 std::string ReturnValue(uint64_t value, const TypeSpec& type)
@@ -76,6 +162,7 @@ struct CallContext
 struct WorkerState
 {
     HMODULE module;
+    std::vector<std::vector<unsigned char>> argumentStorage;
 #if defined(_M_IX86)
     std::string abi;
     uintptr_t values[8];
@@ -149,14 +236,14 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     if (!ValidateCallRequest(request, catalog, diagnostics)) { result = {}; result.correlationId=request.correlationId; result.status="validation-failed"; result.diagnostics=diagnostics; error="call request validation failed"; return false; }
     for (const CallArgument& argument : request.arguments)
     {
-        if (argument.type.kind != TypeKind::Integer && argument.type.kind != TypeKind::Bool && argument.type.kind != TypeKind::Pointer)
+        if (argument.type.kind != TypeKind::Integer && argument.type.kind != TypeKind::Bool && argument.type.kind != TypeKind::Pointer && argument.type.kind != TypeKind::String && argument.type.kind != TypeKind::Bytes)
         {
             result = {}; result.correlationId = request.correlationId; result.status = "validation-failed";
             result.diagnostics.push_back({"unsupported-type", "arguments", "x64 adapter supports integer, bool, and pointer values only"});
             error = "unsupported x64 argument type";
             return false;
         }
-        if (argument.type.direction != ParameterDirection::In || argument.bufferSize != 0 || !argument.ownership.empty())
+        if (argument.type.kind == TypeKind::Pointer && (argument.type.direction != ParameterDirection::In || argument.bufferSize != 0 || !argument.ownership.empty()))
         {
             result = {}; result.correlationId=request.correlationId; result.status="validation-failed";
             result.diagnostics.push_back({"unsupported-output-descriptor", "arguments", "x64 adapter currently accepts input scalar values only"});
@@ -188,7 +275,9 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     }
     if(address==nullptr){FreeLibrary(module);error="target address is unavailable";return false;}
     uint64_t values[8]={}; if(request.arguments.size()>8){FreeLibrary(module);error="x64 adapter supports at most eight arguments";return false;}
-    for(size_t i=0;i<request.arguments.size();++i) if(!Value(request.arguments[i],values[i])) { FreeLibrary(module); error="invalid typed argument"; return false; }
+    for(size_t i=0;i<request.arguments.size();++i)
+        if (request.arguments[i].type.kind != TypeKind::String && request.arguments[i].type.kind != TypeKind::Bytes && !Value(request.arguments[i],values[i]))
+        { FreeLibrary(module); error="invalid typed argument"; return false; }
 #if defined(_M_IX86)
     for(size_t i=0;i<request.arguments.size();++i) if(values[i] > UINT32_MAX) { FreeLibrary(module); error="x86 argument exceeds pointer width"; return false; }
 #endif
@@ -204,12 +293,33 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
         return false;
     }
 #if defined(_M_X64)
-    WorkerState* state = new WorkerState{module, {functionAddress, {}, static_cast<uint32_t>(request.arguments.size())}};
-    std::copy(values, values + request.arguments.size(), state->call.frame.arguments.begin());
+    WorkerState* state = new WorkerState();
+    state->module = module;
+    state->argumentStorage.resize(request.arguments.size());
+    state->call.frame = {functionAddress, {}, static_cast<uint32_t>(request.arguments.size())};
+    for (size_t index = 0; index < request.arguments.size(); ++index)
+    {
+        const CallArgument& argument = request.arguments[index];
+        if (argument.type.kind == TypeKind::String || argument.type.kind == TypeKind::Bytes)
+        {
+            if (!PrepareStorage(argument, state->argumentStorage[index], error))
+            { delete state; retainedTimeoutWorkers.store(0, std::memory_order_release); FreeLibrary(module); error = error.empty() ? "unable to prepare argument storage" : error; return false; }
+            state->call.frame.arguments[index] = reinterpret_cast<uintptr_t>(state->argumentStorage[index].data());
+        }
+        else state->call.frame.arguments[index] = static_cast<uintptr_t>(values[index]);
+    }
 #else
-    WorkerState* state = new WorkerState{module, prototype.abi, {}, {address, nullptr, nullptr, request.arguments.size(), 0, 0}};
+    WorkerState* state = new WorkerState(); state->module = module; state->abi = prototype.abi; state->call = {address, nullptr, nullptr, request.arguments.size(), 0, 0}; state->argumentStorage.resize(request.arguments.size());
     state->call.abi = state->abi.c_str();
-    std::copy(values, values + request.arguments.size(), state->values);
+    for (size_t index = 0; index < request.arguments.size(); ++index)
+    {
+        if (request.arguments[index].type.kind == TypeKind::String || request.arguments[index].type.kind == TypeKind::Bytes)
+        {
+            if (!PrepareStorage(request.arguments[index], state->argumentStorage[index], error)) { delete state; retainedTimeoutWorkers.store(0, std::memory_order_release); FreeLibrary(module); return false; }
+            state->values[index] = reinterpret_cast<uintptr_t>(state->argumentStorage[index].data());
+        }
+        else state->values[index] = static_cast<uintptr_t>(values[index]);
+    }
     state->call.values = state->values;
 #endif
     HANDLE worker=CreateThread(nullptr, 0, CallWorker, &state->call, 0, nullptr);
@@ -237,9 +347,20 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     const uint64_t returned=state->call.returned;
 #endif
     const int exceptionCode=state->call.exceptionCode;
+    std::vector<CallArgument> outputValues;
+    for (size_t index = 0; index < request.arguments.size(); ++index)
+        if (request.arguments[index].type.kind == TypeKind::Bytes && request.arguments[index].type.direction != ParameterDirection::In)
+        {
+            CallArgument output = request.arguments[index];
+            output.value = EncodeHex(state->argumentStorage[index]);
+            output.bufferSize = state->argumentStorage[index].size();
+            outputValues.push_back(std::move(output));
+        }
     delete state;
     retainedTimeoutWorkers.store(0, std::memory_order_release);
     if (exceptionCode != 0) { FreeLibrary(module); result={}; result.correlationId=request.correlationId; result.status="crashed"; result.diagnostics.push_back({"target-exception","call","target raised a structured exception"}); error="target raised a structured exception"; return false; }
-    FreeLibrary(module); result={}; result.correlationId=request.correlationId; result.success=true; result.status="completed"; result.returnValue=ReturnValue(returned,prototype.returnType); result.returnType=prototype.returnType; result.prototypeUsed=prototype; result.resolvedModule=catalog.Module(); return true;
+    FreeLibrary(module); result={}; result.correlationId=request.correlationId; result.success=true; result.status="completed"; result.returnValue=ReturnValue(returned,prototype.returnType); result.returnType=prototype.returnType; result.prototypeUsed=prototype; result.resolvedModule=catalog.Module();
+    result.outputValues = std::move(outputValues);
+    return true;
 #endif
 }
