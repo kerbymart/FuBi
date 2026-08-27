@@ -72,7 +72,7 @@ add_executable(function_catalog_tests TestFunctionCatalog.cpp FunctionCatalog.cp
 target_link_libraries(function_catalog_tests PRIVATE bcrypt fubi_boost_headers fubi_build_limits)
 add_dependencies(function_catalog_tests export_fixture)
 
-add_executable(prototype_profile_tests TestPrototypeProfile.cpp PrototypeProfile.cpp FunctionCatalog.cpp StaticExportCatalog.cpp PEImage.cpp DbgHelpDll.cpp)
+add_executable(prototype_profile_tests TestPrototypeProfile.cpp PrototypeProfile.cpp FunctionCatalog.cpp StaticExportCatalog.cpp PEImage.cpp DbgHelpDll.cpp CallContract.cpp)
 target_link_libraries(prototype_profile_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 add_dependencies(prototype_profile_tests export_fixture)
 
