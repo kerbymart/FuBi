@@ -93,9 +93,9 @@ These requirements apply to every milestone.
 
 ## Milestone 1 — Remove retired decoder dependency
 
-Status: **In progress**
+Status: **Complete**
 Branch: `chore/3-remove-decoder-dependency`
-Evidence: Local Boost resolution and offline configuration behavior are covered by the current CMake configuration and dependency-policy changes in [PR #15](https://github.com/kerbymart/FuBi/pull/15). Remaining history and acceptance work is open.
+Evidence: Retired decoder removal, bounded static catalog replacement, offline configuration, and clean-build/static non-execution checks are covered by [PR #15](https://github.com/kerbymart/FuBi/pull/15) and [PR #43](https://github.com/kerbymart/FuBi/pull/43). Reachable-history rewriting remains separately tracked in [#14](https://github.com/kerbymart/FuBi/issues/14).
 
 - [x] M1-01 Remove retired decoder configuration and linking from CMake. ([PR #15](https://github.com/kerbymart/FuBi/pull/15))
 - [x] M1-02 Remove network fetch behavior. ([PR #15](https://github.com/kerbymart/FuBi/pull/15))
@@ -245,10 +245,10 @@ Evidence: Persistent JSONL lifecycle, correlation, malformed-request recovery, a
 
 ## Milestone 8 — Isolated call worker
 
-Status: **In progress**
+Status: **Complete**
 Branch: `feat/10-isolated-call-worker`
 Depends on: M7
-Evidence: Worker isolation limits, failure protocol recovery, framework blocking, and architecture-specific selection evidence in [PR #80](https://github.com/kerbymart/FuBi/pull/80), [PR #82](https://github.com/kerbymart/FuBi/pull/82), [PR #84](https://github.com/kerbymart/FuBi/pull/84), and [PR #102](https://github.com/kerbymart/FuBi/pull/102).
+Evidence: Controller and worker separation, worker isolation limits, failure protocol recovery, framework blocking, architecture-specific selection, and stable `FubiWorker.exe` artifact naming are covered by [PR #80](https://github.com/kerbymart/FuBi/pull/80), [PR #82](https://github.com/kerbymart/FuBi/pull/82), [PR #84](https://github.com/kerbymart/FuBi/pull/84), [PR #102](https://github.com/kerbymart/FuBi/pull/102), and [PR #130](https://github.com/kerbymart/FuBi/pull/130).
 
 - [x] M8-01 Split the runtime into `Fubi.exe` controller and `FubiWorker.exe`.
   ([PR #24](https://github.com/kerbymart/FuBi/pull/24), [PR #130](https://github.com/kerbymart/FuBi/pull/130))
@@ -282,7 +282,7 @@ Evidence: x86 worker, normalized call frames, register preservation, thiscall, f
 
 ## Milestone 10 — Focused Windows call patterns
 
-Status: **In progress**
+Status: **Complete**
 Branch: `feat/12-windows-call-pattern-catalog`
 Depends on: M2; may proceed independently of M3 through M9 after D-10 permits it
 Evidence: Bounded WDF and CFG recognizers with positive, truncated, near-match, deterministic, and non-executing fixture coverage in [PR #58](https://github.com/kerbymart/FuBi/pull/58) and [PR #104](https://github.com/kerbymart/FuBi/pull/104).
