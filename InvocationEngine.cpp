@@ -67,6 +67,7 @@ struct CallContext
 struct WorkerState
 {
     HMODULE module;
+    std::string abi;
     uintptr_t values[8];
     CallContext call;
 };
@@ -160,7 +161,8 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
         error="invocation worker capacity exhausted";
         return false;
     }
-    WorkerState* state = new WorkerState{module, {}, {address, prototype.abi.c_str(), nullptr, request.arguments.size(), 0, 0}};
+    WorkerState* state = new WorkerState{module, prototype.abi, {}, {address, nullptr, nullptr, request.arguments.size(), 0, 0}};
+    state->call.abi = state->abi.c_str();
     std::copy(values, values + request.arguments.size(), state->values);
     state->call.values = state->values;
     HANDLE worker=CreateThread(nullptr, 0, CallWorker, &state->call, 0, nullptr);
