@@ -135,4 +135,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - feat: select invocation workers by architecture
 - test: verify hash-pinned internal RVA calls (#62)
 - feat: support bounded string output arguments (#64)
+- docs: document bounded string outputs (#66)
 
