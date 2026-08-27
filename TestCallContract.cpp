@@ -2,6 +2,7 @@
 #include <boost/test/included/unit_test.hpp>
 
 #include "CallContract.h"
+#include "InvocationEngine.h"
 
 #include <windows.h>
 #include <algorithm>
@@ -80,4 +81,54 @@ BOOST_AUTO_TEST_CASE(ValidationRejectsBadRangeCountAndDisplayOnlyPrototype)
     diagnostics.clear();
     BOOST_CHECK(!ValidateCallRequest(request, catalog, diagnostics));
     BOOST_CHECK(std::any_of(diagnostics.begin(), diagnostics.end(), [](const CallDiagnostic& item) { return item.code == "prototype-not-invocation-grade"; }));
+}
+
+BOOST_AUTO_TEST_CASE(X64InvocationLoadsOnlyForExplicitCallAndMarshalsArguments)
+{
+#if defined(_M_X64)
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+
+    CallRequest request;
+    request.correlationId = "invoke-1";
+    request.selector = "?AddNumbers@@YAHHH@Z";
+    request.hasPrototypeOverride = true;
+    request.prototypeOverride.quality = PrototypeQuality::UserDeclared;
+    request.prototypeOverride.abi = "x64";
+    request.prototypeOverride.returnType = {TypeKind::Integer, 32};
+    request.prototypeOverride.parameters = {{TypeKind::Integer, 32}, {TypeKind::Integer, 32}};
+    request.arguments = {{{TypeKind::Integer, 32}, "19"}, {{TypeKind::Integer, 32}, "23"}};
+
+    CallResult result;
+    BOOST_REQUIRE_MESSAGE(InvokeX64Export(FixturePath(), request, catalog, result, error), error);
+    BOOST_CHECK(result.success);
+    BOOST_CHECK_EQUAL(result.status, "completed");
+    BOOST_CHECK_EQUAL(result.returnValue, "42");
+    BOOST_CHECK_EQUAL(result.resolvedModule.sha256, catalog.Module().sha256);
+#else
+    BOOST_TEST_MESSAGE("x64 invocation test skipped for non-x64 build");
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(X64InvocationRejectsUnsupportedTypeBeforeLoad)
+{
+#if defined(_M_X64)
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+    CallRequest request;
+    request.correlationId = "invoke-2";
+    request.selector = "?AddNumbers@@YAHHH@Z";
+    request.hasPrototypeOverride = true;
+    request.prototypeOverride.quality = PrototypeQuality::UserDeclared;
+    request.prototypeOverride.abi = "x64";
+    request.prototypeOverride.returnType = {TypeKind::Integer, 32};
+    request.prototypeOverride.parameters = {{TypeKind::Floating, 64}, {TypeKind::Integer, 32}};
+    request.arguments = {{{TypeKind::Floating, 64}, "1.0"}, {{TypeKind::Integer, 32}, "2"}};
+    CallResult result;
+    BOOST_CHECK(!InvokeX64Export(FixturePath(), request, catalog, result, error));
+    BOOST_CHECK_EQUAL(result.status, "validation-failed");
+    BOOST_CHECK(!result.diagnostics.empty());
+#endif
 }
