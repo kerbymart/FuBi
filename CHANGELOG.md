@@ -143,4 +143,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - feat: define stable exit-code contract (#78)
 - docs: clarify worker isolation limits (#80)
 - test: verify worker failure protocol recovery (#82)
+- test: verify framework-managed call blocking (#84)
 
