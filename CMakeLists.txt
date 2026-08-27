@@ -41,6 +41,7 @@ set(SOURCES
     DbgHelpDll.cpp
     CallContract.cpp
     InvocationEngine.cpp
+    ProcessInvocation.cpp
     fubimain.cpp
     stdafx.cpp)
 add_executable(Fubi ${SOURCES})
@@ -80,7 +81,7 @@ add_executable(prototype_profile_tests TestPrototypeProfile.cpp PrototypeProfile
 target_link_libraries(prototype_profile_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 add_dependencies(prototype_profile_tests export_fixture)
 
-add_executable(call_contract_tests TestCallContract.cpp CallContract.cpp InvocationEngine.cpp FunctionCatalog.cpp PrototypeProfile.cpp DbgHelpDll.cpp StaticExportCatalog.cpp PEImage.cpp)
+add_executable(call_contract_tests TestCallContract.cpp CallContract.cpp InvocationEngine.cpp ProcessInvocation.cpp FunctionCatalog.cpp PrototypeProfile.cpp DbgHelpDll.cpp StaticExportCatalog.cpp PEImage.cpp)
 target_link_libraries(call_contract_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 add_dependencies(call_contract_tests export_fixture)
 
