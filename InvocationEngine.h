@@ -8,4 +8,3 @@
 // validation and static identity checks must succeed before this function.
 bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     const FunctionCatalog& catalog, CallResult& result, std::string& error);
-
