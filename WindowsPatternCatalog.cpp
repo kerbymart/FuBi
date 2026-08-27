@@ -94,13 +94,15 @@ bool ScanWindowsCallPatterns(const std::string& path,
             }
             const uint32_t instructionRva = section.rva + i;
             const char* pattern = nullptr;
-            uint32_t targetRva = instructionRva;
+            uint32_t targetRva = 0;
+            std::string targetKind;
             uint32_t instructionSize = 0;
             size_t displacementOffset = 0;
             if (image.Headers().isPe32Plus && MatchWindowsPattern(
                     image.Bytes(), offset, kDirectCall))
             {
                 pattern = kDirectCall;
+                targetKind = "function";
                 instructionSize = 5;
                 displacementOffset = offset + 1;
             }
@@ -108,6 +110,7 @@ bool ScanWindowsCallPatterns(const std::string& path,
                          image.Bytes(), offset, kImportCall))
             {
                 pattern = kImportCall;
+                targetKind = "iat-slot";
                 instructionSize = 6;
                 displacementOffset = offset + 2;
             }
@@ -127,7 +130,7 @@ bool ScanWindowsCallPatterns(const std::string& path,
                 out.clear();
                 return false;
             }
-            out.push_back({targetRva, pattern, "static-pe-pattern-v1"});
+            out.push_back({instructionRva, pattern, "static-pe-pattern-v1", targetRva, targetKind});
         }
     }
     std::sort(out.begin(), out.end(), [](const auto& a, const auto& b) {
