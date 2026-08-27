@@ -133,4 +133,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - test: verify scanned call pattern evidence
 - feat: recognize bounded WDF and CFG call patterns
 - feat: select invocation workers by architecture
+- test: verify hash-pinned internal RVA calls (#62)
 

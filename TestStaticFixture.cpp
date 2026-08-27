@@ -71,6 +71,19 @@ extern "C" __declspec(dllexport) int WdfUsbDispatchFixture()
     return result == INT_MIN ? 0 : result;
 }
 
+extern "C" __declspec(noinline) int InternalAddFixture(int left, int right)
+{
+    volatile int scratch[16] = {};
+    scratch[0] = left + right;
+    return scratch[0];
+}
+
+extern "C" __declspec(dllexport) int CallInternalAdd(int left, int right)
+{
+    volatile int result = InternalAddFixture(left, right);
+    return result;
+}
+
 BOOL WINAPI DllMain(HINSTANCE, DWORD reason, LPVOID)
 {
     if (reason == DLL_PROCESS_ATTACH)
