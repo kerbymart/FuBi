@@ -52,10 +52,12 @@ void WriteSessionCatalog(std::ostream& output, const FunctionCatalog& catalog,
 {
     std::ostringstream payload;
     catalog.WriteJson(payload);
+    std::string document = payload.str();
+    while (!document.empty() && (document.back() == '\n' || document.back() == '\r')) document.pop_back();
     output << "{\"schema_version\":1,\"action\":\"list\",\"correlation_id\":";
     WriteJsonString(output, correlationId);
     output << ",\"success\":true,\"status\":\"completed\",\"catalog\":"
-           << payload.str() << "}\n";
+           << document << "}\n";
 }
 
 void WriteSessionDescription(std::ostream& output, const FunctionCatalog& catalog,
@@ -72,10 +74,12 @@ void WriteSessionDescription(std::ostream& output, const FunctionCatalog& catalo
     }
     std::ostringstream payload;
     catalog.WriteJsonDescribe(payload, *matches.front());
+    std::string document = payload.str();
+    while (!document.empty() && (document.back() == '\n' || document.back() == '\r')) document.pop_back();
     output << "{\"schema_version\":1,\"action\":\"describe\",\"correlation_id\":";
     WriteJsonString(output, correlationId);
     output << ",\"success\":true,\"status\":\"completed\",\"description\":"
-           << payload.str() << "}\n";
+           << document << "}\n";
 }
 
 void PrintUsage()
