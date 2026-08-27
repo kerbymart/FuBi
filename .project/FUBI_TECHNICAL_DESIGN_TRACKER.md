@@ -170,8 +170,8 @@ Evidence: Bounded string output and inout marshalling in [PR #64](https://github
   pointer width, encoding, sizes, and ownership rules. ([PR #20](https://github.com/kerbymart/FuBi/pull/20), [PR #47](https://github.com/kerbymart/FuBi/pull/47))
 - [x] M4-05 Cap input/output buffers and zero newly allocated output buffers. ([PR #47](https://github.com/kerbymart/FuBi/pull/47), [PR #64](https://github.com/kerbymart/FuBi/pull/64))
 - [x] M4-06 Add stable diagnostic codes and exit-code mapping. ([PR #78](https://github.com/kerbymart/FuBi/pull/78))
-- [ ] M4-07 Route command processing through a fake invocation adapter; do not
-  execute native calls in this milestone.
+- [x] M4-07 Route command processing through a fake invocation adapter; do not
+  execute native calls in this milestone. See [PR #115](https://github.com/kerbymart/FuBi/pull/115) and its `invocation_adapter` tests.
 - [x] M4-08 Make script output deterministic and prompt-free, with protocol on
   stdout and diagnostics on stderr. ([PR #20](https://github.com/kerbymart/FuBi/pull/20), [PR #76](https://github.com/kerbymart/FuBi/pull/76))
 - [x] M4-09 Add positive/negative type tests and JSON request/response
