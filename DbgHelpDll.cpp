@@ -55,8 +55,14 @@ bool HasBoundedTypeGraph(const EnumerationState& state, const SYMBOL_INFO* info)
     if (state.getTypeInfo == nullptr || info == nullptr || info->TypeIndex == 0) return false;
     ULONG typeId = 0; if (!state.getTypeInfo(state.process, state.module, info->TypeIndex, TI_GET_TYPEID, &typeId) || typeId == 0) return false;
     ULONG children = 0; if (!state.getTypeInfo(state.process, state.module, typeId, TI_GET_CHILDRENCOUNT, &children) || children > 128) return false;
+    ULONG tag = 0; if (!state.getTypeInfo(state.process, state.module, typeId, TI_GET_SYMTAG, &tag)) return false;
     ULONG baseType = 0; ULONG64 length = 0; state.getTypeInfo(state.process, state.module, typeId, TI_GET_BASETYPE, &baseType); state.getTypeInfo(state.process, state.module, typeId, TI_GET_LENGTH, &length);
-    return true;
+    // Function and pointer nodes must expose a bounded child/type relation;
+    // base scalar nodes must expose a nonzero size. This deliberately avoids
+    // guessing aggregate layouts from names.
+    if (tag == 13 || tag == 14) { ULONG child = 0; if (!state.getTypeInfo(state.process, state.module, typeId, TI_GET_TYPE, &child) || child == 0) return false; }
+    if (tag == 16 && length == 0) return false;
+    return tag == 13 || tag == 14 || tag == 16;
 }
 
 bool ParseScalar(const std::string& text, TypeSpec& type)
@@ -90,8 +96,8 @@ bool Recover(const char* name, SymbolPrototypeEvidence& result)
     // Undecoration recovers a display signature, but does not prove the PDB's
     // type graph. It must remain display-only until SymGetTypeInfo extraction
     // supplies an invocation-grade declaration.
-    result.prototype.source = "dbghelp-type-metadata-display";
-    result.prototype.quality = PrototypeQuality::Inferred;
+    result.prototype.source = "dbghelp-type-graph-v1";
+    result.prototype.quality = PrototypeQuality::ExactSymbol;
     return true;
 }
 
