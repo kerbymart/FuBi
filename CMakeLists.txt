@@ -275,6 +275,17 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 4)
             -DFIXTURE=$<TARGET_FILE:fastcall_fixture>
             -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
             -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyX86FastCall.cmake)
+    add_test(
+        NAME x86_convention_matrix
+        COMMAND ${CMAKE_COMMAND}
+            -DFUBI=$<TARGET_FILE:Fubi>
+            -DTEST=$<TARGET_FILE:x86_abi_tests>
+            -DX86_FIXTURE=$<TARGET_FILE:x86_fixture>
+            -DTHISCALL_FIXTURE=$<TARGET_FILE:thiscall_fixture>
+            -DFASTCALL_FIXTURE=$<TARGET_FILE:fastcall_fixture>
+            -DWORKER=$<TARGET_FILE:FubiInvocationWorker>
+            -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyX86ConventionMatrix.cmake)
 endif()
 
 message(STATUS "Compiler version: ${CMAKE_CXX_COMPILER_VERSION}")
