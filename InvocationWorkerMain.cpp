@@ -189,7 +189,8 @@ int RunSession(const char* imagePath, HANDLE protocol)
                 else
                 {
                     if (result.prototypeUsed.returnType.kind == TypeKind::Handle &&
-                        result.prototypeUsed.returnType.ownership == "owned")
+                        result.prototypeUsed.returnType.ownership == "owned" &&
+                        result.prototypeUsed.returnType.releaseAdapter.empty())
                     {
                         result.success = false;
                         result.status = "validation-failed";
@@ -199,8 +200,11 @@ int RunSession(const char* imagePath, HANDLE protocol)
                     }
                     else
                     {
+                        SessionReferences::HandleReleaseAdapter release;
+                        if (result.prototypeUsed.returnType.releaseAdapter == "CloseHandle")
+                            release = [](uint64_t value) { return CloseHandle(reinterpret_cast<HANDLE>(static_cast<uintptr_t>(value))) != FALSE; };
                         result.returnValue = result.prototypeUsed.returnType.kind == TypeKind::Handle
-                            ? references.IssueHandle(address, {result.prototypeUsed.returnType.width, catalog.Module().sha256, catalog.Module().architecture, result.prototypeUsed.returnType.ownership, {}})
+                            ? references.IssueHandle(address, {result.prototypeUsed.returnType.width, catalog.Module().sha256, catalog.Module().architecture, result.prototypeUsed.returnType.ownership, std::move(release)})
                             : references.Issue(address);
                     }
                     if (!result.returnValue.empty())
