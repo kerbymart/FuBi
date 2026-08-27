@@ -185,4 +185,6 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - Merge pull request #141 from kerbymart/feat/136-inspect-diagnostics
 - test: prove static inspection CLI does not execute
 - Merge pull request #145 from kerbymart/test/144-static-inspection-cli
+- docs: document export and signature evidence
+- Merge pull request #147 from kerbymart/docs/146-export-signature-docs
 
