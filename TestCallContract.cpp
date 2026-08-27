@@ -178,6 +178,22 @@ BOOST_AUTO_TEST_CASE(ByteBufferContractsValidateHexAndBounds)
         [](const CallDiagnostic& item) { return item.code == "buffer-size-overflow"; }));
 }
 
+BOOST_AUTO_TEST_CASE(RejectsTruncatedAndOversizedRequests)
+{
+    CallRequest request;
+    std::vector<CallDiagnostic> diagnostics;
+    BOOST_CHECK(!ParseCallRequestJson("{\"schema_version\":1,\"action\":\"call\"",
+        request, diagnostics));
+    BOOST_CHECK(!diagnostics.empty());
+
+    diagnostics.clear();
+    const std::string oversized(4 * 1024 * 1024 + 1, 'x');
+    BOOST_CHECK(!ParseCallRequestJson(oversized, request, diagnostics));
+    BOOST_CHECK(std::any_of(diagnostics.begin(), diagnostics.end(), [](const auto& item) {
+        return item.code == "size-limit";
+    }));
+}
+
 BOOST_AUTO_TEST_CASE(StringContractsRejectNestedPointersAndInvalidUtf8)
 {
     FunctionCatalog catalog;
@@ -447,6 +463,28 @@ BOOST_AUTO_TEST_CASE(RequestParserRejectsTrailingUnknownAndDuplicateFields)
     BOOST_CHECK(!ParseCallRequestJson("{\"schema_version\":1,\"correlation_id\":\"x\",\"selector\":\"y\",\"timeout_ms\":1abc}", request, diagnostics));
     diagnostics.clear();
     BOOST_CHECK(!ParseCallRequestJson("{\"schema_version\":1,\"correlation_id\":\"x\\u12G4\",\"selector\":\"y\"}", request, diagnostics));
+}
+
+BOOST_AUTO_TEST_CASE(RejectsInvalidOpaquePointerArguments)
+{
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+    const TypeSpec pointer{TypeKind::Pointer, 64, false, 1};
+    CallRequest request;
+    request.correlationId = "invalid-pointer";
+    request.selector = "NamedExport";
+    request.hasPrototypeOverride = true;
+    request.prototypeOverride.quality = PrototypeQuality::UserDeclared;
+    request.prototypeOverride.abi = catalog.Module().architecture == "x64" ? "x64" : "__cdecl";
+    request.prototypeOverride.returnType = {TypeKind::Integer, 32};
+    request.prototypeOverride.parameters = {pointer};
+    request.arguments = {{{pointer, "0x1234"}}};
+    std::vector<CallDiagnostic> diagnostics;
+    BOOST_CHECK(!ValidateCallRequest(request, catalog, diagnostics));
+    BOOST_CHECK(std::any_of(diagnostics.begin(), diagnostics.end(), [](const auto& item) {
+        return item.code == "invalid-argument-value";
+    }));
 }
 
 BOOST_AUTO_TEST_CASE(ProcessWorkerReturnsStructuredResult)
