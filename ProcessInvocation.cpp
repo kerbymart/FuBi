@@ -124,6 +124,19 @@ bool InvokeX64ExportProcess(const std::string& imagePath, const CallRequest& req
         error = "call request validation failed";
         return false;
     }
+    const FunctionRecord* selected = catalog.Find(request.selector);
+    const PrototypeSpec& prototype = request.hasPrototypeOverride
+        ? request.prototypeOverride : selected->prototype;
+    if (prototype.returnType.kind == TypeKind::Pointer)
+    {
+        result = {};
+        result.correlationId = request.correlationId;
+        result.status = "validation-failed";
+        result.diagnostics.push_back({"pointer-result-unsupported", "prototype.return_type",
+            "pointer return values cannot cross the isolated worker boundary"});
+        error = "pointer return values are not supported by isolated invocation";
+        return false;
+    }
     std::string workerPath;
     if (!SelectInvocationWorker(catalog.Module().architecture, workerPath, error))
     {
