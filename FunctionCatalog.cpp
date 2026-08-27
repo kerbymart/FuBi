@@ -130,9 +130,11 @@ void AddRuntimeFunctions(const PEImage& image, const std::string& hash,
             static_cast<uint64_t>(index) * sizeof(item);
         if (rva > UINT32_MAX || !image.ReadRva(static_cast<uint32_t>(rva), item)) break;
         if (item.BeginAddress == 0 || item.EndAddress <= item.BeginAddress) continue;
-        const PeSection* section = image.FindSection(item.BeginAddress);
-        AddRecord(records, item.BeginAddress, hash, "runtime-function",
-            section != nullptr && section->executable);
+        const PeSection* beginSection = image.FindSection(item.BeginAddress);
+        const PeSection* endSection = image.FindSection(item.EndAddress - 1);
+        if (beginSection == nullptr || beginSection != endSection || !beginSection->executable)
+            continue;
+        AddRecord(records, item.BeginAddress, hash, "runtime-function", true);
         FunctionRecord& record = records[item.BeginAddress];
         record.endRva = item.EndAddress;
         if (record.displayName.empty()) record.displayName = "sub_" +
@@ -165,8 +167,8 @@ void AddGuardFunctions(const PEImage& image, const std::string& hash,
         entry &= ~static_cast<uint32_t>(0x3);
         if (entry == 0) continue;
         const PeSection* section = image.FindSection(entry);
-        AddRecord(records, entry, hash, "guard-cf",
-            section != nullptr && section->executable);
+        if (section == nullptr || !section->executable) continue;
+        AddRecord(records, entry, hash, "guard-cf", true);
         FunctionRecord& record = records[entry];
         if (record.displayName.empty()) record.displayName = "sub_" +
             [&] { std::ostringstream stream; stream << std::hex << std::uppercase << entry; return stream.str(); }();

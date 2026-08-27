@@ -40,4 +40,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - feat: add static function catalog core
 - fix: tighten function catalog identity and selectors
 - fix: preserve complete catalog evidence output
+- fix: reject non-executable function evidence
 
