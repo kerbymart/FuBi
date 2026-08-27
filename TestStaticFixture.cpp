@@ -93,6 +93,27 @@ extern "C" __declspec(dllexport) int WriteNarrowString(char* buffer)
     return static_cast<int>(sizeof(value) - 1);
 }
 
+extern "C" __declspec(dllexport) double MixedIntFloat(int left, float middle,
+    int right, double tail)
+{
+    return static_cast<double>(left) + static_cast<double>(middle) +
+        static_cast<double>(right) + tail;
+}
+
+extern "C" __declspec(dllexport) int MixedFloatInt(float first, int second,
+    float third)
+{
+    return static_cast<int>(first * 10.0f) + second +
+        static_cast<int>(third * 10.0f);
+}
+
+extern "C" __declspec(dllexport) double MixedPointerFloat(const int* pointer,
+    float value, int third, double fourth, int fifth)
+{
+    return static_cast<double>(*pointer) + static_cast<double>(value) +
+        static_cast<double>(third) + fourth + static_cast<double>(fifth);
+}
+
 extern "C" __declspec(dllexport) int WriteWideString(wchar_t* buffer)
 {
     if (buffer == nullptr) return 0;
