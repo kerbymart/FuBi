@@ -3,6 +3,7 @@
 
 #include "CallContract.h"
 #include "InvocationEngine.h"
+#include "ProcessInvocation.h"
 
 #include <windows.h>
 #include <algorithm>
@@ -180,4 +181,26 @@ BOOST_AUTO_TEST_CASE(RequestParserRejectsTrailingUnknownAndDuplicateFields)
     BOOST_CHECK(!ParseCallRequestJson("{\"schema_version\":1,\"correlation_id\":\"x\",\"selector\":\"y\",\"timeout_ms\":1abc}", request, diagnostics));
     diagnostics.clear();
     BOOST_CHECK(!ParseCallRequestJson("{\"schema_version\":1,\"correlation_id\":\"x\\u12G4\",\"selector\":\"y\"}", request, diagnostics));
+}
+
+BOOST_AUTO_TEST_CASE(ProcessWorkerReturnsStructuredResult)
+{
+#if defined(_M_X64)
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+    CallRequest request;
+    request.correlationId="worker-1";
+    request.selector="?AddNumbers@@YAHHH@Z";
+    request.hasPrototypeOverride=true;
+    request.prototypeOverride.quality=PrototypeQuality::UserDeclared;
+    request.prototypeOverride.abi="x64";
+    request.prototypeOverride.returnType={TypeKind::Integer,32};
+    request.prototypeOverride.parameters={{TypeKind::Integer,32},{TypeKind::Integer,32}};
+    request.arguments={{{TypeKind::Integer,32},"4"},{{TypeKind::Integer,32},"5"}};
+    CallResult result;
+    BOOST_REQUIRE_MESSAGE(InvokeX64ExportProcess(FixturePath(),request,catalog,result,error),error);
+    BOOST_CHECK_EQUAL(result.status,"completed");
+    BOOST_CHECK_EQUAL(result.returnValue,"9");
+#endif
 }
