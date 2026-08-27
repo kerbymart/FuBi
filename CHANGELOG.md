@@ -125,4 +125,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - Merge pull request #45 from kerbymart/feat/44-normalized-x64-call-frame
 - feat: support bounded string and byte buffer arguments
 - fix: harden string and buffer marshalling
+- fix: bound byte buffer decoding
 

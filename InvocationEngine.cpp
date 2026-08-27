@@ -41,7 +41,7 @@ bool Value(const CallArgument& argument, uint64_t& value)
 
 bool DecodeHex(const std::string& text, std::vector<unsigned char>& bytes)
 {
-    if (text.size() % 2 != 0) return false;
+    if (text.size() % 2 != 0 || text.size() / 2 > 16 * 1024 * 1024) return false;
     bytes.clear();
     bytes.reserve(text.size() / 2);
     for (size_t i = 0; i < text.size(); i += 2)
