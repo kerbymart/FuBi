@@ -43,6 +43,11 @@ struct CallResult
     bool success = false;
     std::string status = "not-executed";
     std::string returnValue;
+    TypeSpec returnType;
+    std::vector<CallArgument> outputValues;
+    ModuleIdentity resolvedModule;
+    PrototypeSpec prototypeUsed;
+    uint64_t durationMs = 0;
     std::vector<CallDiagnostic> diagnostics;
 };
 
