@@ -23,6 +23,16 @@ using Call0 = uint64_t(*)(); using Call1 = uint64_t(*)(uintptr_t); using Call2 =
 using StdCall0 = uint64_t (__stdcall*)(); using StdCall1 = uint64_t (__stdcall*)(uintptr_t); using StdCall2 = uint64_t (__stdcall*)(uintptr_t,uintptr_t); using StdCall3 = uint64_t (__stdcall*)(uintptr_t,uintptr_t,uintptr_t); using StdCall4 = uint64_t (__stdcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t); using StdCall5 = uint64_t (__stdcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using StdCall6 = uint64_t (__stdcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using StdCall7 = uint64_t (__stdcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using StdCall8 = uint64_t (__stdcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t);
 using ThisCall0 = uintptr_t (__thiscall*)(); using ThisCall1 = uintptr_t (__thiscall*)(uintptr_t); using ThisCall2 = uintptr_t (__thiscall*)(uintptr_t,uintptr_t); using ThisCall3 = uintptr_t (__thiscall*)(uintptr_t,uintptr_t,uintptr_t); using ThisCall4 = uintptr_t (__thiscall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t); using ThisCall5 = uintptr_t (__thiscall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using ThisCall6 = uintptr_t (__thiscall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using ThisCall7 = uintptr_t (__thiscall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using ThisCall8 = uintptr_t (__thiscall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t);
 using FastCall0 = uintptr_t (__fastcall*)(); using FastCall1 = uintptr_t (__fastcall*)(uintptr_t); using FastCall2 = uintptr_t (__fastcall*)(uintptr_t,uintptr_t); using FastCall3 = uintptr_t (__fastcall*)(uintptr_t,uintptr_t,uintptr_t); using FastCall4 = uintptr_t (__fastcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t); using FastCall5 = uintptr_t (__fastcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using FastCall6 = uintptr_t (__fastcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using FastCall7 = uintptr_t (__fastcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using FastCall8 = uintptr_t (__fastcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t);
+
+bool ParseX86CallingConvention(const std::string& name, X86CallingConvention& value)
+{
+    if (name == "__cdecl") value = X86CallingConvention::Cdecl;
+    else if (name == "__stdcall") value = X86CallingConvention::Stdcall;
+    else if (name == "__thiscall") value = X86CallingConvention::Thiscall;
+    else if (name == "__fastcall") value = X86CallingConvention::Fastcall;
+    else return false;
+    return true;
+}
 #endif
 
 #if defined(_M_X64)
@@ -234,6 +244,8 @@ struct CallContext
     const uintptr_t* values;
     size_t count;
     uint64_t returned;
+    NativeCallFrameX86 frame;
+    std::string frameError;
 #endif
     int exceptionCode;
 };
@@ -280,6 +292,100 @@ DWORD WINAPI CallWorker(void* raw)
     return 0;
 }
 
+}
+
+bool InvokeNativeCallX86(NativeCallFrameX86& frame, std::string& error)
+{
+#if !defined(_M_IX86)
+    (void)frame;
+    error = "x86 native adapter requires an x86 build";
+    return false;
+#else
+    if (frame.targetAddress == 0)
+    {
+        error = "x86 native adapter requires a target address";
+        return false;
+    }
+    if (frame.argumentCount > frame.arguments.size())
+    {
+        error = "x86 native adapter supports at most eight arguments";
+        return false;
+    }
+    const uint32_t registerWords = frame.convention == X86CallingConvention::Thiscall
+        ? 1U : frame.convention == X86CallingConvention::Fastcall ? 2U : 0U;
+    const uint32_t expectedStackBytes = frame.argumentCount > registerWords
+        ? (frame.argumentCount - registerWords) * sizeof(uint32_t) : 0U;
+    if (frame.stackBytes != expectedStackBytes)
+    {
+        error = "x86 native adapter frame stack size is inconsistent";
+        return false;
+    }
+    if (frame.convention == X86CallingConvention::Thiscall && frame.argumentCount == 0)
+    {
+        error = "x86 thiscall frame requires an object pointer";
+        return false;
+    }
+    switch (frame.convention)
+    {
+    case X86CallingConvention::Cdecl:
+        switch (frame.argumentCount)
+        {
+        case 0: frame.returned = reinterpret_cast<Call0>(frame.targetAddress)(); break;
+        case 1: frame.returned = reinterpret_cast<Call1>(frame.targetAddress)(frame.arguments[0]); break;
+        case 2: frame.returned = reinterpret_cast<Call2>(frame.targetAddress)(frame.arguments[0], frame.arguments[1]); break;
+        case 3: frame.returned = reinterpret_cast<Call3>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2]); break;
+        case 4: frame.returned = reinterpret_cast<Call4>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2], frame.arguments[3]); break;
+        case 5: frame.returned = reinterpret_cast<Call5>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2], frame.arguments[3], frame.arguments[4]); break;
+        case 6: frame.returned = reinterpret_cast<Call6>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2], frame.arguments[3], frame.arguments[4], frame.arguments[5]); break;
+        case 7: frame.returned = reinterpret_cast<Call7>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2], frame.arguments[3], frame.arguments[4], frame.arguments[5], frame.arguments[6]); break;
+        case 8: frame.returned = reinterpret_cast<Call8>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2], frame.arguments[3], frame.arguments[4], frame.arguments[5], frame.arguments[6], frame.arguments[7]); break;
+        }
+        return true;
+    case X86CallingConvention::Stdcall:
+        switch (frame.argumentCount)
+        {
+        case 0: frame.returned = reinterpret_cast<StdCall0>(frame.targetAddress)(); break;
+        case 1: frame.returned = reinterpret_cast<StdCall1>(frame.targetAddress)(frame.arguments[0]); break;
+        case 2: frame.returned = reinterpret_cast<StdCall2>(frame.targetAddress)(frame.arguments[0], frame.arguments[1]); break;
+        case 3: frame.returned = reinterpret_cast<StdCall3>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2]); break;
+        case 4: frame.returned = reinterpret_cast<StdCall4>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2], frame.arguments[3]); break;
+        case 5: frame.returned = reinterpret_cast<StdCall5>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2], frame.arguments[3], frame.arguments[4]); break;
+        case 6: frame.returned = reinterpret_cast<StdCall6>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2], frame.arguments[3], frame.arguments[4], frame.arguments[5]); break;
+        case 7: frame.returned = reinterpret_cast<StdCall7>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2], frame.arguments[3], frame.arguments[4], frame.arguments[5], frame.arguments[6]); break;
+        case 8: frame.returned = reinterpret_cast<StdCall8>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2], frame.arguments[3], frame.arguments[4], frame.arguments[5], frame.arguments[6], frame.arguments[7]); break;
+        }
+        return true;
+    case X86CallingConvention::Thiscall:
+        switch (frame.argumentCount)
+        {
+        case 1: frame.returned = reinterpret_cast<ThisCall1>(frame.targetAddress)(frame.arguments[0]); break;
+        case 2: frame.returned = reinterpret_cast<ThisCall2>(frame.targetAddress)(frame.arguments[0], frame.arguments[1]); break;
+        case 3: frame.returned = reinterpret_cast<ThisCall3>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2]); break;
+        case 4: frame.returned = reinterpret_cast<ThisCall4>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2], frame.arguments[3]); break;
+        case 5: frame.returned = reinterpret_cast<ThisCall5>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2], frame.arguments[3], frame.arguments[4]); break;
+        case 6: frame.returned = reinterpret_cast<ThisCall6>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2], frame.arguments[3], frame.arguments[4], frame.arguments[5]); break;
+        case 7: frame.returned = reinterpret_cast<ThisCall7>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2], frame.arguments[3], frame.arguments[4], frame.arguments[5], frame.arguments[6]); break;
+        case 8: frame.returned = reinterpret_cast<ThisCall8>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2], frame.arguments[3], frame.arguments[4], frame.arguments[5], frame.arguments[6], frame.arguments[7]); break;
+        }
+        return true;
+    case X86CallingConvention::Fastcall:
+        switch (frame.argumentCount)
+        {
+        case 0: frame.returned = reinterpret_cast<FastCall0>(frame.targetAddress)(); break;
+        case 1: frame.returned = reinterpret_cast<FastCall1>(frame.targetAddress)(frame.arguments[0]); break;
+        case 2: frame.returned = reinterpret_cast<FastCall2>(frame.targetAddress)(frame.arguments[0], frame.arguments[1]); break;
+        case 3: frame.returned = reinterpret_cast<FastCall3>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2]); break;
+        case 4: frame.returned = reinterpret_cast<FastCall4>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2], frame.arguments[3]); break;
+        case 5: frame.returned = reinterpret_cast<FastCall5>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2], frame.arguments[3], frame.arguments[4]); break;
+        case 6: frame.returned = reinterpret_cast<FastCall6>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2], frame.arguments[3], frame.arguments[4], frame.arguments[5]); break;
+        case 7: frame.returned = reinterpret_cast<FastCall7>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2], frame.arguments[3], frame.arguments[4], frame.arguments[5], frame.arguments[6]); break;
+        case 8: frame.returned = reinterpret_cast<FastCall8>(frame.targetAddress)(frame.arguments[0], frame.arguments[1], frame.arguments[2], frame.arguments[3], frame.arguments[4], frame.arguments[5], frame.arguments[6], frame.arguments[7]); break;
+        }
+        return true;
+    }
+    error = "x86 native adapter received an unknown calling convention";
+    return false;
+#endif
 }
 
 bool InvokeNativeCallX64(NativeCallFrameX64& frame, uintptr_t& returned,
@@ -404,7 +510,19 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
         else state->call.frame.arguments[index] = static_cast<uintptr_t>(values[index]);
     }
 #else
-    WorkerState* state = new WorkerState(); state->module = module; state->abi = prototype.abi; state->call = {address, nullptr, nullptr, request.arguments.size(), 0, 0}; state->argumentStorage.resize(request.arguments.size());
+    X86CallingConvention convention = X86CallingConvention::Cdecl;
+    if (!ParseX86CallingConvention(prototype.abi, convention))
+    { FreeLibrary(module); error = "unsupported x86 calling convention"; return false; }
+    WorkerState* state = new WorkerState(); state->module = module; state->abi = prototype.abi;
+    state->call.address = address;
+    state->call.count = request.arguments.size();
+    state->call.frame.targetAddress = reinterpret_cast<uintptr_t>(address);
+    state->call.frame.argumentCount = static_cast<uint32_t>(request.arguments.size());
+    state->call.frame.convention = convention;
+    const uint32_t registerWords = convention == X86CallingConvention::Thiscall ? 1U : convention == X86CallingConvention::Fastcall ? 2U : 0U;
+    state->call.frame.stackBytes = state->call.frame.argumentCount > registerWords
+        ? (state->call.frame.argumentCount - registerWords) * sizeof(uint32_t) : 0U;
+    state->argumentStorage.resize(request.arguments.size());
     state->call.abi = state->abi.c_str();
     for (size_t index = 0; index < request.arguments.size(); ++index)
     {
@@ -414,6 +532,7 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
             state->values[index] = reinterpret_cast<uintptr_t>(state->argumentStorage[index].data());
         }
         else state->values[index] = static_cast<uintptr_t>(values[index]);
+        state->call.frame.arguments[index] = static_cast<uintptr_t>(values[index]);
     }
     state->call.values = state->values;
 #endif
