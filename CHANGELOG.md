@@ -92,4 +92,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: bound and tighten Windows pattern evidence
 - fix: harden pattern catalog arithmetic bounds
 - Merge pull request #26 from kerbymart/feat/12-windows-call-pattern-catalog
+- test: add opt-in hash-pinned acceptance harness
 
