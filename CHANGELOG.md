@@ -120,4 +120,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - Merge pull request #43 from kerbymart/chore/42-offline-boost-discovery
 - feat: add normalized x64 call adapter
 - fix: place x64 stack arguments correctly
+- fix: align x64 outgoing stack arguments
 
