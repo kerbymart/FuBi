@@ -305,7 +305,10 @@ int main(int argc, char* argv[])
                         }
                     std::string invocationError;
                     const bool referenceRejected = !response.diagnostics.empty();
-                    if (!referenceRejected && !InvokeX64ExportProcess(options.targetPath, request, catalog, response, invocationError, true) && !invocationError.empty())
+                    WorkerInvocationAdapter invocationAdapter(options.targetPath,
+                        catalog, true);
+                    if (!referenceRejected && !DispatchCall(request, catalog,
+                        invocationAdapter, response, invocationError) && !invocationError.empty())
                         response.diagnostics.push_back({"invocation-failed", "call", invocationError});
                     if (!referenceRejected && response.success && response.prototypeUsed.returnType.kind == TypeKind::Pointer)
                     {
@@ -400,7 +403,9 @@ int main(int argc, char* argv[])
             return FubiExitCode::ValidationFailed;
         }
         std::string invocationError;
-        if (!InvokeX64ExportProcess(options.targetPath, request, catalog, result, invocationError))
+        WorkerInvocationAdapter invocationAdapter(options.targetPath, catalog);
+        if (!DispatchCall(request, catalog, invocationAdapter, result,
+            invocationError))
         {
             if (!invocationError.empty()) result.diagnostics.push_back({"invocation-failed", "call", invocationError});
             if (options.json) WriteCallResultJson(std::cout, result);
