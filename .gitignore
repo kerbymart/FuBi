@@ -1,3 +1,13 @@
+# Ignore dot-format files and directories by default.
+.*
+
+# Keep repository ignore rules trackable.
+!.gitignore
+
+# Keep GitHub configuration trackable.
+!.github/
+!.github/**
+
 /build/
 /boost_*/
 /boost_*.zip
