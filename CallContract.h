@@ -58,6 +58,8 @@ struct CallResult
     ModuleIdentity resolvedModule;
     PrototypeSpec prototypeUsed;
     uint64_t durationMs = 0;
+    bool hasWorkerExitCode = false;
+    uint32_t workerExitCode = 0;
     std::vector<CallDiagnostic> diagnostics;
 };
 
