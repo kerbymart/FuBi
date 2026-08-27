@@ -170,6 +170,12 @@ bool AddExports(const PEImage& image, const std::string& hash,
 void AddRuntimeFunctions(const PEImage& image, const std::string& hash,
     std::map<uint32_t, FunctionRecord>& records)
 {
+#if !defined(_WIN64)
+    (void)image;
+    (void)hash;
+    (void)records;
+    return;
+#else
     if (!image.Headers().isPe32Plus) return;
     const PeDataDirectory* directory = Directory(image, IMAGE_DIRECTORY_ENTRY_EXCEPTION);
     if (directory == nullptr || directory->size < sizeof(RUNTIME_FUNCTION)) return;
@@ -197,6 +203,7 @@ void AddRuntimeFunctions(const PEImage& image, const std::string& hash,
             record.callabilityReasons = {CallabilityReason(record.callability)};
         }
     }
+#endif
 }
 
 void AddGuardFunctions(const PEImage& image, const std::string& hash,
