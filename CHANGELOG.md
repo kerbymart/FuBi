@@ -149,4 +149,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - feat: complete x86 worker invocation coverage (#90)
 - test: harden x86 ABI worker guarantees (#92)
 - test: verify x86 nonvolatile register preservation (#94)
+- feat: add x86 thiscall invocation support (#96)
 

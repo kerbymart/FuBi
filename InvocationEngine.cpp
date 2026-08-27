@@ -459,9 +459,11 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     if (exceptionCode != 0) { FreeLibrary(module); result={}; result.correlationId=request.correlationId; result.status="crashed"; result.diagnostics.push_back({"target-exception","call","target raised a structured exception"}); error="target raised a structured exception"; return false; }
     FreeLibrary(module); result={}; result.correlationId=request.correlationId; result.success=true; result.status="completed";
 #if defined(_M_X64)
-    result.returnValue=prototype.returnType.kind == TypeKind::Floating ? FloatingReturnValue(floatingReturned, prototype.returnType) : ReturnValue(returned,prototype.returnType);
+    result.returnValue = prototype.returnType.kind == TypeKind::Floating
+        ? FloatingReturnValue(floatingReturned, prototype.returnType)
+        : ReturnValue(returned, prototype.returnType);
 #else
-    result.returnValue=ReturnValue(returned,prototype.returnType);
+    result.returnValue = ReturnValue(returned, prototype.returnType);
 #endif
     result.returnType=prototype.returnType; result.prototypeUsed=prototype; result.resolvedModule=catalog.Module();
     result.outputValues = std::move(outputValues);
