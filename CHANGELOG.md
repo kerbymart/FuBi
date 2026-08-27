@@ -41,4 +41,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: tighten function catalog identity and selectors
 - fix: preserve complete catalog evidence output
 - fix: reject non-executable function evidence
+- fix: count complete export identity set
 
