@@ -99,7 +99,8 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
             return false;
         }
     }
-    if (retainedTimeoutWorkers.load(std::memory_order_acquire) != 0)
+    unsigned available=0;
+    if (!retainedTimeoutWorkers.compare_exchange_strong(available, 1, std::memory_order_acq_rel))
     {
         result = {}; result.correlationId=request.correlationId; result.status="worker-capacity";
         result.diagnostics.push_back({"worker-capacity-exhausted", "call", "a timed-out worker is retained; process isolation is required before another call"});
@@ -125,12 +126,11 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     std::copy(values, values + request.arguments.size(), state->values);
     state->call.values = state->values;
     HANDLE worker=CreateThread(nullptr, 0, CallWorker, &state->call, 0, nullptr);
-    if (worker == nullptr) { FreeLibrary(module); delete state; error="unable to create invocation worker"; return false; }
+    if (worker == nullptr) { retainedTimeoutWorkers.store(0, std::memory_order_release); FreeLibrary(module); delete state; error="unable to create invocation worker"; return false; }
     const DWORD timeout=request.timeoutMs == 0 ? 30000U : request.timeoutMs;
     const DWORD wait=WaitForSingleObject(worker, timeout);
     if (wait == WAIT_TIMEOUT)
     {
-        retainedTimeoutWorkers.fetch_add(1, std::memory_order_release);
         CloseHandle(worker);
         result={}; result.correlationId=request.correlationId; result.status="timed-out"; result.diagnostics.push_back({"timeout","timeout_ms","target exceeded the invocation timeout"});
         error="target invocation timed out";
@@ -138,7 +138,7 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     }
     if (wait == WAIT_FAILED)
     {
-        CloseHandle(worker); FreeLibrary(module); delete state;
+        CloseHandle(worker); retainedTimeoutWorkers.store(0, std::memory_order_release); FreeLibrary(module); delete state;
         result={}; result.correlationId=request.correlationId; result.status="worker-failed"; result.diagnostics.push_back({"worker-wait-failed","call","unable to wait for invocation worker"});
         error="unable to wait for invocation worker";
         return false;
@@ -147,6 +147,7 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     const uint64_t returned=state->call.returned;
     const int exceptionCode=state->call.exceptionCode;
     delete state;
+    retainedTimeoutWorkers.store(0, std::memory_order_release);
     if (exceptionCode != 0) { FreeLibrary(module); result={}; result.correlationId=request.correlationId; result.status="crashed"; result.diagnostics.push_back({"target-exception","call","target raised a structured exception"}); error="target raised a structured exception"; return false; }
     FreeLibrary(module); result={}; result.correlationId=request.correlationId; result.success=true; result.status="completed"; result.returnValue=ReturnValue(returned,prototype.returnType); result.returnType=prototype.returnType; result.prototypeUsed=prototype; result.resolvedModule=catalog.Module(); return true;
 #endif
