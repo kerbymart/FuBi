@@ -50,10 +50,13 @@ bool ArgumentValue(const CallArgument& argument)
     case TypeKind::Integer: return Integer(argument.value, argument.type.width, argument.type.isSigned);
     case TypeKind::Floating: { if (argument.value.empty()) return false; char* end=nullptr; errno=0; const double value=std::strtod(argument.value.c_str(),&end); return errno != ERANGE && end != argument.value.c_str() && *end == '\0' && std::isfinite(value); }
     case TypeKind::String:
-        return argument.type.pointerDepth > 0 && argument.type.direction == ParameterDirection::In && !argument.value.empty() && argument.value.find('\0') == std::string::npos &&
+        if (argument.type.pointerDepth != 1 || argument.type.direction != ParameterDirection::In || argument.value.empty() || argument.value.find('\0') != std::string::npos) return false;
+        if (argument.value.size() > static_cast<size_t>(INT_MAX)) return false;
+        if (MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, argument.value.data(), static_cast<int>(argument.value.size()), nullptr, 0) <= 0) return false;
+        return
             (argument.type.encoding == "cstr" || argument.type.encoding == "utf8" || argument.type.encoding == "utf16" || argument.type.encoding == "wstr") && argument.value.size() <= kMaximumBufferBytes;
     case TypeKind::Bytes:
-        if (argument.type.pointerDepth == 0) return false;
+        if (argument.type.pointerDepth != 1) return false;
         if (argument.type.direction == ParameterDirection::Out && argument.value.empty()) return true;
         return argument.value.size() % 2 == 0 && std::all_of(argument.value.begin(), argument.value.end(), [](char c) {
             return std::isxdigit(static_cast<unsigned char>(c)) != 0;
@@ -65,7 +68,7 @@ bool ArgumentValue(const CallArgument& argument)
 bool ValidType(const TypeSpec& type)
 {
     if (type.pointerDepth > 8) return false;
-    switch (type.kind) { case TypeKind::Bool: return type.width == 1; case TypeKind::Integer: return type.width == 8 || type.width == 16 || type.width == 32 || type.width == 64; case TypeKind::Floating: return type.width == 32 || type.width == 64; case TypeKind::String: return type.pointerDepth != 0; case TypeKind::Bytes: return type.pointerDepth != 0 && type.width == 8; case TypeKind::Pointer: return type.pointerDepth != 0; case TypeKind::Structure: return type.width != 0; case TypeKind::Void: return type.width == 0 && type.pointerDepth == 0; default: return false; }
+    switch (type.kind) { case TypeKind::Bool: return type.width == 1; case TypeKind::Integer: return type.width == 8 || type.width == 16 || type.width == 32 || type.width == 64; case TypeKind::Floating: return type.width == 32 || type.width == 64; case TypeKind::String: return type.pointerDepth == 1; case TypeKind::Bytes: return type.pointerDepth == 1 && type.width == 8; case TypeKind::Pointer: return type.pointerDepth != 0; case TypeKind::Structure: return type.width != 0; case TypeKind::Void: return type.width == 0 && type.pointerDepth == 0; default: return false; }
 }
 bool ValidPrototype(const PrototypeSpec& prototype)
 { return !prototype.abi.empty() && (prototype.quality == PrototypeQuality::UserDeclared || prototype.quality == PrototypeQuality::ExactSymbol) && ValidType(prototype.returnType) && std::all_of(prototype.parameters.begin(), prototype.parameters.end(), ValidType); }
