@@ -4,3 +4,4 @@ EXPORTS
     ThisCallWord
     ThisCallDword
     ThisCallRepeated
+    ThisCallRegisterCheck
