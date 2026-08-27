@@ -194,4 +194,6 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - refactor: organize source and test layout
 - fix: flatten moved MASM fixture object paths
 - Merge pull request #150 from kerbymart/refactor/139-source-test-layout
+- chore: fix reference acceptance selector
+- Merge pull request #152 from kerbymart/chore/151-reference-acceptance-and-tracker-branches
 

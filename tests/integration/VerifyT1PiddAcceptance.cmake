@@ -82,10 +82,10 @@ execute_process(COMMAND "${FUBI}" "${target}" --describe "${first_rva_hex}" --js
 if(NOT describe_result EQUAL 0 OR NOT describe_output MATCHES "\\\"schema_version\\\":1")
     message(FATAL_ERROR "T1PIDD static describe failed (${describe_result}): ${describe_error}")
 endif()
-execute_process(COMMAND "${FUBI}" "${target}" --inspect FxDriverEntryUm --json
+execute_process(COMMAND "${FUBI}" "${target}" --describe FxDriverEntryUm --json
     RESULT_VARIABLE inspect_result OUTPUT_VARIABLE inspect_output ERROR_VARIABLE inspect_error)
 if(NOT inspect_result EQUAL 0 OR NOT inspect_output MATCHES "framework-managed|requires-prototype")
-    message(FATAL_ERROR "T1PIDD inspection did not preserve non-callable uncertainty: ${inspect_error}")
+    message(FATAL_ERROR "T1PIDD description did not preserve non-callable uncertainty: ${inspect_error}")
 endif()
 
 set(profile "${OUTPUT_DIR}/t1pidd_profile_skeleton.json")
