@@ -286,7 +286,7 @@ const char* TypeKindName(TypeKind value)
     {
     case TypeKind::Void: return "void"; case TypeKind::Bool: return "bool";
     case TypeKind::Integer: return "integer"; case TypeKind::Floating: return "floating";
-    case TypeKind::String: return "string"; case TypeKind::Pointer: return "pointer";
+    case TypeKind::String: return "string"; case TypeKind::Bytes: return "bytes"; case TypeKind::Pointer: return "pointer";
     case TypeKind::Structure: return "structure"; default: return "unknown";
     }
 }
