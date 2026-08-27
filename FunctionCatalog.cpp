@@ -6,6 +6,7 @@
 #include <bcrypt.h>
 #include <algorithm>
 #include <array>
+#include <charconv>
 #include <cstdlib>
 #include <iomanip>
 #include <limits>
@@ -101,13 +102,13 @@ bool AddExports(const PEImage& image, const std::string& hash,
     AddRecord(records, item.rva, hash, "pe-export", image.FindSection(item.rva) != nullptr &&
         image.FindSection(item.rva)->executable);
         FunctionRecord& record = records[item.rva];
-        record.id.ordinal = item.ordinal;
-        record.id.exportName = item.names.empty() ? "" : item.names.front();
-        record.displayName = item.names.empty() ? "#" + std::to_string(item.ordinal) : item.names.front();
+        if (record.displayName.empty())
+            record.displayName = item.names.empty() ? "#" + std::to_string(item.ordinal) : item.names.front();
         record.aliases.insert(record.aliases.end(), item.names.begin(), item.names.end());
         record.exportNames.insert(record.exportNames.end(), item.names.begin(), item.names.end());
         record.exportOrdinals.push_back(item.ordinal);
         record.forwarder = item.forwarder;
+        if (!item.forwarder.empty()) record.forwarders.push_back(item.forwarder);
         record.callability = item.forwarder.empty() ? Callability::RequiresPrototype : Callability::Forwarded;
         record.callabilityReasons = {CallabilityReason(record.callability)};
     }
@@ -277,6 +278,14 @@ bool FunctionCatalog::Load(const std::string& path, FunctionCatalog& catalog, st
         record.aliases.erase(std::unique(record.aliases.begin(), record.aliases.end()), record.aliases.end());
         record.exportNames.erase(std::unique(record.exportNames.begin(), record.exportNames.end()), record.exportNames.end());
         record.exportOrdinals.erase(std::unique(record.exportOrdinals.begin(), record.exportOrdinals.end()), record.exportOrdinals.end());
+        std::sort(record.forwarders.begin(), record.forwarders.end());
+        record.forwarders.erase(std::unique(record.forwarders.begin(), record.forwarders.end()), record.forwarders.end());
+        if (!record.exportNames.empty())
+        {
+            record.id.exportName = record.exportNames.front();
+            record.displayName = record.exportNames.front();
+        }
+        if (!record.exportOrdinals.empty()) record.id.ordinal = record.exportOrdinals.front();
         std::sort(record.addressSources.begin(), record.addressSources.end());
         std::sort(record.boundarySources.begin(), record.boundarySources.end());
         candidate.functions_.push_back(std::move(record));
@@ -299,10 +308,20 @@ void FunctionCatalog::WriteText(std::ostream& output, bool callableOnly) const
     {
         if (callableOnly && record.callability != Callability::Callable) continue;
         output << "\n[function]\nrva = 0x" << std::hex << std::uppercase << record.startRva << std::dec
-            << "\nname = " << record.displayName << "\nordinal = " << record.id.ordinal << "\ncallability = "
+            << "\nend_rva = 0x" << std::hex << std::uppercase << record.endRva << std::dec
+            << "\nname = " << record.displayName << "\nordinals = ";
+        for (size_t index = 0; index < record.exportOrdinals.size(); ++index) { if (index) output << ", "; output << record.exportOrdinals[index]; }
+        output << "\ncallability = "
             << CallabilityName(record.callability) << "\nreason = " << CallabilityReason(record.callability) << "\naddress_sources = ";
         for (size_t index = 0; index < record.addressSources.size(); ++index) { if (index) output << ", "; output << record.addressSources[index]; }
+        output << "\nexport_names = "; for (size_t index = 0; index < record.exportNames.size(); ++index) { if (index) output << ", "; output << record.exportNames[index]; }
         output << "\naliases = "; for (size_t index = 0; index < record.aliases.size(); ++index) { if (index) output << ", "; output << record.aliases[index]; }
+        output << "\nboundary_sources = "; for (size_t index = 0; index < record.boundarySources.size(); ++index) { if (index) output << ", "; output << record.boundarySources[index]; }
+        output << "\nexecutable = " << (record.executable ? "true" : "false")
+               << "\nprototype_source = " << (record.hasPrototype ? record.prototype.source : "unknown")
+               << "\nprototype_quality = " << PrototypeQualityName(record.prototype.quality)
+               << "\nforwarders = ";
+        for (size_t index = 0; index < record.forwarders.size(); ++index) { if (index) output << ", "; output << record.forwarders[index]; }
         output << "\nforwarder = " << (record.forwarder.empty() ? "<none>" : record.forwarder) << "\n";
     }
 }
@@ -317,12 +336,24 @@ void FunctionCatalog::WriteJson(std::ostream& output, bool callableOnly) const
     {
         if (callableOnly && record.callability != Callability::Callable) continue;
         if (!first) output << ','; first = false;
-        output << "{\"rva\":" << record.startRva << ",\"name\":"; WriteJsonString(output, record.displayName);
-        output << ",\"ordinal\":" << record.id.ordinal << ",\"aliases\":[";
-        for (size_t index = 0; index < record.aliases.size(); ++index) { if (index) output << ','; WriteJsonString(output, record.aliases[index]); }
+        output << "{\"rva\":" << record.startRva << ",\"end_rva\":" << record.endRva << ",\"name\":"; WriteJsonString(output, record.displayName);
+        output << ",\"export_names\":[";
+        for (size_t index = 0; index < record.exportNames.size(); ++index) { if (index) output << ','; WriteJsonString(output, record.exportNames[index]); }
         output << "],\"export_ordinals\":[";
         for (size_t index = 0; index < record.exportOrdinals.size(); ++index) { if (index) output << ','; output << record.exportOrdinals[index]; }
-        output << "],\"callability\":"; WriteJsonString(output, CallabilityName(record.callability));
+        output << "],\"aliases\":[";
+        for (size_t index = 0; index < record.aliases.size(); ++index) { if (index) output << ','; WriteJsonString(output, record.aliases[index]); }
+        output << "],\"forwarders\":[";
+        for (size_t index = 0; index < record.forwarders.size(); ++index) { if (index) output << ','; WriteJsonString(output, record.forwarders[index]); }
+        output << "],\"address_sources\":[";
+        for (size_t index = 0; index < record.addressSources.size(); ++index) { if (index) output << ','; WriteJsonString(output, record.addressSources[index]); }
+        output << "],\"boundary_sources\":[";
+        for (size_t index = 0; index < record.boundarySources.size(); ++index) { if (index) output << ','; WriteJsonString(output, record.boundarySources[index]); }
+        output << "],\"executable\":" << (record.executable ? "true" : "false")
+               << ",\"prototype\":{\"has_prototype\":" << (record.hasPrototype ? "true" : "false") << ",\"source\":";
+        WriteJsonString(output, record.hasPrototype ? record.prototype.source : "unknown");
+        output << ",\"quality\":"; WriteJsonString(output, PrototypeQualityName(record.prototype.quality));
+        output << "},\"callability\":"; WriteJsonString(output, CallabilityName(record.callability));
         output << ",\"reason\":"; WriteJsonString(output, CallabilityReason(record.callability));
         output << ",\"forwarder\":"; WriteJsonString(output, record.forwarder); output << "}";
     }
@@ -332,24 +363,45 @@ void FunctionCatalog::WriteJson(std::ostream& output, bool callableOnly) const
 std::vector<const FunctionRecord*> FunctionCatalog::FindAll(const std::string& selector) const
 {
     std::vector<const FunctionRecord*> matches;
+    auto parseNumber = [](const std::string& text, int base, uint32_t& value)
+    {
+        if (text.empty()) return false;
+        uint64_t parsed = 0;
+        for (const char character : text)
+        {
+            unsigned digit = 0;
+            if (character >= '0' && character <= '9') digit = static_cast<unsigned>(character - '0');
+            else if (base == 16 && character >= 'a' && character <= 'f') digit = static_cast<unsigned>(character - 'a' + 10);
+            else if (base == 16 && character >= 'A' && character <= 'F') digit = static_cast<unsigned>(character - 'A' + 10);
+            else return false;
+            if (digit >= static_cast<unsigned>(base) || parsed > (UINT32_MAX - digit) / base) return false;
+            parsed = parsed * base + digit;
+        }
+        value = static_cast<uint32_t>(parsed);
+        return true;
+    };
+    uint32_t numericSelector = 0;
+    const bool ordinalSelector = selector.size() > 1 && selector.front() == '#' &&
+        parseNumber(selector.substr(1), 10, numericSelector);
+    const bool rvaSelector = selector.size() > 2 && selector[0] == '0' &&
+        (selector[1] == 'x' || selector[1] == 'X') &&
+        parseNumber(selector.substr(2), 16, numericSelector);
     for (const FunctionRecord& record : functions_)
     {
         if (record.displayName == selector || record.id.exportName == selector ||
             std::find(record.aliases.begin(), record.aliases.end(), selector) != record.aliases.end()) matches.push_back(&record);
-        if (selector.size() > 1 && selector[0] == '#')
-        {
-            char* ordinalEnd = nullptr;
-            const unsigned long ordinal = std::strtoul(selector.c_str() + 1, &ordinalEnd, 10);
-            if (ordinalEnd != nullptr && *ordinalEnd == '\0' && ordinal <= UINT32_MAX &&
-                std::find(record.exportOrdinals.begin(), record.exportOrdinals.end(), static_cast<uint32_t>(ordinal)) != record.exportOrdinals.end()) matches.push_back(&record);
-        }
+        if (ordinalSelector && std::find(record.exportOrdinals.begin(), record.exportOrdinals.end(), numericSelector) != record.exportOrdinals.end()) matches.push_back(&record);
         if (selector.size() > 2 && selector[0] == '0' && (selector[1] == 'x' || selector[1] == 'X'))
         {
-            char* end = nullptr; const unsigned long value = std::strtoul(selector.c_str(), &end, 16);
-            if (end != nullptr && *end == '\0' && value == record.startRva) matches.push_back(&record);
+            if (rvaSelector && numericSelector == record.startRva) matches.push_back(&record);
         }
     }
-    std::sort(matches.begin(), matches.end());
+    std::sort(matches.begin(), matches.end(), [](const FunctionRecord* left, const FunctionRecord* right)
+    {
+        if (left->startRva != right->startRva) return left->startRva < right->startRva;
+        if (left->displayName != right->displayName) return left->displayName < right->displayName;
+        return left->id.ordinal < right->id.ordinal;
+    });
     matches.erase(std::unique(matches.begin(), matches.end()), matches.end());
     return matches;
 }
@@ -366,11 +418,27 @@ void FunctionCatalog::WriteJsonDescribe(std::ostream& output, const FunctionReco
     WriteJsonString(output, module_.sha256);
     output << ",\"function\":{\"rva\":" << record.startRva << ",\"name\":";
     WriteJsonString(output, record.displayName);
-    output << ",\"ordinal\":" << record.id.ordinal << ",\"aliases\":[";
+    output << ",\"end_rva\":" << record.endRva << ",\"export_names\":[";
+    for (size_t index = 0; index < record.exportNames.size(); ++index) { if (index) output << ','; WriteJsonString(output, record.exportNames[index]); }
+    output << "],\"export_ordinals\":[";
+    for (size_t index = 0; index < record.exportOrdinals.size(); ++index) { if (index) output << ','; output << record.exportOrdinals[index]; }
+    output << "],\"aliases\":[";
     for (size_t index = 0; index < record.aliases.size(); ++index) { if (index) output << ','; WriteJsonString(output, record.aliases[index]); }
+    output << "],\"forwarders\":[";
+    for (size_t index = 0; index < record.forwarders.size(); ++index) { if (index) output << ','; WriteJsonString(output, record.forwarders[index]); }
     output << "],\"callability\":";
     WriteJsonString(output, CallabilityName(record.callability));
     output << ",\"reason\":";
     WriteJsonString(output, CallabilityReason(record.callability));
+    output << ",\"address_sources\":[";
+    for (size_t index = 0; index < record.addressSources.size(); ++index) { if (index) output << ','; WriteJsonString(output, record.addressSources[index]); }
+    output << "],\"boundary_sources\":[";
+    for (size_t index = 0; index < record.boundarySources.size(); ++index) { if (index) output << ','; WriteJsonString(output, record.boundarySources[index]); }
+    output << "],\"executable\":" << (record.executable ? "true" : "false")
+           << ",\"prototype\":{\"has_prototype\":" << (record.hasPrototype ? "true" : "false") << ",\"source\":";
+    WriteJsonString(output, record.hasPrototype ? record.prototype.source : "unknown");
+    output << ",\"quality\":"; WriteJsonString(output, PrototypeQualityName(record.prototype.quality));
+    output << "},\"forwarder\":";
+    WriteJsonString(output, record.forwarder);
     output << "}}\n";
 }
