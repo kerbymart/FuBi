@@ -132,3 +132,30 @@ BOOST_AUTO_TEST_CASE(X64InvocationRejectsUnsupportedTypeBeforeLoad)
     BOOST_CHECK(!result.diagnostics.empty());
 #endif
 }
+
+BOOST_AUTO_TEST_CASE(InternalInvocationRejectsForgedAuthorizationBeforeLoad)
+{
+#if defined(_M_X64)
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+    const FunctionRecord* internal = nullptr;
+    for (const FunctionRecord& candidate : catalog.Functions())
+        if (candidate.exportNames.empty() && candidate.executable) { internal = &candidate; break; }
+    BOOST_REQUIRE(internal != nullptr);
+    CallRequest request;
+    request.correlationId = "internal-forged";
+    std::ostringstream selector;
+    selector << "0x" << std::hex << internal->startRva;
+    request.selector = selector.str();
+    request.allowInternal = true;
+    request.authorizationProvenance = "profile:forged";
+    request.hasPrototypeOverride = true;
+    request.prototypeOverride.quality = PrototypeQuality::UserDeclared;
+    request.prototypeOverride.abi = "x64";
+    request.prototypeOverride.returnType = {TypeKind::Integer, 32};
+    CallResult result;
+    BOOST_CHECK(!InvokeX64Export(FixturePath(), request, catalog, result, error));
+    BOOST_CHECK_EQUAL(result.status, "validation-failed");
+#endif
+}
