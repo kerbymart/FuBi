@@ -56,3 +56,31 @@ private:
     const FunctionCatalog& catalog_;
     bool allowPointerResults_;
 };
+
+// Owns one isolated worker for the lifetime of a JSONL session. The worker
+// keeps the target module loaded and owns all reference payloads, so an
+// opaque reference can never cross a process or architecture boundary.
+class PersistentWorkerSession final
+{
+public:
+    PersistentWorkerSession(const std::string& imagePath,
+        const FunctionCatalog& catalog);
+    ~PersistentWorkerSession();
+
+    PersistentWorkerSession(const PersistentWorkerSession&) = delete;
+    PersistentWorkerSession& operator=(const PersistentWorkerSession&) = delete;
+
+    bool Start(std::string& error);
+    bool Invoke(const CallRequest& request, CallResult& result,
+        std::string& error);
+    void Stop();
+    bool IsRunning() const;
+
+private:
+    std::string imagePath_;
+    const FunctionCatalog& catalog_;
+    void* process_ = nullptr;
+    void* thread_ = nullptr;
+    void* input_ = nullptr;
+    void* output_ = nullptr;
+};

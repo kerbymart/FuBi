@@ -6,7 +6,7 @@ set(INPUT_FILE "${OUTPUT_DIR}/opaque-session-input.txt")
 set(OUTPUT_FILE "${OUTPUT_DIR}/opaque-session-output.txt")
 file(WRITE "${INPUT_FILE}"
     "{\"schema_version\":1,\"action\":\"hello\",\"correlation_id\":\"hello\"}\n"
-    "{\"schema_version\":1,\"action\":\"call\",\"correlation_id\":\"pointer\",\"selector\":\"PointerEcho\",\"has_prototype_override\":true,\"prototype_override\":{\"abi\":\"x64\",\"quality\":\"user-declared\",\"return_type\":{\"kind\":\"pointer\",\"width\":64,\"pointer_depth\":1},\"parameters\":[{\"kind\":\"pointer\",\"width\":64,\"pointer_depth\":1}]},\"arguments\":[{\"type\":{\"kind\":\"pointer\",\"width\":64,\"pointer_depth\":1},\"value\":\"opaque:0x0\"}]}\n"
+    "{\"schema_version\":1,\"action\":\"call\",\"correlation_id\":\"pointer\",\"selector\":\"PointerEcho\",\"has_prototype_override\":true,\"prototype_override\":{\"abi\":\"x64\",\"quality\":\"user-declared\",\"return_type\":{\"kind\":\"pointer\",\"width\":64,\"pointer_depth\":1},\"parameters\":[{\"kind\":\"pointer\",\"width\":64,\"pointer_depth\":1}]},\"arguments\":[{\"type\":{\"kind\":\"pointer\",\"width\":64,\"pointer_depth\":1},\"value\":\"opaque:0x1\"}]}\n"
     "{\"schema_version\":1,\"action\":\"call\",\"correlation_id\":\"reuse\",\"selector\":\"PointerEcho\",\"has_prototype_override\":true,\"prototype_override\":{\"abi\":\"x64\",\"quality\":\"user-declared\",\"return_type\":{\"kind\":\"pointer\",\"width\":64,\"pointer_depth\":1},\"parameters\":[{\"kind\":\"pointer\",\"width\":64,\"pointer_depth\":1}]},\"arguments\":[{\"type\":{\"kind\":\"pointer\",\"width\":64,\"pointer_depth\":1},\"value\":\"opaque:session-1\"}]}\n"
     "{\"schema_version\":1,\"action\":\"release\",\"correlation_id\":\"release\",\"reference\":\"opaque:session-1\"}\n"
     "{\"schema_version\":1,\"action\":\"release\",\"correlation_id\":\"duplicate\",\"reference\":\"opaque:session-1\"}\n"
@@ -44,9 +44,13 @@ list(LENGTH RELEASE_ERRORS RELEASE_ERROR_COUNT)
 if(NOT RELEASE_ERROR_COUNT EQUAL 2)
     message(FATAL_ERROR "duplicate and malformed releases were not rejected: ${OUTPUT}")
 endif()
-string(FIND "${OUTPUT}" "session-reference-unsupported" REUSE_POSITION)
+string(FIND "${OUTPUT}" "\"correlation_id\":\"reuse\",\"success\":true" REUSE_POSITION)
 if(REUSE_POSITION LESS 0)
-    message(FATAL_ERROR "session reference was resolved into an isolated worker call: ${OUTPUT}")
+    message(FATAL_ERROR "same-session reference was not reusable: ${OUTPUT}")
+endif()
+string(FIND "${OUTPUT}" "\"issued_references\":[\"opaque:session-2\"]" SECOND_ISSUED_POSITION)
+if(SECOND_ISSUED_POSITION LESS 0)
+    message(FATAL_ERROR "reused pointer did not produce a second session reference: ${OUTPUT}")
 endif()
 
 set(SECOND_INPUT "${OUTPUT_DIR}/opaque-session-second-input.txt")

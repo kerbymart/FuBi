@@ -5,6 +5,8 @@
 #include <windows.h>
 #include <fstream>
 #include <mutex>
+#include <chrono>
+#include <sstream>
 #include <vector>
 
 namespace
@@ -317,4 +319,196 @@ bool InvokeX64ExportProcess(const std::string& imagePath, const CallRequest& req
     AddExitDiagnostic(result);
     if (!clean) result.diagnostics.push_back({"cleanup-failed", "ipc", "unable to remove worker IPC files"});
     return result.success;
+}
+
+PersistentWorkerSession::PersistentWorkerSession(const std::string& imagePath,
+    const FunctionCatalog& catalog)
+    : imagePath_(imagePath), catalog_(catalog) {}
+
+PersistentWorkerSession::~PersistentWorkerSession()
+{
+    Stop();
+}
+
+bool PersistentWorkerSession::IsRunning() const
+{
+    return process_ != nullptr && WaitForSingleObject(static_cast<HANDLE>(process_), 0) == WAIT_TIMEOUT;
+}
+
+bool PersistentWorkerSession::Start(std::string& error)
+{
+    Stop();
+    std::string workerPath;
+    if (!SelectInvocationWorker(catalog_.Module().architecture, workerPath, error))
+        return false;
+
+    SECURITY_ATTRIBUTES security = {sizeof(SECURITY_ATTRIBUTES), nullptr, TRUE};
+    HANDLE childInputRead = nullptr;
+    HANDLE childOutputWrite = nullptr;
+    HANDLE childErrorWrite = nullptr;
+    HANDLE parentInputWrite = nullptr;
+    HANDLE parentOutputRead = nullptr;
+    if (!CreatePipe(&childInputRead, &parentInputWrite, &security, 0) ||
+        !CreatePipe(&parentOutputRead, &childOutputWrite, &security, 0))
+    {
+        if (childInputRead) CloseHandle(childInputRead);
+        if (parentInputWrite) CloseHandle(parentInputWrite);
+        if (parentOutputRead) CloseHandle(parentOutputRead);
+        if (childOutputWrite) CloseHandle(childOutputWrite);
+        error = "unable to create persistent worker pipes";
+        return false;
+    }
+    SetHandleInformation(parentInputWrite, HANDLE_FLAG_INHERIT, 0);
+    SetHandleInformation(parentOutputRead, HANDLE_FLAG_INHERIT, 0);
+    childErrorWrite = CreateFileA("NUL", GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE,
+        &security, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (childErrorWrite == INVALID_HANDLE_VALUE)
+    {
+        childErrorWrite = nullptr;
+        CloseHandle(childInputRead); CloseHandle(parentInputWrite);
+        CloseHandle(parentOutputRead); CloseHandle(childOutputWrite);
+        error = "unable to create persistent worker diagnostic sink";
+        return false;
+    }
+
+    std::ostringstream protocolHandle;
+    protocolHandle << std::hex << reinterpret_cast<uintptr_t>(childOutputWrite);
+    const std::string command = Quote(workerPath) + " " + Quote(imagePath_) + " --session " + protocolHandle.str();
+    std::vector<char> commandLine(command.begin(), command.end());
+    commandLine.push_back('\0');
+    STARTUPINFOA startup = {};
+    startup.cb = sizeof(startup);
+    startup.dwFlags = STARTF_USESTDHANDLES;
+    startup.hStdInput = childInputRead;
+    startup.hStdOutput = childErrorWrite;
+    startup.hStdError = childErrorWrite;
+    PROCESS_INFORMATION process = {};
+    const BOOL created = CreateProcessA(nullptr, commandLine.data(), nullptr, nullptr,
+        TRUE, CREATE_NO_WINDOW, nullptr, nullptr, &startup, &process);
+    CloseHandle(childInputRead);
+    CloseHandle(childOutputWrite);
+    CloseHandle(childErrorWrite);
+    if (!created)
+    {
+        CloseHandle(parentInputWrite);
+        CloseHandle(parentOutputRead);
+        error = "unable to start persistent invocation worker";
+        return false;
+    }
+    process_ = process.hProcess;
+    thread_ = process.hThread;
+    input_ = parentInputWrite;
+    output_ = parentOutputRead;
+    return true;
+}
+
+bool PersistentWorkerSession::Invoke(const CallRequest& request,
+    CallResult& result, std::string& error)
+{
+    result = {};
+    result.action = request.action;
+    result.correlationId = request.correlationId;
+    result.resolvedModule = catalog_.Module();
+    if (!IsRunning())
+    {
+        result.status = "worker-crashed";
+        result.diagnostics.push_back({"persistent-worker-unavailable", "worker",
+            "persistent invocation worker is not running"});
+        error = "persistent invocation worker is not running";
+        return false;
+    }
+    std::ostringstream encoded;
+    WriteCallRequestJson(encoded, request);
+    const std::string line = encoded.str() + "\n";
+    DWORD written = 0;
+    if (!WriteFile(static_cast<HANDLE>(input_), line.data(),
+        static_cast<DWORD>(line.size()), &written, nullptr) || written != line.size())
+    {
+        result.status = "worker-crashed";
+        result.diagnostics.push_back({"persistent-worker-write", "worker",
+            "unable to send request to persistent invocation worker"});
+        error = "unable to send request to persistent invocation worker";
+        Stop();
+        return false;
+    }
+
+    const DWORD timeout = request.timeoutMs == 0 ? 30000U : request.timeoutMs;
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout);
+    std::string document;
+    char buffer[4096];
+    for (;;)
+    {
+        DWORD available = 0;
+        if (PeekNamedPipe(static_cast<HANDLE>(output_), nullptr, 0, nullptr,
+            &available, nullptr) && available != 0)
+        {
+            DWORD read = 0;
+            if (!ReadFile(static_cast<HANDLE>(output_), buffer,
+                (std::min)(available, static_cast<DWORD>(sizeof(buffer) - 1)),
+                &read, nullptr) || read == 0)
+                break;
+            document.append(buffer, read);
+            const size_t newline = document.find('\n');
+            if (newline != std::string::npos)
+            {
+                document.resize(newline);
+                std::vector<CallDiagnostic> diagnostics;
+                if (!ParseCallResultJson(document, result, diagnostics))
+                {
+                    result = {};
+                    result.action = request.action;
+                    result.correlationId = request.correlationId;
+                    result.status = "worker-failed";
+                    result.diagnostics = std::move(diagnostics);
+                    result.diagnostics.push_back({"malformed-result", "worker",
+                        "persistent worker returned malformed JSON"});
+                    error = "persistent worker returned malformed JSON";
+                    Stop();
+                    return false;
+                }
+                return result.success;
+            }
+            if (document.size() > 4 * 1024 * 1024)
+                break;
+        }
+        if (WaitForSingleObject(static_cast<HANDLE>(process_), 0) == WAIT_OBJECT_0)
+            break;
+        if (std::chrono::steady_clock::now() >= deadline)
+        {
+            TerminateProcess(static_cast<HANDLE>(process_), ERROR_TIMEOUT);
+            WaitForSingleObject(static_cast<HANDLE>(process_), 5000);
+            result.status = "timed-out";
+            result.diagnostics.push_back({"timeout", "timeout_ms",
+                "persistent worker exceeded the invocation timeout"});
+            error = "persistent invocation worker timed out";
+            Stop();
+            return false;
+        }
+        Sleep(1);
+    }
+    result.status = "worker-crashed";
+    result.diagnostics.push_back({"worker-crashed", "worker",
+        "persistent worker exited before returning a result"});
+    error = "persistent worker exited before returning a result";
+    Stop();
+    return false;
+}
+
+void PersistentWorkerSession::Stop()
+{
+    if (process_ != nullptr)
+    {
+        HANDLE process = static_cast<HANDLE>(process_);
+        if (WaitForSingleObject(process, 0) != WAIT_OBJECT_0)
+            TerminateProcess(process, ERROR_OPERATION_ABORTED);
+        WaitForSingleObject(process, 5000);
+    }
+    if (input_ != nullptr) CloseHandle(static_cast<HANDLE>(input_));
+    if (output_ != nullptr) CloseHandle(static_cast<HANDLE>(output_));
+    if (thread_ != nullptr) CloseHandle(static_cast<HANDLE>(thread_));
+    if (process_ != nullptr) CloseHandle(static_cast<HANDLE>(process_));
+    input_ = nullptr;
+    output_ = nullptr;
+    thread_ = nullptr;
+    process_ = nullptr;
 }
