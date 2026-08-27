@@ -150,6 +150,7 @@ bool ValidType(const TypeSpec& type)
     case TypeKind::String: return type.pointerDepth == 1;
     case TypeKind::Bytes: return type.pointerDepth == 1 && type.width == 8;
     case TypeKind::Pointer: return type.pointerDepth >= 1;
+    case TypeKind::Handle: return (type.width == 32 || type.width == 64) && type.pointerDepth == 0 && (type.ownership == "borrowed" || type.ownership == "owned") && (type.releaseAdapter.empty() || type.releaseAdapter == "CloseHandle") && (type.ownership != "owned" || !type.releaseAdapter.empty());
     case TypeKind::Structure: return type.width != 0;
     default: return false;
     }
@@ -167,9 +168,9 @@ bool CompletePrototype(const PrototypeSpec& prototype)
 bool ParseType(const JsonValue& value, TypeSpec& type, const std::string& path, std::vector<ProfileValidationError>& errors)
 {
     if (!ObjectValue(&value, path, errors)) return false;
-    HasOnly(value, {"kind", "width", "signed", "pointer_depth", "direction", "element_count", "encoding", "ownership", "layout"}, path, errors);
+    HasOnly(value, {"kind", "width", "signed", "pointer_depth", "direction", "element_count", "encoding", "ownership", "layout", "release_adapter"}, path, errors);
     std::string kind; if (!StringValue(Field(value, "kind"), kind, path + ".kind", errors)) return false;
-    const std::map<std::string, TypeKind> kinds = {{"void",TypeKind::Void},{"bool",TypeKind::Bool},{"integer",TypeKind::Integer},{"floating",TypeKind::Floating},{"string",TypeKind::String},{"bytes",TypeKind::Bytes},{"pointer",TypeKind::Pointer},{"structure",TypeKind::Structure}};
+    const std::map<std::string, TypeKind> kinds = {{"void",TypeKind::Void},{"bool",TypeKind::Bool},{"integer",TypeKind::Integer},{"floating",TypeKind::Floating},{"string",TypeKind::String},{"bytes",TypeKind::Bytes},{"pointer",TypeKind::Pointer},{"handle",TypeKind::Handle},{"structure",TypeKind::Structure}};
     auto found = kinds.find(kind); if (found == kinds.end()) { Error(errors, "unsupported-type", path + ".kind", "type kind is not supported"); return false; } type.kind = found->second;
     uint32_t number = 0; if (Field(value, "width") != nullptr && NumberValue(Field(value, "width"), number, path + ".width", errors)) { if (number > UINT16_MAX) Error(errors, "range", path + ".width", "width exceeds uint16"); else type.width = static_cast<uint16_t>(number); }
     if (Field(value, "signed") != nullptr) BooleanValue(Field(value, "signed"), type.isSigned, path + ".signed", errors);
@@ -179,6 +180,7 @@ bool ParseType(const JsonValue& value, TypeSpec& type, const std::string& path, 
     if (Field(value, "encoding") != nullptr) StringValue(Field(value, "encoding"), type.encoding, path + ".encoding", errors);
     if (Field(value, "ownership") != nullptr) StringValue(Field(value, "ownership"), type.ownership, path + ".ownership", errors);
     if (Field(value, "layout") != nullptr) StringValue(Field(value, "layout"), type.layout, path + ".layout", errors);
+    if (Field(value, "release_adapter") != nullptr) StringValue(Field(value, "release_adapter"), type.releaseAdapter, path + ".release_adapter", errors);
     if (!ValidType(type)) Error(errors, "invalid-type-shape", path, "type width or pointer depth is invalid");
     return true;
 }

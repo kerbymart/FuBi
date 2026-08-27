@@ -21,6 +21,7 @@ enum class TypeKind
     String,
     Bytes,
     Pointer,
+    Handle,
     Structure
 };
 
@@ -42,6 +43,7 @@ struct TypeSpec
     std::string encoding;
     std::string ownership;
     std::string layout;
+    std::string releaseAdapter;
 };
 
 enum class PrototypeQuality

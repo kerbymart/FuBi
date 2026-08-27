@@ -72,6 +72,17 @@ bool ParseWorkerPointer(const std::string& text, uint64_t& value)
     return true;
 }
 
+SessionReferences::HandleReleaseAdapter ConfigureHandleReleaseAdapter(
+    const std::string& imagePath, const FunctionCatalog& catalog,
+    const TypeSpec& handleType)
+{
+    if (handleType.releaseAdapter == "CloseHandle")
+        return [](uint64_t value) {
+            return CloseHandle(reinterpret_cast<HANDLE>(static_cast<uintptr_t>(value))) != FALSE;
+        };
+    return {};
+}
+
 bool WriteProtocolLine(HANDLE protocol, const CallResult& result)
 {
     std::ostringstream encoded;
@@ -117,7 +128,9 @@ int RunSession(const char* imagePath, HANDLE protocol)
             result.action = "release";
             result.correlationId = request.correlationId;
             result.resolvedModule = catalog.Module();
-            if (references.Release(request.reference))
+            const bool released = references.Release(request.reference) ||
+                references.ReleaseHandle(request.reference, catalog.Module().sha256, catalog.Module().architecture);
+            if (released)
             {
                 result.success = true;
                 result.status = "released";
@@ -137,10 +150,21 @@ int RunSession(const char* imagePath, HANDLE protocol)
             bool referencesValid = true;
             for (CallArgument& argument : request.arguments)
             {
-                if (argument.type.kind != TypeKind::Pointer ||
+                if (argument.type.kind == TypeKind::Handle &&
+                    argument.value.rfind("opaque:session-", 0) != 0)
+                {
+                    referencesValid = false;
+                    diagnostics.push_back({"raw-handle-rejected", "arguments",
+                        "handle values must use a worker-issued session reference"});
+                    break;
+                }
+                if ((argument.type.kind != TypeKind::Pointer && argument.type.kind != TypeKind::Handle) ||
                     argument.value.rfind("opaque:session-", 0) != 0) continue;
                 uint64_t address = 0;
-                if (!references.Resolve(argument.value, address))
+                const bool resolved = argument.type.kind == TypeKind::Handle
+                    ? references.ResolveHandle(argument.value, address, catalog.Module().sha256, catalog.Module().architecture)
+                    : references.Resolve(argument.value, address);
+                if (!resolved)
                 {
                     referencesValid = false;
                     diagnostics.push_back({"reference-not-found", "arguments",
@@ -151,6 +175,8 @@ int RunSession(const char* imagePath, HANDLE protocol)
                 pointer << "opaque:0x" << std::hex << address;
                 argument.value = pointer.str();
             }
+            if (referencesValid)
+                request.allowSessionReferences = true;
             if (!referencesValid)
             {
                 result.correlationId = request.correlationId;
@@ -170,7 +196,7 @@ int RunSession(const char* imagePath, HANDLE protocol)
                 if (!InvokeX64Export(imagePath, request, catalog, result, error) && !error.empty())
                     result.diagnostics.push_back({"worker-failed", "call", error});
             }
-            if (result.success && result.prototypeUsed.returnType.kind == TypeKind::Pointer)
+            if (result.success && (result.prototypeUsed.returnType.kind == TypeKind::Pointer || result.prototypeUsed.returnType.kind == TypeKind::Handle))
             {
                 uint64_t address = 0;
                 if (!ParseWorkerPointer(result.returnValue, address) || address == 0)
@@ -183,8 +209,28 @@ int RunSession(const char* imagePath, HANDLE protocol)
                 }
                 else
                 {
-                    result.returnValue = references.Issue(address);
-                    result.issuedReferences.push_back(result.returnValue);
+                    if (result.prototypeUsed.returnType.kind == TypeKind::Handle &&
+                        result.prototypeUsed.returnType.ownership == "owned" &&
+                        result.prototypeUsed.returnType.releaseAdapter.empty())
+                    {
+                        result.success = false;
+                        result.status = "validation-failed";
+                        result.returnValue.clear();
+                        result.diagnostics.push_back({"handle-release-unconfigured", "return_value",
+                            "owned handles require an explicitly configured release adapter"});
+                    }
+                    else
+                    {
+                        SessionReferences::HandleReleaseAdapter release;
+                        if (result.prototypeUsed.returnType.kind == TypeKind::Handle)
+                            release = ConfigureHandleReleaseAdapter(imagePath, catalog,
+                                result.prototypeUsed.returnType);
+                        result.returnValue = result.prototypeUsed.returnType.kind == TypeKind::Handle
+                            ? references.IssueHandle(address, {result.prototypeUsed.returnType.width, catalog.Module().sha256, catalog.Module().architecture, result.prototypeUsed.returnType.ownership, std::move(release)})
+                            : references.Issue(address);
+                    }
+                    if (!result.returnValue.empty())
+                        result.issuedReferences.push_back(result.returnValue);
                 }
             }
         }
