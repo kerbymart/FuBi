@@ -76,4 +76,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - test: cover internal invocation authorization boundary
 - Merge pull request #22 from kerbymart/feat/8-internal-rva-binding
 - feat: add deterministic JSONL session mode
+- fix: enforce strict JSONL request boundaries
 

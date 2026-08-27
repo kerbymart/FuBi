@@ -11,6 +11,7 @@
 #include <cctype>
 #include <ostream>
 #include <sstream>
+#include <set>
 
 namespace
 {
@@ -73,6 +74,19 @@ bool NextObject(const std::string& text, size_t& position, std::string& object)
 { const size_t start=text.find('{',position); if(start==std::string::npos)return false; size_t depth=0; bool quoted=false,escaped=false; for(size_t i=start;i<text.size();++i){const char c=text[i];if(quoted){if(escaped)escaped=false;else if(c=='\\')escaped=true;else if(c=='"')quoted=false;continue;}if(c=='"'){quoted=true;continue;}if(c=='{')++depth;else if(c=='}'&&--depth==0){object=text.substr(start,i-start+1);position=i+1;return true;}}return false; }
 bool PrototypeObject(const std::string& object, PrototypeSpec& prototype)
 { std::string quality; if(!StringField(object,"abi",prototype.abi)||!StringField(object,"quality",quality))return false; StringField(object,"source",prototype.source); prototype.quality=quality=="exact-symbol"?PrototypeQuality::ExactSymbol:quality=="user-declared"?PrototypeQuality::UserDeclared:quality=="inferred"?PrototypeQuality::Inferred:PrototypeQuality::Unknown; size_t pos=object.find("\"return_type\":"); std::string type; if(pos==std::string::npos||!NextObject(object,pos,type)||!TypeObject(type,prototype.returnType))return false; pos=object.find("\"parameters\":["); if(pos!=std::string::npos){pos+=14; while(true){std::string item; if(!NextObject(object,pos,item))break; TypeSpec parsed; if(!TypeObject(item,parsed))return false; prototype.parameters.push_back(parsed); if(object.find(']',pos)!=std::string::npos&&object.find(']',pos)<object.find('{',pos))break;}} BoolField(object,"variadic",prototype.variadic); return ValidPrototype(prototype); }
+
+bool StrictTopLevel(const std::string& document, std::vector<CallDiagnostic>& diagnostics)
+{
+    size_t first=0; while(first<document.size() && std::isspace(static_cast<unsigned char>(document[first]))) ++first;
+    if(first==document.size() || document[first]!='{') { Diagnostic(diagnostics,"invalid-json","$","request must be one JSON object"); return false; }
+    size_t end=first; std::string object; if(!NextObject(document,end,object)) { Diagnostic(diagnostics,"invalid-json","$","request object is incomplete"); return false; }
+    while(end<document.size() && std::isspace(static_cast<unsigned char>(document[end]))) ++end;
+    if(end!=document.size()) { Diagnostic(diagnostics,"trailing-garbage","$","trailing text after request object is not allowed"); return false; }
+    const std::set<std::string> allowed={"schema_version","correlation_id","selector","module_sha256","module_path","module_timestamp","module_image_size","module_preferred_image_base","module_pdb_guid","module_pdb_age","authorization_provenance","internal_authorization","timeout_ms","allow_internal","has_prototype_override","prototype_override","arguments"};
+    std::map<std::string,unsigned> counts; int depth=0; bool quoted=false,escaped=false;
+    for(size_t i=first;i<end;++i){const char c=document[i];if(quoted){if(escaped)escaped=false;else if(c=='\\')escaped=true;else if(c=='"')quoted=false;continue;}if(c=='"'){size_t keyStart=i+1,keyEnd=keyStart;while(keyEnd<end&&document[keyEnd]!='"')++keyEnd;size_t colon=keyEnd+1;while(colon<end&&std::isspace(static_cast<unsigned char>(document[colon])))++colon;if(depth==1&&keyEnd<end&&colon<end&&document[colon]==':'){const std::string key=document.substr(keyStart,keyEnd-keyStart);if(!allowed.count(key))Diagnostic(diagnostics,"unknown-field",key,"unknown top-level field");if(++counts[key]>1)Diagnostic(diagnostics,"duplicate-field",key,"duplicate top-level field");}quoted=true;continue;}if(c=='{')++depth;else if(c=='}')--depth;}
+    return diagnostics.empty();
+}
 }
 
 bool ValidateCallRequest(const CallRequest& request, const FunctionCatalog& catalog,
@@ -128,7 +142,7 @@ void WriteCallResultJson(std::ostream& output, const CallResult& result)
 
 bool ParseCallRequestJson(const std::string& document, CallRequest& request, std::vector<CallDiagnostic>& diagnostics)
 {
-    request = {}; diagnostics.clear(); if(document.size()>4*1024*1024){Diagnostic(diagnostics,"size-limit","$","request is too large");return false;} uint64_t number=0; bool flag=false; std::string text;
+    request = {}; diagnostics.clear(); if(document.size()>4*1024*1024){Diagnostic(diagnostics,"size-limit","$","request is too large");return false;} if(!StrictTopLevel(document, diagnostics)) return false; uint64_t number=0; bool flag=false; std::string text;
     if(!UIntField(document,"schema_version",number)||number>UINT32_MAX) Diagnostic(diagnostics,"invalid-schema","schema_version","schema_version is invalid"); else request.schemaVersion=static_cast<uint32_t>(number);
     if(!StringField(document,"correlation_id",request.correlationId)) Diagnostic(diagnostics,"missing-field","correlation_id","correlation_id is required");
     if(!StringField(document,"selector",request.selector)) Diagnostic(diagnostics,"missing-field","selector","selector is required");
