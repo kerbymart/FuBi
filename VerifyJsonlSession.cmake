@@ -5,6 +5,7 @@ endif()
 set(INPUT_FILE "${OUTPUT_DIR}/jsonl-session-input.txt")
 set(OUTPUT_FILE "${OUTPUT_DIR}/jsonl-session-output.txt")
 file(WRITE "${INPUT_FILE}"
+    "{malformed-json}\n"
     "{\"schema_version\":1,\"action\":\"hello\",\"correlation_id\":\"hello\"}\n"
     "{\"schema_version\":1,\"action\":\"list\",\"correlation_id\":\"list\"}\n"
     "{\"schema_version\":1,\"action\":\"describe\",\"correlation_id\":\"describe\",\"selector\":\"NamedExport\"}\n"
@@ -34,8 +35,8 @@ foreach(LINE IN LISTS LINES)
         math(EXPR LINE_COUNT "${LINE_COUNT} + 1")
     endif()
 endforeach()
-if(NOT LINE_COUNT EQUAL 5)
-    message(FATAL_ERROR "expected exactly five JSONL response lines, got ${LINE_COUNT}: ${OUTPUT}")
+if(NOT LINE_COUNT EQUAL 6)
+    message(FATAL_ERROR "expected exactly six JSONL response lines, got ${LINE_COUNT}: ${OUTPUT}")
 endif()
 foreach(ACTION hello list describe release quit)
     string(FIND "${OUTPUT}" "\"action\":\"${ACTION}\"" POSITION)
@@ -43,3 +44,7 @@ foreach(ACTION hello list describe release quit)
         message(FATAL_ERROR "JSONL response for ${ACTION} was not found: ${OUTPUT}")
     endif()
 endforeach()
+string(FIND "${OUTPUT}" "\"status\":\"validation-failed\"" MALFORMED_POSITION)
+if(MALFORMED_POSITION LESS 0)
+    message(FATAL_ERROR "malformed JSONL input was not recovered as a structured response: ${OUTPUT}")
+endif()
