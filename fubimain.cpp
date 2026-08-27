@@ -1,7 +1,10 @@
 #include "stdafx.h"
 
 #include "FunctionCatalog.h"
+#include "PrototypeProfile.h"
+#include "DbgHelpDll.h"
 
+#include <fstream>
 #include <iostream>
 #include <string>
 
@@ -10,7 +13,7 @@ namespace
 void PrintUsage()
 {
     std::cerr << "Usage:\n"
-              << "  Fubi.exe <dll-file> [--list|--list-callable|--describe <name|#ordinal|0xRVA>] [--json]\n";
+              << "  Fubi.exe <dll-file> [--list|--list-callable|--describe <name|#ordinal|0xRVA>] [--profile <file>] [--symbols] [--json]\n";
 }
 
 struct Options
@@ -19,6 +22,8 @@ struct Options
     std::string action = "list";
     std::string selector;
     bool json = false;
+    std::string profilePath;
+    bool symbols = false;
 };
 
 bool ParseOptions(int argc, char* argv[], Options& options)
@@ -40,6 +45,12 @@ bool ParseOptions(int argc, char* argv[], Options& options)
             options.selector = argv[++index];
         }
         else if (argument == "--json") options.json = true;
+        else if (argument == "--profile" && index + 1 < argc)
+        {
+            if (!options.profilePath.empty()) return false;
+            options.profilePath = argv[++index];
+        }
+        else if (argument == "--symbols") options.symbols = true;
         else return false;
     }
     return true;
@@ -61,6 +72,35 @@ int main(int argc, char* argv[])
     {
         std::cerr << error << "\n";
         return 3;
+    }
+    if (!options.profilePath.empty())
+    {
+        std::ifstream profileFile(options.profilePath, std::ios::binary | std::ios::ate);
+        if (!profileFile) { std::cerr << "Unable to open profile: " << options.profilePath << "\n"; return 6; }
+        const std::streamoff size = profileFile.tellg();
+        if (size < 0 || size > 4 * 1024 * 1024) { std::cerr << "Profile exceeds the 4 MiB limit\n"; return 6; }
+        std::string document(static_cast<size_t>(size), '\0');
+        profileFile.seekg(0);
+        if (!document.empty()) profileFile.read(&document[0], static_cast<std::streamsize>(document.size()));
+        PrototypeProfile profile;
+        std::vector<ProfileValidationError> profileErrors;
+        if (!ParsePrototypeProfile(document, profile, profileErrors) || !catalog.ApplyProfile(profile, profileErrors))
+        {
+            for (const ProfileValidationError& item : profileErrors)
+                std::cerr << item.code << " at " << item.path << ": " << item.message << "\n";
+            return 6;
+        }
+    }
+    if (options.symbols)
+    {
+        DbgHelpDll provider;
+        std::vector<SymbolPrototypeEvidence> evidence;
+        if (!provider.EnumerateExactFunctionSymbols(options.targetPath, catalog.Module(), evidence, error) ||
+            !catalog.ApplySymbolEvidence(evidence, error))
+        {
+            std::cerr << error << "\n";
+            return 7;
+        }
     }
     if (options.action == "describe")
     {
