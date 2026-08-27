@@ -194,6 +194,13 @@ add_test(
         -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
         -DARCHITECTURE=${FUBI_TEST_ARCHITECTURE}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyFrameworkManaged.cmake)
+if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+    add_library(x86_fixture SHARED TestX86Fixture.cpp TestX86Fixture.def)
+    add_test(NAME x86_worker_invocation COMMAND ${CMAKE_COMMAND}
+        -DFUBI=$<TARGET_FILE:Fubi> -DFIXTURE=$<TARGET_FILE:x86_fixture>
+        -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi> -DARCHITECTURE=${FUBI_TEST_ARCHITECTURE}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyX86Worker.cmake)
+endif()
 add_test(
     NAME acceptance_static_catalog
     COMMAND ${CMAKE_COMMAND}
