@@ -21,6 +21,7 @@ enum class TypeKind
     String,
     Bytes,
     Pointer,
+    Handle,
     Structure
 };
 

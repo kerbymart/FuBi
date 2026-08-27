@@ -137,10 +137,13 @@ int RunSession(const char* imagePath, HANDLE protocol)
             bool referencesValid = true;
             for (CallArgument& argument : request.arguments)
             {
-                if (argument.type.kind != TypeKind::Pointer ||
+                if ((argument.type.kind != TypeKind::Pointer && argument.type.kind != TypeKind::Handle) ||
                     argument.value.rfind("opaque:session-", 0) != 0) continue;
                 uint64_t address = 0;
-                if (!references.Resolve(argument.value, address))
+                const bool resolved = argument.type.kind == TypeKind::Handle
+                    ? references.ResolveHandle(argument.value, address, catalog.Module().sha256, catalog.Module().architecture)
+                    : references.Resolve(argument.value, address);
+                if (!resolved)
                 {
                     referencesValid = false;
                     diagnostics.push_back({"reference-not-found", "arguments",
@@ -170,7 +173,7 @@ int RunSession(const char* imagePath, HANDLE protocol)
                 if (!InvokeX64Export(imagePath, request, catalog, result, error) && !error.empty())
                     result.diagnostics.push_back({"worker-failed", "call", error});
             }
-            if (result.success && result.prototypeUsed.returnType.kind == TypeKind::Pointer)
+            if (result.success && (result.prototypeUsed.returnType.kind == TypeKind::Pointer || result.prototypeUsed.returnType.kind == TypeKind::Handle))
             {
                 uint64_t address = 0;
                 if (!ParseWorkerPointer(result.returnValue, address) || address == 0)
@@ -183,7 +186,9 @@ int RunSession(const char* imagePath, HANDLE protocol)
                 }
                 else
                 {
-                    result.returnValue = references.Issue(address);
+                    result.returnValue = result.prototypeUsed.returnType.kind == TypeKind::Handle
+                        ? references.IssueHandle(address, {result.prototypeUsed.returnType.width, catalog.Module().sha256, catalog.Module().architecture, result.prototypeUsed.returnType.ownership, {}})
+                        : references.Issue(address);
                     result.issuedReferences.push_back(result.returnValue);
                 }
             }
