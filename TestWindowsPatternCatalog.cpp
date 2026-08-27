@@ -34,9 +34,11 @@ BOOST_AUTO_TEST_CASE(ScansControlledPeForDirectAndImportCalls)
         return item.patternId == "win-x64-rip-relative-iat-call-v1";
     });
     BOOST_REQUIRE(direct != evidence.end());
+    BOOST_CHECK(direct->rva != 0);
     BOOST_CHECK_EQUAL(direct->targetKind, "function");
     BOOST_CHECK(direct->targetRva != 0);
     BOOST_REQUIRE(imported != evidence.end());
+    BOOST_CHECK(imported->rva != 0);
     BOOST_CHECK_EQUAL(imported->targetKind, "iat-slot");
     BOOST_CHECK(imported->targetRva != 0);
     BOOST_CHECK(std::all_of(evidence.begin(), evidence.end(), [](const auto& item) {
