@@ -66,4 +66,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - feat: add x64 exported invocation engine
 - style: normalize invocation header
 - fix: harden x64 invocation safety checks
+- feat: bound invocation worker execution
 
