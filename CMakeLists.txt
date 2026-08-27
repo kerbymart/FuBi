@@ -17,6 +17,10 @@ set(FUBI_MAX_IMAGE_BYTES 67108864 CACHE STRING
 if(NOT FUBI_MAX_IMAGE_BYTES MATCHES "^[0-9]+$" OR FUBI_MAX_IMAGE_BYTES LESS 4096)
     message(FATAL_ERROR "FUBI_MAX_IMAGE_BYTES must be an integer of at least 4096")
 endif()
+set(FUBI_ACCEPTANCE_BINARY "" CACHE FILEPATH
+    "Optional external hash-pinned PE/DLL for static acceptance testing; never committed")
+set(FUBI_ACCEPTANCE_SHA256 "" CACHE STRING
+    "SHA-256 pin for FUBI_ACCEPTANCE_BINARY")
 
 set(FUBI_BOOST_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/boost_1_87_0" CACHE PATH
     "Path to local Boost headers")
@@ -105,5 +109,12 @@ add_test(
         -DFIXTURE=$<TARGET_FILE:static_fixture>
         -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
         -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyStaticCli.cmake)
+add_test(
+    NAME acceptance_static_catalog
+    COMMAND ${CMAKE_COMMAND}
+        -DFUBI=$<TARGET_FILE:Fubi>
+        -DACCEPTANCE_FILE=${FUBI_ACCEPTANCE_BINARY}
+        -DSHA256=${FUBI_ACCEPTANCE_SHA256}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyAcceptance.cmake)
 
 message(STATUS "Compiler version: ${CMAKE_CXX_COMPILER_VERSION}")
