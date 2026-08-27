@@ -8,6 +8,7 @@
 #include "ProcessInvocation.h"
 #include "ExitCodes.h"
 #include "SessionReferences.h"
+#include "InspectionService.h"
 
 #include <fstream>
 #include <cerrno>
@@ -105,7 +106,7 @@ void WriteSessionDescription(std::ostream& output, const FunctionCatalog& catalo
 void PrintUsage()
 {
     std::cerr << "Usage:\n"
-              << "  Fubi.exe <dll-file> [--list|--list-callable|--describe <name|#ordinal|0xRVA>|--inspect <name|#ordinal|0xRVA>|--call <selector>] [--arg <kind:value> ...] [--timeout <ms>] [--profile <file>] [--prototype-override <file>] [--symbols] [--format <json|jsonl>|--session|--json|--jsonl|--shell|--interactive]\n";
+              << "  Fubi.exe <dll-file> [--list|--list-callable|--describe <name|#ordinal|0xRVA>|--inspect <exports|imports|runtime-functions|debug|wdf-bind>|--call <selector>] [--arg <kind:value> ...] [--timeout <ms>] [--profile <file>] [--prototype-override <file>] [--symbols] [--format <json|jsonl>|--session|--json|--jsonl|--shell|--interactive]\n";
 }
 
 struct Options
@@ -113,6 +114,7 @@ struct Options
     std::string targetPath;
     std::string action = "list";
     std::string selector;
+    std::string inspectMode;
     bool json = false;
     bool jsonl = false;
     bool shell = false;
@@ -135,11 +137,18 @@ bool ParseOptions(int argc, char* argv[], Options& options)
             if (options.action != "list") return false;
             options.action = argument.substr(2);
         }
-        else if ((argument == "--describe" || argument == "--inspect") && index + 1 < argc)
+        else if (argument == "--describe" && index + 1 < argc)
         {
             if (options.action != "list") return false;
             options.action = "describe";
             options.selector = argv[++index];
+        }
+        else if (argument == "--inspect" && index + 1 < argc)
+        {
+            if (options.action != "list") return false;
+            if (!InspectionService::IsSupportedMode(argv[index + 1])) return false;
+            options.action = "inspect";
+            options.inspectMode = argv[++index];
         }
         else if (argument == "--call" && index + 1 < argc)
         {
@@ -437,6 +446,18 @@ int main(int argc, char* argv[])
         }
         if (options.json) WriteCallResultJson(std::cout, result);
         else WriteCallResultText(std::cout, result);
+        return FubiExitCode::Success;
+    }
+    if (options.action == "inspect")
+    {
+        InspectionReport report;
+        if (!InspectionService::Inspect(options.targetPath, options.inspectMode, report, error))
+        {
+            std::cerr << error << "\n";
+            return FubiExitCode::ValidationFailed;
+        }
+        if (options.json) InspectionService::WriteJson(std::cout, report);
+        else InspectionService::WriteText(std::cout, report);
         return FubiExitCode::Success;
     }
     if (options.action == "describe")

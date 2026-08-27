@@ -55,7 +55,8 @@ type vocabulary, internal-call policy, and scripting protocol are approved.
 - [ ] D-07 Use project-owned x64/x86 assembly adapters instead of external
   invocation libraries.
 - [ ] D-08 Support repeated typed CLI arguments and a versioned JSONL session.
-- [ ] D-09 Keep broad PE diagnostics secondary under `--inspect` only.
+- [x] D-09 Keep broad PE diagnostics secondary under `--inspect` only. See
+  [issue #136](https://github.com/kerbymart/FuBi/issues/136).
 - [ ] D-10 Defer the focused Windows call-pattern scanner until the generic
   catalog and calling engine work.
 
@@ -355,7 +356,8 @@ Evidence: Opt-in path, pinned identity, export/candidate checks, static describe
 - [ ] DOC-05 Preserve complete export enumeration, signature dumps, aliases,
   ordinals, forwarders, decorated-name recovery, and human-readable output.
 - [x] DOC-06 Deprecate analysis-first language and general disassembly flags. ([PR #15](https://github.com/kerbymart/FuBi/pull/15))
-- [ ] DOC-07 Keep broad PE diagnostics secondary under `--inspect`.
+- [x] DOC-07 Keep broad PE diagnostics secondary under `--inspect`. See
+  [issue #136](https://github.com/kerbymart/FuBi/issues/136).
 - [x] DOC-08 Record supported architecture, ABI, and type limitations. See [PR #88](https://github.com/kerbymart/FuBi/pull/88).
 
 ## Roadmap definition of done
