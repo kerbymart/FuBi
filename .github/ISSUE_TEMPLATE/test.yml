@@ -1,0 +1,43 @@
+name: Test Improvement
+description: Propose missing coverage or a test-suite improvement
+title: "[TEST] <title>"
+labels: ["needs-triage"]
+body:
+  - type: checkboxes
+    attributes:
+      label: Existing issue check
+      description: Search the issue tracker before opening a duplicate.
+      options:
+        - label: I have searched the existing issues
+          required: true
+  - type: textarea
+    attributes:
+      label: Behavior or invariant to test
+      description: Identify the requirement, scenario, regression, or safety invariant that needs coverage.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Proposed test scenario
+      description: Describe inputs, events or fault script, expected state/effects, and deterministic termination.
+      placeholder: Given..., when..., then...
+    validations:
+      required: true
+  - type: dropdown
+    attributes:
+      label: Test layer
+      description: Choose the narrowest layer that can verify the behavior.
+      options:
+        - Unit or pure transformation
+        - TUI transition or golden view
+        - Device simulator or fault injection
+        - Integration or persistence replay
+        - Race, leak, soak, or performance
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: Add related failures, commands, or sanitized logs. Use synthetic media data and identifiers.
+    validations:
+      required: false
