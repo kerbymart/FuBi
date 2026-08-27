@@ -134,4 +134,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - feat: recognize bounded WDF and CFG call patterns
 - feat: select invocation workers by architecture
 - test: verify hash-pinned internal RVA calls (#62)
+- feat: support bounded string output arguments (#64)
 

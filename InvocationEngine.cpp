@@ -95,23 +95,49 @@ std::string EncodeHex(const std::vector<unsigned char>& bytes)
     return result;
 }
 
+std::string EncodeString(const std::vector<unsigned char>& bytes, const TypeSpec& type)
+{
+    if (type.encoding == "utf16" || type.encoding == "wstr")
+    {
+        const size_t units = bytes.size() / sizeof(wchar_t);
+        size_t length = 0;
+        while (length < units && reinterpret_cast<const wchar_t*>(bytes.data())[length] != L'\0') ++length;
+        if (length > static_cast<size_t>(INT_MAX)) return {};
+        const int required = WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
+            reinterpret_cast<const wchar_t*>(bytes.data()), static_cast<int>(length), nullptr, 0, nullptr, nullptr);
+        if (required <= 0 && length != 0) return {};
+        std::string result(static_cast<size_t>(required), '\0');
+        if (required != 0 && WideCharToMultiByte(CP_UTF8, WC_ERR_INVALID_CHARS,
+            reinterpret_cast<const wchar_t*>(bytes.data()), static_cast<int>(length), result.data(), required, nullptr, nullptr) != required)
+            return {};
+        return result;
+    }
+    const size_t length = std::find(bytes.begin(), bytes.end(), static_cast<unsigned char>(0)) - bytes.begin();
+    return std::string(bytes.begin(), bytes.begin() + length);
+}
+
 bool PrepareStorage(const CallArgument& argument, std::vector<unsigned char>& storage,
     std::string& error)
 {
     if (argument.type.kind == TypeKind::String)
     {
-        if (argument.type.direction != ParameterDirection::In)
+        const bool wide = argument.type.encoding == "utf16" || argument.type.encoding == "wstr";
+        if (argument.type.direction != ParameterDirection::In && argument.bufferSize == 0)
+        { error = "string output requires an explicit buffer size"; return false; }
+        if (argument.type.direction == ParameterDirection::Out)
         {
-            error = "string output parameters are not supported yet";
-            return false;
+            if (wide && argument.bufferSize % sizeof(wchar_t) != 0)
+            { error = "UTF-16 string buffer size must be a multiple of two"; return false; }
+            storage.assign(static_cast<size_t>(argument.bufferSize), 0);
+            return storage.size() <= 16 * 1024 * 1024;
         }
         if (argument.type.encoding == "utf16" || argument.type.encoding == "wstr")
         {
-            const int required = MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
+            const int required = argument.value.empty() ? 0 : MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS,
                 argument.value.data(), static_cast<int>(argument.value.size()), nullptr, 0);
-            if (required <= 0) { error = "string is not valid UTF-8"; return false; }
+            if (!argument.value.empty() && required <= 0) { error = "string is not valid UTF-8"; return false; }
             storage.resize((static_cast<size_t>(required) + 1) * sizeof(wchar_t));
-            if (MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, argument.value.data(),
+            if (required != 0 && MultiByteToWideChar(CP_UTF8, MB_ERR_INVALID_CHARS, argument.value.data(),
                 static_cast<int>(argument.value.size()), reinterpret_cast<wchar_t*>(storage.data()), required) != required)
             { error = "unable to convert UTF-8 string"; return false; }
         }
@@ -126,6 +152,12 @@ bool PrepareStorage(const CallArgument& argument, std::vector<unsigned char>& st
         {
             error = "string value exceeds its buffer size";
             return false;
+        }
+        if (argument.type.direction == ParameterDirection::InOut)
+        {
+            if (wide && argument.bufferSize % sizeof(wchar_t) != 0)
+            { error = "UTF-16 string buffer size must be a multiple of two"; return false; }
+            storage.resize(static_cast<size_t>(argument.bufferSize), 0);
         }
         return storage.size() <= 16 * 1024 * 1024;
     }
@@ -412,10 +444,12 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     const int exceptionCode=state->call.exceptionCode;
     std::vector<CallArgument> outputValues;
     for (size_t index = 0; index < request.arguments.size(); ++index)
-        if (request.arguments[index].type.kind == TypeKind::Bytes && request.arguments[index].type.direction != ParameterDirection::In)
+        if ((request.arguments[index].type.kind == TypeKind::Bytes || request.arguments[index].type.kind == TypeKind::String) && request.arguments[index].type.direction != ParameterDirection::In)
         {
             CallArgument output = request.arguments[index];
-            output.value = EncodeHex(state->argumentStorage[index]);
+            output.value = request.arguments[index].type.kind == TypeKind::String
+                ? EncodeString(state->argumentStorage[index], request.arguments[index].type)
+                : EncodeHex(state->argumentStorage[index]);
             output.bufferSize = state->argumentStorage[index].size();
             outputValues.push_back(std::move(output));
         }
