@@ -147,4 +147,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - docs: document prototype profile schema (#86)
 - docs: add capability matrix (#88)
 - feat: complete x86 worker invocation coverage (#90)
+- test: harden x86 ABI worker guarantees (#92)
 

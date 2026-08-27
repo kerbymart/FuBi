@@ -5,3 +5,8 @@ EXPORTS
     StdcallAdd @3
     CdeclFour @4
     CdeclEight @5
+    CdeclReturn8 @6
+    CdeclReturn16 @7
+    CdeclReturn32 @8
+    CdeclReturn64 @9
+    StdcallReturn64=_StdcallReturn64@0 @10
