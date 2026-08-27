@@ -192,4 +192,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - Merge pull request #149 from kerbymart/test/148-export-count
 - refactor: organize source and test layout
 - refactor: organize source and test layout
+- fix: flatten moved MASM fixture object paths
 

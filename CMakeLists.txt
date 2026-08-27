@@ -125,6 +125,7 @@ if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 4)
     add_library(x86_register_fixture SHARED
         ${FUBI_FIXTURE_X86_DIR}/X86RegisterSentinel.asm
         ${FUBI_FIXTURE_X86_DIR}/X86RegisterFixture.cpp)
+    set_property(SOURCE ${FUBI_FIXTURE_X86_DIR}/X86RegisterSentinel.asm PROPERTY OBJECT_NAME X86RegisterSentinel.asm)
     set_target_properties(x86_register_fixture PROPERTIES
         OUTPUT_NAME "x86_register_fixture")
     target_link_options(x86_register_fixture PRIVATE
@@ -357,6 +358,7 @@ endif()
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
     add_library(thiscall_fixture SHARED ${FUBI_FIXTURE_X86_DIR}/ThisCallFixture.cpp ${FUBI_FIXTURE_X86_DIR}/ThisCallFixture.asm ${FUBI_FIXTURE_X86_DIR}/ThisCallFixture.def)
+    set_property(SOURCE ${FUBI_FIXTURE_X86_DIR}/ThisCallFixture.asm PROPERTY OBJECT_NAME ThisCallFixture.asm)
     target_compile_options(thiscall_fixture PRIVATE /Od /Zi)
     target_link_options(thiscall_fixture PRIVATE /DEBUG:FULL)
     add_test(
@@ -367,6 +369,7 @@ if(CMAKE_SIZEOF_VOID_P EQUAL 4)
             -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
             -P ${FUBI_INTEGRATION_DIR}/VerifyX86ThisCall.cmake)
     add_library(fastcall_fixture SHARED ${FUBI_FIXTURE_X86_DIR}/FastCallFixture.cpp ${FUBI_FIXTURE_X86_DIR}/FastCallFixture.asm ${FUBI_FIXTURE_X86_DIR}/FastCallFixture.def)
+    set_property(SOURCE ${FUBI_FIXTURE_X86_DIR}/FastCallFixture.asm PROPERTY OBJECT_NAME FastCallFixture.asm)
     target_compile_options(fastcall_fixture PRIVATE /Od /Zi)
     target_link_options(fastcall_fixture PRIVATE /DEBUG:FULL)
     add_test(
