@@ -35,4 +35,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - docs: refocus README on function binding
 - chore: remove external decoder dependency
 - fix: bound static export parsing
+- fix: cap static catalog allocations
 

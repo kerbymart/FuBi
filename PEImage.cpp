@@ -58,10 +58,10 @@ bool PEImage::Load(
     }
 
     const std::streamoff length = input.tellg();
-    if (length < 0 || static_cast<uint64_t>(length) >
-            static_cast<uint64_t>(std::numeric_limits<size_t>::max()))
+    if (length < 0 || static_cast<uint64_t>(length) > kMaximumImageBytes ||
+        static_cast<uint64_t>(length) > static_cast<uint64_t>(std::numeric_limits<size_t>::max()))
     {
-        error = "PE file size is unsupported";
+        error = "PE file exceeds the configured maximum image size";
         return false;
     }
 

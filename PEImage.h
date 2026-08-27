@@ -11,6 +11,10 @@
 #include <string>
 #include <vector>
 
+#ifndef FUBI_MAX_IMAGE_BYTES
+#define FUBI_MAX_IMAGE_BYTES 67108864ULL
+#endif
+
 struct PeDataDirectory
 {
     uint32_t index = 0;
@@ -53,6 +57,8 @@ struct PeHeaders
 class PEImage
 {
 public:
+    static constexpr uint64_t kMaximumImageBytes = FUBI_MAX_IMAGE_BYTES;
+
     static bool Load(
         const std::string& path, PEImage& image, std::string& error);
     static bool FromBytes(

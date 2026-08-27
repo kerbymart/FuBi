@@ -12,6 +12,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+set(FUBI_MAX_IMAGE_BYTES 67108864 CACHE STRING
+    "Maximum number of bytes FuBi accepts from one static PE image")
+if(NOT FUBI_MAX_IMAGE_BYTES MATCHES "^[0-9]+$" OR FUBI_MAX_IMAGE_BYTES LESS 4096)
+    message(FATAL_ERROR "FUBI_MAX_IMAGE_BYTES must be an integer of at least 4096")
+endif()
+
 set(FUBI_BOOST_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/boost_1_87_0" CACHE PATH
     "Path to local Boost headers")
 if(NOT EXISTS "${FUBI_BOOST_ROOT}/boost/version.hpp")
@@ -23,13 +29,17 @@ endif()
 add_library(fubi_boost_headers INTERFACE)
 target_include_directories(fubi_boost_headers INTERFACE "${FUBI_BOOST_ROOT}")
 
+add_library(fubi_build_limits INTERFACE)
+target_compile_definitions(
+    fubi_build_limits INTERFACE FUBI_MAX_IMAGE_BYTES=${FUBI_MAX_IMAGE_BYTES})
+
 set(SOURCES
     PEImage.cpp
     StaticExportCatalog.cpp
     fubimain.cpp
     stdafx.cpp)
 add_executable(Fubi ${SOURCES})
-target_link_libraries(Fubi PRIVATE bcrypt)
+target_link_libraries(Fubi PRIVATE bcrypt fubi_build_limits)
 
 set(TEST_SOURCES TestSignatureParser.cpp)
 add_executable(tests ${TEST_SOURCES})
@@ -51,7 +61,7 @@ add_executable(
     TestStaticCatalog.cpp
     StaticExportCatalog.cpp
     PEImage.cpp)
-target_link_libraries(static_catalog_tests PRIVATE fubi_boost_headers)
+target_link_libraries(static_catalog_tests PRIVATE fubi_boost_headers fubi_build_limits)
 add_dependencies(static_catalog_tests static_fixture export_fixture)
 
 enable_testing()
