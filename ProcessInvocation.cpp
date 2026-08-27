@@ -123,7 +123,8 @@ bool InvokeX64ExportProcess(const std::string& imagePath, const CallRequest& req
         const bool stopped = WaitForSingleObject(process.hProcess, 5000) == WAIT_OBJECT_0;
         result = {}; result.correlationId = request.correlationId;
         result.status = terminated && stopped ? "timed-out" : "termination-failed";
-        RecordExitCode(process.hProcess, result);
+        if (stopped)
+            RecordExitCode(process.hProcess, result);
         result.diagnostics.push_back({terminated && stopped ? "timeout" : "termination-failed", "timeout_ms", terminated && stopped ? "worker process exceeded the invocation timeout" : "worker could not be terminated safely"});
         AddExitDiagnostic(result);
         if (!(terminated && stopped))
@@ -138,9 +139,19 @@ bool InvokeX64ExportProcess(const std::string& imagePath, const CallRequest& req
     }
     if (wait == WAIT_FAILED)
     {
-        TerminateProcess(process.hProcess, ERROR_OPERATION_ABORTED); WaitForSingleObject(process.hProcess, 5000);
-        CloseHandle(process.hThread); CloseHandle(process.hProcess);
-        const bool clean = cleanup(); const bool failed = failure("worker-failed", "worker-wait-failed", "unable to wait for invocation worker");
+        const bool terminated = TerminateProcess(process.hProcess, ERROR_OPERATION_ABORTED) != FALSE;
+        const bool stopped = WaitForSingleObject(process.hProcess, 5000) == WAIT_OBJECT_0;
+        const bool clean = stopped ? cleanup() : false;
+        const bool failed = failure("worker-failed", "worker-wait-failed", "unable to wait for invocation worker");
+        if (stopped)
+        {
+            CloseHandle(process.hThread); CloseHandle(process.hProcess);
+        }
+        else
+        {
+            RetainWorker(process, requestPath, resultPath);
+            if (!terminated) result.diagnostics.push_back({"termination-failed", "worker", "worker could not be terminated safely"});
+        }
         if (!clean) result.diagnostics.push_back({"cleanup-failed", "ipc", "unable to remove worker IPC files"});
         return failed;
     }
