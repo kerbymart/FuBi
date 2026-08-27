@@ -24,14 +24,30 @@ set(FUBI_ACCEPTANCE_SHA256 "" CACHE STRING
 
 set(FUBI_BOOST_ROOT "${CMAKE_CURRENT_SOURCE_DIR}/boost_1_87_0" CACHE PATH
     "Path to local Boost headers")
-if(NOT EXISTS "${FUBI_BOOST_ROOT}/boost/version.hpp")
-    message(FATAL_ERROR
-        "FuBi requires local Boost headers for its grandfathered signature parser. "
-        "Set -DFUBI_BOOST_ROOT=<path-to-Boost-root>. FuBi never downloads dependencies.")
+set(FUBI_BOOST_INCLUDE_DIRS "")
+if(EXISTS "${FUBI_BOOST_ROOT}/boost/version.hpp")
+    set(FUBI_BOOST_INCLUDE_DIRS "${FUBI_BOOST_ROOT}")
+else()
+    find_package(Boost QUIET)
+    if(Boost_FOUND)
+        foreach(boost_include_dir IN LISTS Boost_INCLUDE_DIRS)
+            if(EXISTS "${boost_include_dir}/boost/version.hpp")
+                list(APPEND FUBI_BOOST_INCLUDE_DIRS "${boost_include_dir}")
+            endif()
+        endforeach()
+    endif()
+    if(NOT FUBI_BOOST_INCLUDE_DIRS)
+        message(FATAL_ERROR
+            "FuBi requires local Boost headers for its grandfathered signature parser. "
+            "Set -DFUBI_BOOST_ROOT=<path-to-Boost-root> or make Boost discoverable "
+            "through CMAKE_PREFIX_PATH. FuBi never downloads dependencies.")
+    endif()
 endif()
+list(REMOVE_DUPLICATES FUBI_BOOST_INCLUDE_DIRS)
+message(STATUS "Using local Boost headers from: ${FUBI_BOOST_INCLUDE_DIRS}")
 
 add_library(fubi_boost_headers INTERFACE)
-target_include_directories(fubi_boost_headers INTERFACE "${FUBI_BOOST_ROOT}")
+target_include_directories(fubi_boost_headers INTERFACE ${FUBI_BOOST_INCLUDE_DIRS})
 
 add_library(fubi_build_limits INTERFACE)
 target_compile_definitions(
