@@ -176,6 +176,16 @@ add_test(NAME signature_parser COMMAND tests)
 add_test(NAME export_enumeration COMMAND export_tests)
 add_test(NAME static_catalog COMMAND static_catalog_tests)
 add_test(NAME windows_patterns COMMAND windows_pattern_tests)
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    add_test(
+        NAME windows_pattern_acceptance
+        COMMAND windows_pattern_tests
+            --run_test=ScansControlledPeForDirectAndImportCalls)
+    add_test(
+        NAME windows_pattern_determinism
+        COMMAND windows_pattern_tests
+            --run_test=ScanIsDeterministicAndDoesNotExecuteTheFixture)
+endif()
 add_test(NAME function_catalog COMMAND function_catalog_tests)
 add_test(NAME prototype_profile COMMAND prototype_profile_tests)
 add_test(NAME call_contract COMMAND call_contract_tests)
