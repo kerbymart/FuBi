@@ -78,3 +78,32 @@ BOOST_AUTO_TEST_CASE(ConflictingEvidenceIsRetainedAndInferredIsNotCallable)
     BOOST_CHECK(!MergePrototypeEvidence(record, second, "symbol-inferred", PrototypeQuality::Inferred));
     BOOST_CHECK_EQUAL(record.prototypeConflicts.size(), 1U);
 }
+
+BOOST_AUTO_TEST_CASE(ProfileApplicationIsCallableAndTransactional)
+{
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+    PrototypeProfile profile;
+    std::vector<ProfileValidationError> errors;
+    BOOST_REQUIRE(ParsePrototypeProfile(ProfileDocument(catalog, catalog.Module().architecture), profile, errors));
+    BOOST_REQUIRE(catalog.ApplyProfile(profile, errors));
+    BOOST_CHECK(catalog.Find("NamedExport")->callability == Callability::Callable);
+
+    PrototypeProfile conflicting = profile;
+    conflicting.functions.front().prototype.returnType.width = 64;
+    errors.clear();
+    BOOST_CHECK(!catalog.ApplyProfile(conflicting, errors));
+    BOOST_CHECK_EQUAL(catalog.Find("NamedExport")->prototype.returnType.width, 32);
+}
+
+BOOST_AUTO_TEST_CASE(IncompleteUserPrototypeCannotBecomeCallable)
+{
+    FunctionRecord record;
+    record.callability = Callability::RequiresPrototype;
+    PrototypeSpec incomplete;
+    incomplete.abi = "x64";
+    BOOST_CHECK(!MergePrototypeEvidence(record, incomplete, "profile", PrototypeQuality::UserDeclared));
+    BOOST_CHECK(!record.hasPrototype);
+    BOOST_CHECK(record.callability == Callability::RequiresPrototype);
+}
