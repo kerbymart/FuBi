@@ -2,6 +2,7 @@
 #include "InspectionService.h"
 
 #include <algorithm>
+#include <delayimp.h>
 #include <iomanip>
 #include <limits>
 #include <ostream>
@@ -133,6 +134,60 @@ bool ParseImports(const PEImage& image, uint32_t directoryIndex,
         modules.push_back(std::move(module));
     }
     warnings.push_back("Import directory exceeded the safety limit");
+    return false;
+}
+
+uint32_t DelayValueToRva(const PEImage& image, uint32_t value, bool rvaBased)
+{
+    if (rvaBased) return value;
+    const uint64_t imageBase = image.Headers().preferredImageBase;
+    if (static_cast<uint64_t>(value) < imageBase ||
+        static_cast<uint64_t>(value) - imageBase > UINT32_MAX)
+        return 0;
+    return static_cast<uint32_t>(static_cast<uint64_t>(value) - imageBase);
+}
+
+bool ParseDelayImports(const PEImage& image,
+    std::vector<InspectionImportModule>& modules,
+    std::vector<std::string>& warnings)
+{
+    const PeDataDirectory* directory = Directory(image, IMAGE_DIRECTORY_ENTRY_DELAY_IMPORT);
+    if (directory == nullptr) return true;
+    const size_t maximum = std::min(kMaximumDirectoryRecords,
+        static_cast<size_t>(directory->size) / sizeof(ImgDelayDescr) + 1);
+    for (size_t index = 0; index < maximum; ++index)
+    {
+        uint32_t descriptorRva = 0;
+        if (!AddRva(directory->rva, static_cast<uint64_t>(index) * sizeof(ImgDelayDescr), descriptorRva))
+        {
+            warnings.push_back("Delay-import directory RVA arithmetic overflow");
+            return false;
+        }
+        ImgDelayDescr descriptor = {};
+        if (!image.ReadRva(descriptorRva, descriptor))
+        {
+            warnings.push_back("Truncated delay-import directory");
+            return false;
+        }
+        if (descriptor.rvaDLLName == 0 && descriptor.rvaIAT == 0 && descriptor.rvaINT == 0)
+            return true;
+        const bool rvaBased = (descriptor.grAttrs & dlattrRva) != 0;
+        const uint32_t nameRva = DelayValueToRva(image, descriptor.rvaDLLName, rvaBased);
+        const uint32_t iatRva = DelayValueToRva(image, descriptor.rvaIAT, rvaBased);
+        const uint32_t lookupRva = DelayValueToRva(image, descriptor.rvaINT, rvaBased);
+        InspectionImportModule module;
+        if (nameRva == 0 || iatRva == 0 || lookupRva == 0 ||
+            !image.ReadCStringAtRva(nameRva, module.name, kMaximumStringBytes))
+        {
+            warnings.push_back("Invalid delay-import descriptor");
+            return false;
+        }
+        std::string warning;
+        ReadThunkTable(image, lookupRva, iatRva, module, warning);
+        if (!warning.empty()) warnings.push_back(std::move(warning));
+        modules.push_back(std::move(module));
+    }
+    warnings.push_back("Delay-import directory exceeded the safety limit");
     return false;
 }
 
@@ -303,6 +358,7 @@ bool InspectionService::Inspect(const std::string& path, const std::string& mode
     else if (mode == "imports")
     {
         ParseImports(image, IMAGE_DIRECTORY_ENTRY_IMPORT, report.imports, report.warnings);
+        ParseDelayImports(image, report.delayImports, report.warnings);
     }
     else if (mode == "runtime-functions") ParseRuntimeFunctions(image, report);
     else if (mode == "debug") ParseDebug(image, report);

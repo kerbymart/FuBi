@@ -5,6 +5,7 @@
 
 #include <windows.h>
 
+#include <algorithm>
 #include <fstream>
 #include <sstream>
 #include <string>
@@ -44,6 +45,12 @@ BOOST_AUTO_TEST_CASE(ImportsAndRuntimeFunctionsAreBoundedStaticReports)
     std::string error;
     BOOST_REQUIRE(InspectionService::Inspect(FixturePath("static_fixture.dll"), "imports", report, error));
     BOOST_CHECK(!report.imports.empty());
+    const auto delayedModule = std::find_if(report.delayImports.begin(), report.delayImports.end(),
+        [](const InspectionImportModule& item) { return item.name == "USER32.dll"; });
+    BOOST_REQUIRE(delayedModule != report.delayImports.end());
+    const auto delayedSymbol = std::find_if(delayedModule->symbols.begin(), delayedModule->symbols.end(),
+        [](const InspectionImport& item) { return !item.byOrdinal && item.name == "MessageBoxA"; });
+    BOOST_CHECK(delayedSymbol != delayedModule->symbols.end());
 
     BOOST_REQUIRE(InspectionService::Inspect(FixturePath("static_fixture.dll"), "runtime-functions", report, error));
 #if defined(_WIN64)
