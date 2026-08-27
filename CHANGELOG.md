@@ -45,4 +45,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: correct canonical path length check
 - Merge pull request #17 from kerbymart/refactor/4-function-catalog-core
 - feat: add hash-pinned prototype profiles
+- fix: harden prototype profile integration
 

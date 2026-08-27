@@ -95,6 +95,31 @@ std::string Architecture(const PEImage& image)
     return "unknown";
 }
 
+void ReadPdbIdentity(const PEImage& image, ModuleIdentity& module)
+{
+    const PeDataDirectory* directory = Directory(image, IMAGE_DIRECTORY_ENTRY_DEBUG);
+    if (directory == nullptr || directory->size < sizeof(IMAGE_DEBUG_DIRECTORY)) return;
+    const uint32_t count = directory->size / sizeof(IMAGE_DEBUG_DIRECTORY);
+    for (uint32_t index = 0; index < count; ++index)
+    {
+        IMAGE_DEBUG_DIRECTORY debug = {};
+        const uint64_t rva = static_cast<uint64_t>(directory->rva) +
+            static_cast<uint64_t>(index) * sizeof(debug);
+        if (rva > UINT32_MAX || !image.ReadRva(static_cast<uint32_t>(rva), debug)) return;
+        if (debug.Type != IMAGE_DEBUG_TYPE_CODEVIEW || debug.AddressOfRawData == 0 || debug.SizeOfData < 24) continue;
+        uint32_t signature = 0; GUID guid = {}; uint32_t age = 0;
+        if (!image.ReadRva(debug.AddressOfRawData, signature) || signature != 0x53445352 ||
+            !image.ReadRva(debug.AddressOfRawData + sizeof(signature), guid) ||
+            !image.ReadRva(debug.AddressOfRawData + sizeof(signature) + sizeof(guid), age)) continue;
+        std::ostringstream text;
+        text << std::hex << std::setfill('0') << std::uppercase
+            << std::setw(8) << guid.Data1 << '-' << std::setw(4) << guid.Data2 << '-'
+            << std::setw(4) << guid.Data3 << '-';
+        for (uint8_t byte : guid.Data4) text << std::setw(2) << static_cast<unsigned>(byte);
+        module.pdbGuid = text.str(); module.pdbAge = age; return;
+    }
+}
+
 void AddRecord(std::map<uint32_t, FunctionRecord>& records, uint32_t rva,
     const std::string& hash, const char* source, bool executable)
 {
@@ -278,6 +303,7 @@ bool FunctionCatalog::Load(const std::string& path, FunctionCatalog& catalog, st
     candidate.module_.timestamp = image.Headers().timestamp;
     candidate.module_.imageSize = image.Headers().imageSize;
     candidate.module_.preferredImageBase = image.Headers().preferredImageBase;
+    ReadPdbIdentity(image, candidate.module_);
     std::map<uint32_t, FunctionRecord> records;
     if (!AddExports(image, hash, records, error)) return false;
     AddRuntimeFunctions(image, hash, records);
@@ -354,7 +380,9 @@ void FunctionCatalog::WriteJson(std::ostream& output, bool callableOnly) const
 {
     output << "{\"schema_version\":" << kSchemaVersion << ",\"module\":{";
     output << "\"path\":"; WriteJsonString(output, module_.canonicalPath); output << ",\"sha256\":"; WriteJsonString(output, module_.sha256);
-    output << ",\"architecture\":"; WriteJsonString(output, module_.architecture); output << "},\"functions\":[";
+    output << ",\"architecture\":"; WriteJsonString(output, module_.architecture);
+    output << ",\"pdb_guid\":"; WriteJsonString(output, module_.pdbGuid);
+    output << ",\"pdb_age\":" << module_.pdbAge << "},\"functions\":[";
     bool first = true;
     for (const FunctionRecord& record : functions_)
     {
@@ -477,11 +505,13 @@ bool FunctionCatalog::ApplyProfile(const PrototypeProfile& profile,
     std::vector<ProfileValidationError>& errors)
 {
     if (!ValidatePrototypeProfile(profile, *this, errors)) return false;
+    FunctionCatalog candidate = *this;
+    std::vector<ProfileValidationError> applyErrors;
     for (const ProfileFunction& item : profile.functions)
     {
         FunctionRecord* record = nullptr;
-        for (FunctionRecord& candidate : functions_)
-            if (candidate.startRva == item.rva) { record = &candidate; break; }
+        for (FunctionRecord& candidateRecord : candidate.functions_)
+            if (candidateRecord.startRva == item.rva) { record = &candidateRecord; break; }
         if (record == nullptr) continue;
         if (item.frameworkManaged)
         {
@@ -491,8 +521,10 @@ bool FunctionCatalog::ApplyProfile(const PrototypeProfile& profile,
         if (!MergePrototypeEvidence(*record, item.prototype, "profile",
             PrototypeQuality::UserDeclared))
         {
-            errors.push_back({"prototype-conflict", "functions", "profile conflicts with existing evidence"});
+            applyErrors.push_back({"prototype-conflict", "functions", "profile conflicts with existing evidence"});
         }
     }
-    return errors.empty();
+    if (!applyErrors.empty()) { errors.insert(errors.end(), applyErrors.begin(), applyErrors.end()); return false; }
+    *this = std::move(candidate);
+    return true;
 }
