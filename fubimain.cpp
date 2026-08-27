@@ -105,7 +105,7 @@ void WriteSessionDescription(std::ostream& output, const FunctionCatalog& catalo
 void PrintUsage()
 {
     std::cerr << "Usage:\n"
-              << "  Fubi.exe <dll-file> [--list|--list-callable|--describe <name|#ordinal|0xRVA>|--inspect <name|#ordinal|0xRVA>|--call <selector>] [--arg <kind:value> ...] [--timeout <ms>] [--profile <file>] [--prototype-override <file>] [--symbols] [--json|--jsonl|--shell|--interactive]\n";
+              << "  Fubi.exe <dll-file> [--list|--list-callable|--describe <name|#ordinal|0xRVA>|--inspect <name|#ordinal|0xRVA>|--call <selector>] [--arg <kind:value> ...] [--timeout <ms>] [--profile <file>] [--prototype-override <file>] [--symbols] [--format <json|jsonl>|--session|--json|--jsonl|--shell|--interactive]\n";
 }
 
 struct Options
@@ -164,6 +164,26 @@ bool ParseOptions(int argc, char* argv[], Options& options)
         }
         else if (argument == "--json") options.json = true;
         else if (argument == "--jsonl") options.jsonl = true;
+        else if (argument == "--format" && index + 1 < argc)
+        {
+            const std::string format = argv[++index];
+            if (format == "json")
+            {
+                options.json = true;
+                options.jsonl = false;
+            }
+            else if (format == "jsonl")
+            {
+                options.json = false;
+                options.jsonl = true;
+            }
+            else return false;
+        }
+        else if (argument == "--session")
+        {
+            options.json = false;
+            options.jsonl = true;
+        }
         else if (argument == "--shell" || argument == "--interactive") { options.jsonl = true; options.shell = true; }
         else if (argument == "--profile" && index + 1 < argc)
         {
