@@ -43,12 +43,12 @@ extern "C" __declspec(noinline) unsigned long long __stdcall StdcallReturn64()
     return 0x0123456789ABCDEFULL;
 }
 
-BOOL WINAPI DllMain(HINSTANCE, DWORD reason, LPVOID)
+BOOL WINAPI DllMain(HINSTANCE instance, DWORD reason, LPVOID)
 {
     if (reason == DLL_PROCESS_ATTACH)
     {
         char modulePath[MAX_PATH] = {};
-        GetModuleFileNameA(nullptr, modulePath, MAX_PATH);
+        GetModuleFileNameA(instance, modulePath, MAX_PATH);
         char* slash = strrchr(modulePath, '\\');
         if (slash != nullptr) *(slash + 1) = '\0';
         strcat_s(modulePath, "x86_abi_fixture.executed");

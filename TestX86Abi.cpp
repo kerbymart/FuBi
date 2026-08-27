@@ -38,6 +38,15 @@ std::string WorkerPath()
     return DirectoryOfExecutable() + "FubiInvocationWorker_x86.exe";
 }
 
+std::string WrongArchitectureWorkerPath()
+{
+    std::string path = DirectoryOfExecutable();
+    const size_t marker = path.find("build-x86");
+    if (marker == std::string::npos) return {};
+    path.replace(marker, 9, "build");
+    return path + "FubiInvocationWorker.exe";
+}
+
 void RemoveMarker()
 {
     DeleteFileA((DirectoryOfExecutable() + "x86_abi_fixture.executed").c_str());
@@ -159,5 +168,33 @@ BOOST_AUTO_TEST_CASE(MissingWorkerIsReportedBeforeTargetLoad)
     BOOST_CHECK(HasDiagnostic(result, "worker-architecture"));
     BOOST_CHECK_EQUAL(GetFileAttributesA((DirectoryOfExecutable() +
         "x86_abi_fixture.executed").c_str()), INVALID_FILE_ATTRIBUTES);
+    BOOST_REQUIRE(MoveFileA(hidden.c_str(), worker.c_str()) != FALSE);
+}
+
+BOOST_AUTO_TEST_CASE(WrongArchitectureWorkerIsReportedBeforeTargetLoad)
+{
+    RemoveMarker();
+    const std::string worker = WorkerPath();
+    const std::string wrong = WrongArchitectureWorkerPath();
+    if (wrong.empty() || GetFileAttributesA(wrong.c_str()) == INVALID_FILE_ATTRIBUTES)
+    {
+        BOOST_TEST_MESSAGE("x64 worker is unavailable; wrong-architecture check skipped");
+        return;
+    }
+    const std::string hidden = worker + ".wrong-architecture";
+    DeleteFileA(hidden.c_str());
+    BOOST_REQUIRE(MoveFileA(worker.c_str(), hidden.c_str()) != FALSE);
+    BOOST_REQUIRE(CopyFileA(wrong.c_str(), worker.c_str(), FALSE) != FALSE);
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+    CallResult result;
+    const bool invoked = InvokeX64ExportProcess(FixturePath(),
+        Request("CdeclReturn32", "__cdecl", {TypeKind::Integer, 32, false}),
+        catalog, result, error);
+    BOOST_CHECK(!invoked);
+    BOOST_CHECK_EQUAL(result.status, "worker-failed");
+    BOOST_CHECK(HasDiagnostic(result, "worker-architecture"));
+    DeleteFileA(worker.c_str());
     BOOST_REQUIRE(MoveFileA(hidden.c_str(), worker.c_str()) != FALSE);
 }
