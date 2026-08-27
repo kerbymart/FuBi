@@ -144,4 +144,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - docs: clarify worker isolation limits (#80)
 - test: verify worker failure protocol recovery (#82)
 - test: verify framework-managed call blocking (#84)
+- docs: document prototype profile schema (#86)
 
