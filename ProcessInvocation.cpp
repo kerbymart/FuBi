@@ -4,6 +4,7 @@
 
 #include <windows.h>
 #include <fstream>
+#include <memory>
 
 namespace
 {
@@ -29,6 +30,43 @@ void AddExitDiagnostic(CallResult& result)
 {
     if (result.hasWorkerExitCode && result.workerExitCode != 0)
         result.diagnostics.push_back({"worker-process-exit", "worker_exit_code", "worker exited with a non-zero process status"});
+}
+bool IsCrashExitCode(DWORD exitCode)
+{
+    return (exitCode & 0xC0000000U) == 0xC0000000U;
+}
+struct DeferredCleanup
+{
+    HANDLE process = nullptr;
+    HANDLE thread = nullptr;
+    std::string requestPath;
+    std::string resultPath;
+};
+DWORD WINAPI DeferredCleanupThread(void* raw)
+{
+    std::unique_ptr<DeferredCleanup> cleanup(static_cast<DeferredCleanup*>(raw));
+    WaitForSingleObject(cleanup->process, INFINITE);
+    CloseHandle(cleanup->thread);
+    CloseHandle(cleanup->process);
+    DeleteFileA(cleanup->requestPath.c_str());
+    DeleteFileA(cleanup->resultPath.c_str());
+    return 0;
+}
+bool DeferCleanupUntilExit(PROCESS_INFORMATION& process, const char* requestPath, const char* resultPath)
+{
+    auto cleanup = std::make_unique<DeferredCleanup>();
+    cleanup->process = process.hProcess;
+    cleanup->thread = process.hThread;
+    cleanup->requestPath = requestPath;
+    cleanup->resultPath = resultPath;
+    HANDLE cleanupThread = CreateThread(nullptr, 0, DeferredCleanupThread, cleanup.get(), 0, nullptr);
+    if (cleanupThread == nullptr)
+        return false;
+    cleanup.release();
+    CloseHandle(cleanupThread);
+    process.hProcess = nullptr;
+    process.hThread = nullptr;
+    return true;
 }
 }
 
@@ -93,8 +131,16 @@ bool InvokeX64ExportProcess(const std::string& imagePath, const CallRequest& req
         RecordExitCode(process.hProcess, result);
         result.diagnostics.push_back({terminated && stopped ? "timeout" : "termination-failed", "timeout_ms", terminated && stopped ? "worker process exceeded the invocation timeout" : "worker could not be terminated safely"});
         AddExitDiagnostic(result);
-        CloseHandle(process.hThread); CloseHandle(process.hProcess);
-        if (!cleanup()) result.diagnostics.push_back({"cleanup-failed", "ipc", "unable to remove worker IPC files"});
+        if (!(terminated && stopped))
+        {
+            if (!DeferCleanupUntilExit(process, requestPath, resultPath))
+                result.diagnostics.push_back({"cleanup-deferred", "worker", "worker handles retained because termination was not confirmed"});
+        }
+        else
+        {
+            CloseHandle(process.hThread); CloseHandle(process.hProcess);
+            if (!cleanup()) result.diagnostics.push_back({"cleanup-failed", "ipc", "unable to remove worker IPC files"});
+        }
         error = terminated && stopped ? "invocation worker timed out" : "unable to terminate invocation worker";
         return false;
     }
@@ -112,7 +158,7 @@ bool InvokeX64ExportProcess(const std::string& imagePath, const CallRequest& req
     if (!input)
     {
         const bool clean = cleanup(); result = {}; result.correlationId = request.correlationId;
-        result.status = gotExitCode && exitCode != 0 ? "worker-crashed" : "worker-failed";
+        result.status = gotExitCode && IsCrashExitCode(exitCode) ? "worker-crashed" : "worker-failed";
         if (gotExitCode) { result.hasWorkerExitCode = true; result.workerExitCode = exitCode; }
         result.diagnostics.push_back({result.status == "worker-crashed" ? "worker-crashed" : "worker-no-result", "worker_exit_code", result.status == "worker-crashed" ? "worker exited abnormally without a result" : "worker exited without a result"});
         if (!clean) result.diagnostics.push_back({"cleanup-failed", "ipc", "unable to remove worker IPC files"});
@@ -122,7 +168,13 @@ bool InvokeX64ExportProcess(const std::string& imagePath, const CallRequest& req
     const std::streamoff size = input.tellg();
     if (size < 0 || size > 4 * 1024 * 1024)
     {
-        input.close(); const bool clean = cleanup(); const bool failed = failure("worker-failed", "result-size-limit", "worker result exceeds the size limit");
+        input.close(); const bool clean = cleanup();
+        result = {}; result.correlationId = request.correlationId; result.status = "worker-failed";
+        if (gotExitCode) { result.hasWorkerExitCode = true; result.workerExitCode = exitCode; }
+        result.diagnostics.push_back({"result-size-limit", "worker", "worker result exceeds the size limit"});
+        AddExitDiagnostic(result);
+        error = "worker result exceeds the size limit";
+        const bool failed = false;
         if (!clean) result.diagnostics.push_back({"cleanup-failed", "ipc", "unable to remove worker IPC files"});
         return failed;
     }
@@ -138,6 +190,11 @@ bool InvokeX64ExportProcess(const std::string& imagePath, const CallRequest& req
         error = "worker result was malformed"; return false;
     }
     if (gotExitCode) { result.hasWorkerExitCode = true; result.workerExitCode = exitCode; }
+    if (result.status == "crashed")
+    {
+        result.status = "worker-crashed";
+        result.diagnostics.push_back({"worker-crashed", "worker_exit_code", "worker reported that target execution crashed"});
+    }
     AddExitDiagnostic(result);
     if (!clean) result.diagnostics.push_back({"cleanup-failed", "ipc", "unable to remove worker IPC files"});
     return result.success;
