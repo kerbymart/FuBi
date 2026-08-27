@@ -42,13 +42,22 @@ std::string ReturnValue(uint64_t value, const TypeSpec& type)
 bool SameIdentity(const ModuleIdentity& left, const ModuleIdentity& right)
 { return left.canonicalPath==right.canonicalPath && left.sha256==right.sha256 && left.architecture==right.architecture && left.timestamp==right.timestamp && left.imageSize==right.imageSize && left.preferredImageBase==right.preferredImageBase && left.pdbGuid==right.pdbGuid && left.pdbAge==right.pdbAge; }
 
-uint64_t CallAddress(FARPROC address, const uint64_t* values, size_t count, int& exceptionCode)
+struct CallContext
 {
-    uint64_t returned=0;
+    FARPROC address;
+    const uint64_t* values;
+    size_t count;
+    uint64_t returned;
+    int exceptionCode;
+};
+
+DWORD WINAPI CallWorker(void* raw)
+{
+    CallContext* context=static_cast<CallContext*>(raw);
     __try {
-        switch(count){case 0:returned=reinterpret_cast<Call0>(address)();break;case 1:returned=reinterpret_cast<Call1>(address)(values[0]);break;case 2:returned=reinterpret_cast<Call2>(address)(values[0],values[1]);break;case 3:returned=reinterpret_cast<Call3>(address)(values[0],values[1],values[2]);break;case 4:returned=reinterpret_cast<Call4>(address)(values[0],values[1],values[2],values[3]);break;case 5:returned=reinterpret_cast<Call5>(address)(values[0],values[1],values[2],values[3],values[4]);break;case 6:returned=reinterpret_cast<Call6>(address)(values[0],values[1],values[2],values[3],values[4],values[5]);break;case 7:returned=reinterpret_cast<Call7>(address)(values[0],values[1],values[2],values[3],values[4],values[5],values[6]);break;default:returned=reinterpret_cast<Call8>(address)(values[0],values[1],values[2],values[3],values[4],values[5],values[6],values[7]);break;}
-    } __except(exceptionCode=GetExceptionCode(), EXCEPTION_EXECUTE_HANDLER) { }
-    return returned;
+        switch(context->count){case 0:context->returned=reinterpret_cast<Call0>(context->address)();break;case 1:context->returned=reinterpret_cast<Call1>(context->address)(context->values[0]);break;case 2:context->returned=reinterpret_cast<Call2>(context->address)(context->values[0],context->values[1]);break;case 3:context->returned=reinterpret_cast<Call3>(context->address)(context->values[0],context->values[1],context->values[2]);break;case 4:context->returned=reinterpret_cast<Call4>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3]);break;case 5:context->returned=reinterpret_cast<Call5>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4]);break;case 6:context->returned=reinterpret_cast<Call6>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4],context->values[5]);break;case 7:context->returned=reinterpret_cast<Call7>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4],context->values[5],context->values[6]);break;default:context->returned=reinterpret_cast<Call8>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4],context->values[5],context->values[6],context->values[7]);break;}
+    } __except(context->exceptionCode=GetExceptionCode(), EXCEPTION_EXECUTE_HANDLER) { }
+    return 0;
 }
 }
 
@@ -92,8 +101,21 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     for(size_t i=0;i<request.arguments.size();++i) if(!Value(request.arguments[i],values[i])) { FreeLibrary(module); error="invalid typed argument"; return false; }
     const uintptr_t moduleBase=reinterpret_cast<uintptr_t>(module); const uintptr_t functionAddress=reinterpret_cast<uintptr_t>(address);
     if (functionAddress < moduleBase || functionAddress-moduleBase > UINT32_MAX || static_cast<uint32_t>(functionAddress-moduleBase) != record->startRva) { FreeLibrary(module); error="resolved export does not match static RVA"; return false; }
-    int exceptionCode=0; const uint64_t returned=CallAddress(address, values, request.arguments.size(), exceptionCode);
-    if (exceptionCode != 0) { FreeLibrary(module); result={}; result.correlationId=request.correlationId; result.status="crashed"; result.diagnostics.push_back({"target-exception","call","target raised a structured exception"}); error="target raised a structured exception"; return false; }
+    CallContext context{address, values, request.arguments.size(), 0, 0};
+    HANDLE worker=CreateThread(nullptr, 0, CallWorker, &context, 0, nullptr);
+    if (worker == nullptr) { FreeLibrary(module); error="unable to create invocation worker"; return false; }
+    const DWORD timeout=request.timeoutMs == 0 ? 30000U : request.timeoutMs;
+    const DWORD wait=WaitForSingleObject(worker, timeout);
+    if (wait == WAIT_TIMEOUT)
+    {
+        TerminateThread(worker, ERROR_TIMEOUT); CloseHandle(worker);
+        result={}; result.correlationId=request.correlationId; result.status="timed-out"; result.diagnostics.push_back({"timeout","timeout_ms","target exceeded the invocation timeout"});
+        error="target invocation timed out";
+        return false;
+    }
+    CloseHandle(worker);
+    const uint64_t returned=context.returned;
+    if (context.exceptionCode != 0) { FreeLibrary(module); result={}; result.correlationId=request.correlationId; result.status="crashed"; result.diagnostics.push_back({"target-exception","call","target raised a structured exception"}); error="target raised a structured exception"; return false; }
     FreeLibrary(module); result={}; result.correlationId=request.correlationId; result.success=true; result.status="completed"; result.returnValue=ReturnValue(returned,prototype.returnType); result.returnType=prototype.returnType; result.prototypeUsed=prototype; result.resolvedModule=catalog.Module(); return true;
 #endif
 }
