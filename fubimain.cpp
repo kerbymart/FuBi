@@ -89,7 +89,7 @@ void WriteSessionDescription(std::ostream& output, const FunctionCatalog& catalo
 void PrintUsage()
 {
     std::cerr << "Usage:\n"
-              << "  Fubi.exe <dll-file> [--list|--list-callable|--describe <name|#ordinal|0xRVA>|--call <selector>] [--arg <kind:value> ...] [--timeout <ms>] [--profile <file>] [--prototype-override <file>] [--symbols] [--json|--jsonl|--shell|--interactive]\n";
+              << "  Fubi.exe <dll-file> [--list|--list-callable|--describe <name|#ordinal|0xRVA>|--inspect <name|#ordinal|0xRVA>|--call <selector>] [--arg <kind:value> ...] [--timeout <ms>] [--profile <file>] [--prototype-override <file>] [--symbols] [--json|--jsonl|--shell|--interactive]\n";
 }
 
 struct Options
@@ -119,7 +119,7 @@ bool ParseOptions(int argc, char* argv[], Options& options)
             if (options.action != "list") return false;
             options.action = argument.substr(2);
         }
-        else if (argument == "--describe" && index + 1 < argc)
+        else if ((argument == "--describe" || argument == "--inspect") && index + 1 < argc)
         {
             if (options.action != "list") return false;
             options.action = "describe";
