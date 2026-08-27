@@ -270,7 +270,7 @@ Evidence: _None_
 - [ ] M9-01 Add an x86 worker and normalized x86 call frames.
 - [ ] M9-02 Implement and test x86 `cdecl`.
 - [ ] M9-03 Implement and test x86 `stdcall`.
-- [ ] M9-04 Add `thiscall` as a separate reviewable increment.
+- [x] M9-04 Add `thiscall` as a separate reviewable increment ([issue #95](https://github.com/kerbymart/FuBi/issues/95)).
 - [ ] M9-05 Add `fastcall` as a separate reviewable increment.
 - [ ] M9-06 Verify convention-specific stack cleanup, register use, return
   capture, and nonvolatile register preservation.

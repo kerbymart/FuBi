@@ -179,6 +179,13 @@ identity evidence. A function requires an executable `rva`, a unique optional
 array. `x64` and `win64` apply to x64 images. `__cdecl`, `__stdcall`,
 `__thiscall`, and `__fastcall` apply to x86 images.
 
+For x86 `__thiscall`, the first parameter is an explicit, non-null
+`pointer` value encoded as a 32-bit `opaque:` reference. FuBi places that
+reference in ECX and passes the remaining parameters on the stack. The
+reference is a caller-supplied object handle; FuBi never dereferences it or
+assumes an object layout. Missing, null, malformed, or non-pointer object
+references are rejected before the target module is loaded.
+
 Type objects support `void`, `bool`, `integer`, `floating`, `string`, `bytes`,
 `pointer`, and `structure`. Type details may include `width`, `signed`,
 `pointer_depth`, `direction` (`in`, `out`, or `inout`), `element_count`,
