@@ -313,6 +313,11 @@ int main(int argc, char* argv[])
             for (const auto& item : overrideProfile.functions) if (item.rva == record->startRva) { request.hasPrototypeOverride = true; request.prototypeOverride = item.prototype; break; }
             if (!request.hasPrototypeOverride) { std::cerr << "Prototype override has no matching function\n"; return FubiExitCode::ValidationFailed; }
         }
+        if (!request.hasPrototypeOverride && record != nullptr && record->hasPrototype)
+        {
+            request.hasPrototypeOverride = true;
+            request.prototypeOverride = record->prototype;
+        }
         const PrototypeSpec* argumentPrototype = request.hasPrototypeOverride ? &request.prototypeOverride : (record != nullptr && record->hasPrototype ? &record->prototype : nullptr);
         if (argumentPrototype != nullptr && argumentPrototype->parameters.size() == options.rawArguments.size())
         {

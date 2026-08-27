@@ -98,6 +98,16 @@ add_executable(export_tests TestExports.cpp SysExports.cpp DbgHelpDll.cpp PEImag
 target_link_libraries(export_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 add_dependencies(export_tests export_fixture)
 
+if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+    add_library(x86_register_fixture SHARED
+        X86RegisterSentinel.asm X86RegisterFixture.cpp)
+    set_target_properties(x86_register_fixture PROPERTIES
+        OUTPUT_NAME "x86_register_fixture")
+    target_link_options(x86_register_fixture PRIVATE
+        "/EXPORT:X86CdeclRegisterSentinel=X86CdeclRegisterSentinel"
+        "/EXPORT:X86StdcallRegisterSentinel=X86StdcallRegisterSentinel")
+endif()
+
 set(STATIC_FIXTURE_SOURCES TestStaticFixture.cpp TestStaticFixture.rc)
 if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
     list(APPEND STATIC_FIXTURE_SOURCES StaticPatternFixture.asm)
@@ -147,6 +157,20 @@ add_dependencies(string_output_tests static_fixture)
 add_executable(exit_code_tests TestExitCodes.cpp)
 target_link_libraries(exit_code_tests PRIVATE fubi_boost_headers)
 
+if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+    add_library(x86_abi_fixture SHARED X86AbiFixture.cpp X86AbiFixture.def)
+    target_compile_options(x86_abi_fixture PRIVATE /Od /Zi)
+    set_target_properties(x86_abi_fixture PROPERTIES
+        LINK_FLAGS "/DEBUG:FULL")
+    add_executable(x86_abi_tests TestX86Abi.cpp CallContract.cpp
+        ProcessInvocation.cpp InvocationEngine.cpp FunctionCatalog.cpp
+        PrototypeProfile.cpp StaticExportCatalog.cpp PEImage.cpp
+        DbgHelpDll.cpp stdafx.cpp)
+    target_link_libraries(x86_abi_tests PRIVATE bcrypt DbgHelp
+        fubi_boost_headers fubi_build_limits)
+    add_dependencies(x86_abi_tests x86_abi_fixture FubiInvocationWorker)
+endif()
+
 enable_testing()
 add_test(NAME signature_parser COMMAND tests)
 add_test(NAME export_enumeration COMMAND export_tests)
@@ -159,6 +183,16 @@ add_test(NAME internal_rva COMMAND internal_rva_tests)
 add_test(NAME mixed_floating COMMAND mixed_floating_tests)
 add_test(NAME string_output COMMAND string_output_tests)
 add_test(NAME exit_code_constants COMMAND exit_code_tests)
+if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+    add_test(NAME x86_abi_worker_guarantees COMMAND x86_abi_tests)
+    add_test(
+        NAME x86_abi_worker_diagnostics
+        COMMAND ${CMAKE_COMMAND}
+            -DTEST=$<TARGET_FILE:x86_abi_tests>
+            -DFIXTURE=$<TARGET_FILE:x86_abi_fixture>
+            -DWORKER=$<TARGET_FILE:FubiInvocationWorker>
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyX86Abi.cmake)
+endif()
 add_test(
     NAME static_cli_no_execution
     COMMAND ${CMAKE_COMMAND}
@@ -196,6 +230,13 @@ add_test(
         -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
         -DARCHITECTURE=${FUBI_TEST_ARCHITECTURE}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyFrameworkManaged.cmake)
+if(CMAKE_SIZEOF_VOID_P EQUAL 4)
+    add_library(x86_fixture SHARED TestX86Fixture.cpp TestX86Fixture.def)
+    add_test(NAME x86_worker_invocation COMMAND ${CMAKE_COMMAND}
+        -DFUBI=$<TARGET_FILE:Fubi> -DFIXTURE=$<TARGET_FILE:x86_fixture>
+        -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi> -DARCHITECTURE=${FUBI_TEST_ARCHITECTURE}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyX86Worker.cmake)
+endif()
 add_test(
     NAME acceptance_static_catalog
     COMMAND ${CMAKE_COMMAND}
@@ -203,6 +244,15 @@ add_test(
         -DACCEPTANCE_FILE=${FUBI_ACCEPTANCE_BINARY}
         -DSHA256=${FUBI_ACCEPTANCE_SHA256}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyAcceptance.cmake)
+if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 4)
+    add_test(
+        NAME x86_nonvolatile_registers
+        COMMAND ${CMAKE_COMMAND}
+            -DFUBI=$<TARGET_FILE:Fubi>
+            -DFIXTURE=$<TARGET_FILE:x86_register_fixture>
+            -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyX86NonvolatileRegisters.cmake)
+endif()
 
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
     add_library(thiscall_fixture SHARED ThisCallFixture.cpp ThisCallFixture.asm ThisCallFixture.def)
