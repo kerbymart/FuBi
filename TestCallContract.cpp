@@ -142,6 +142,24 @@ BOOST_AUTO_TEST_CASE(SessionActionsRoundTripWithoutCallSelectors)
         [](const CallDiagnostic& item) { return item.code == "unsupported-action"; }));
 }
 
+BOOST_AUTO_TEST_CASE(SessionReferenceFieldsRoundTrip)
+{
+    CallResult response;
+    response.action = "hello";
+    response.correlationId = "hello-refs";
+    response.status = "ready";
+    response.issuedReferences = {"opaque:session-1", "opaque:session-2"};
+    response.releasedReference = "opaque:session-0";
+    std::ostringstream encoded;
+    WriteCallResultJson(encoded, response);
+    CallResult decoded;
+    std::vector<CallDiagnostic> diagnostics;
+    BOOST_REQUIRE(ParseCallResultJson(encoded.str(), decoded, diagnostics));
+    BOOST_CHECK_EQUAL(decoded.issuedReferences.size(), 2U);
+    BOOST_CHECK_EQUAL(decoded.issuedReferences[1], "opaque:session-2");
+    BOOST_CHECK_EQUAL(decoded.releasedReference, response.releasedReference);
+}
+
 BOOST_AUTO_TEST_CASE(ByteBufferContractsValidateHexAndBounds)
 {
     FunctionCatalog catalog;
