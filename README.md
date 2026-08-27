@@ -6,20 +6,26 @@ FuBi is a Windows Function Binding and Calling tool. Its workflow is:
 discover functions -> establish signatures -> bind -> call -> return typed results
 ```
 
-This milestone provides the safe first step: static export discovery. It reads
-PE bytes directly and never loads the target DLL, so the target's `DllMain` and
-other target code do not run.
+Static catalog actions read PE bytes directly and never load the target DLL, so
+the target's `DllMain` and other target code do not run. Explicit call actions
+load the target only after request, prototype, policy, and identity validation.
 
 ## Current capability
 
 - Lists named, ordinal-only, aliased, and forwarded exports.
 - Reports the canonical export RVA.
 - Uses a bounded PE parser for untrusted file input.
-- Keeps target loading and invocation out of the current command surface.
+- Supports typed scalar, bounded byte-buffer, and bounded string calls.
+- Supports narrow UTF-8 and UTF-16 output and input/output buffers.
+- Reports returned pointer values as opaque values and never dereferences them.
 
-An export address is discovery evidence, not a callable contract. Future
-milestones add function candidates, exact prototype evidence, policy checks,
-binding, and typed invocation.
+An export address is discovery evidence, not a callable contract. Calls require
+an invocation-grade prototype and a supported ABI. String output and input /
+output arguments require an explicit buffer size. Narrow strings use `utf8` or
+`cstr` encoding; wide strings use `utf16` or `wstr` and a buffer size divisible
+by two. Returned string buffers are converted to deterministic UTF-8 text up
+to the first null terminator. FuBi does not automatically free DLL-owned
+memory or follow opaque pointers.
 
 ## Requirements
 
@@ -93,8 +99,8 @@ forwarder = <none>
 ## Safety model
 
 - Listing reads only the target file and does not call `LoadLibrary`.
-- A future explicit call action may load a DLL and execute arbitrary target
-  code, including `DllMain`.
+- Only an explicit call action may load a DLL and execute arbitrary target code,
+  including `DllMain`.
 - FuBi will require an invocation-grade prototype, supported ABI and types,
   matching target identity, and required policy authorization before a call.
 - Internal RVAs will require stronger authorization than exported functions.
