@@ -15,6 +15,7 @@
 
 struct SymbolPrototypeEvidence
 {
+    ModuleIdentity module;
     uint32_t rva = 0;
     std::string name;
     PrototypeSpec prototype;

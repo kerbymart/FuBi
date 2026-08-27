@@ -49,4 +49,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: validate profile identities and type shapes
 - feat: add validated local PDB symbol evidence
 - feat: apply static symbol evidence to catalogs
+- fix: bind symbol evidence to module identity
 
