@@ -11,6 +11,8 @@ struct CallArgument
 {
     TypeSpec type;
     std::string value;
+    uint64_t bufferSize = 0;
+    std::string ownership;
 };
 
 struct CallRequest
@@ -48,3 +50,7 @@ bool ValidateCallRequest(const CallRequest& request, const FunctionCatalog& cata
     std::vector<CallDiagnostic>& diagnostics);
 void WriteCallRequestJson(std::ostream& output, const CallRequest& request);
 void WriteCallResultJson(std::ostream& output, const CallResult& result);
+bool ParseCallRequestJson(const std::string& document, CallRequest& request,
+    std::vector<CallDiagnostic>& diagnostics);
+bool ParseCallResultJson(const std::string& document, CallResult& result,
+    std::vector<CallDiagnostic>& diagnostics);
