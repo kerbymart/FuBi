@@ -116,4 +116,6 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - feat: recognize bounded x64 call patterns
 - fix: preserve call pattern target semantics
 - Merge pull request #41 from kerbymart/feat/40-call-iat-patterns
+- chore: support offline Boost discovery
+- Merge pull request #43 from kerbymart/chore/42-offline-boost-discovery
 
