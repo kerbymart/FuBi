@@ -10,6 +10,8 @@
 #include "SessionReferences.h"
 
 #include <fstream>
+#include <cerrno>
+#include <cstdlib>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -50,6 +52,18 @@ void WriteSessionStatus(std::ostream& output, const std::string& action,
     response.releasedReference = released;
     WriteCallResultJson(output, response);
     output << '\n';
+}
+
+bool ParseWorkerPointer(const std::string& value, uint64_t& address)
+{
+    const std::string prefix = "opaque:0x";
+    if (value.rfind(prefix, 0) != 0 || value.size() == prefix.size()) return false;
+    errno = 0;
+    char* end = nullptr;
+    const unsigned long long parsed = std::strtoull(value.c_str() + prefix.size(), &end, 16);
+    if (errno == ERANGE || end == value.c_str() + prefix.size() || *end != '\0') return false;
+    address = static_cast<uint64_t>(parsed);
+    return true;
 }
 
 void WriteSessionCatalog(std::ostream& output, const FunctionCatalog& catalog,
@@ -282,9 +296,33 @@ int main(int argc, char* argv[])
                 response.diagnostics = diagnostics;
                 if (valid)
                 {
+                    for (const CallArgument& argument : request.arguments)
+                        if (argument.type.kind == TypeKind::Pointer && argument.value.rfind("opaque:session-", 0) == 0)
+                        {
+                            response.status = "validation-failed";
+                            response.diagnostics.push_back({"session-reference-unsupported", "arguments", "session references are not resolved into isolated worker calls"});
+                            break;
+                        }
                     std::string invocationError;
-                    if (!InvokeX64ExportProcess(options.targetPath, request, catalog, response, invocationError) && !invocationError.empty())
+                    const bool referenceRejected = !response.diagnostics.empty();
+                    if (!referenceRejected && !InvokeX64ExportProcess(options.targetPath, request, catalog, response, invocationError, true) && !invocationError.empty())
                         response.diagnostics.push_back({"invocation-failed", "call", invocationError});
+                    if (!referenceRejected && response.success && response.prototypeUsed.returnType.kind == TypeKind::Pointer)
+                    {
+                        uint64_t address = 0;
+                        if (!ParseWorkerPointer(response.returnValue, address))
+                        {
+                            response.success = false;
+                            response.status = "worker-failed";
+                            response.returnValue.clear();
+                            response.diagnostics.push_back({"pointer-result-invalid", "return_value", "worker returned an invalid pointer representation"});
+                        }
+                        else
+                        {
+                            response.returnValue = sessionReferences.Issue(address);
+                            response.issuedReferences.push_back(response.returnValue);
+                        }
+                    }
                 }
                 WriteCallResultJson(std::cout, response);
                 std::cout << '\n';
