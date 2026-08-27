@@ -27,6 +27,39 @@ by two. Returned string buffers are converted to deterministic UTF-8 text up
 to the first null terminator. FuBi does not automatically free DLL-owned
 memory or follow opaque pointers.
 
+## Capability matrix
+
+The table describes the implemented invocation boundary. A profile can parse
+additional evidence, but parsing a type does not make it callable.
+
+| Capability | x64 | x86 |
+| --- | --- | --- |
+| Supported ABI names | `x64`, `win64` | `__cdecl`, `__stdcall`, `__thiscall`, `__fastcall` |
+| Integer widths | 8, 16, 32, 64 bits | 8, 16, 32, 64 bits |
+| Boolean and floating values | Boolean, 32-bit and 64-bit floating point | Boolean, 32-bit and 64-bit floating point |
+| Strings and byte buffers | Bounded input and explicit-size output or inout descriptors where the adapter supports them | Same typed contract, subject to the selected x86 ABI and adapter validation |
+| Pointers | Input opaque references only | Input opaque references only |
+| Structures and aggregates | Not supported by the native invocation adapter | Not an invocation-grade contract in the current adapter |
+| Variadic prototypes | Not supported for invocation | Not supported for invocation |
+
+Profiles use the schema documented in [Prototype profiles](#prototype-profiles).
+Every call still needs a complete invocation-grade prototype and arguments
+whose types, widths, direction, encoding, and buffer sizes match it. A
+function's export name or discovered RVA is evidence of identity, not proof of
+its ABI.
+
+Internal RVAs require a hash-pinned profile, an executable catalog RVA, a
+complete module identity match, and explicit internal-call authorization.
+Framework-managed entries are rejected by default. Returned pointers are
+reported only as opaque values and are not dereferenced, followed, or freed;
+the isolated worker rejects pointer-return prototypes before launch.
+
+Listing, describing, cataloging, and profile validation are static operations.
+They read bounded file or metadata bytes and do not load the target DLL or run
+`DllMain`. Only an explicit call action can load the target. See the
+[Exit-code contract](#exit-code-contract) for stable command-line results and
+structured JSONL process semantics.
+
 ## Requirements
 
 - Windows
