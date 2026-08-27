@@ -70,4 +70,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: retain timed out invocation context
 - fix: cap retained timeout workers
 - fix: reserve invocation worker capacity atomically
+- fix: release worker reservation on preflight failure
 

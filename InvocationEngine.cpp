@@ -99,14 +99,6 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
             return false;
         }
     }
-    unsigned available=0;
-    if (!retainedTimeoutWorkers.compare_exchange_strong(available, 1, std::memory_order_acq_rel))
-    {
-        result = {}; result.correlationId=request.correlationId; result.status="worker-capacity";
-        result.diagnostics.push_back({"worker-capacity-exhausted", "call", "a timed-out worker is retained; process isolation is required before another call"});
-        error="invocation worker capacity exhausted";
-        return false;
-    }
     FunctionRecord const* selected=catalog.Find(request.selector);
     if (selected == nullptr) { error="function selector is unavailable"; return false; }
     if (selected->exportNames.empty()) { error="internal targets are not supported by the export invocation engine"; return false; }
@@ -122,6 +114,15 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     for(size_t i=0;i<request.arguments.size();++i) if(!Value(request.arguments[i],values[i])) { FreeLibrary(module); error="invalid typed argument"; return false; }
     const uintptr_t moduleBase=reinterpret_cast<uintptr_t>(module); const uintptr_t functionAddress=reinterpret_cast<uintptr_t>(address);
     if (functionAddress < moduleBase || functionAddress-moduleBase > UINT32_MAX || static_cast<uint32_t>(functionAddress-moduleBase) != record->startRva) { FreeLibrary(module); error="resolved export does not match static RVA"; return false; }
+    unsigned available=0;
+    if (!retainedTimeoutWorkers.compare_exchange_strong(available, 1, std::memory_order_acq_rel))
+    {
+        FreeLibrary(module);
+        result = {}; result.correlationId=request.correlationId; result.status="worker-capacity";
+        result.diagnostics.push_back({"worker-capacity-exhausted", "call", "a timed-out worker is retained; process isolation is required before another call"});
+        error="invocation worker capacity exhausted";
+        return false;
+    }
     WorkerState* state = new WorkerState{module, {}, {address, nullptr, request.arguments.size(), 0, 0}};
     std::copy(values, values + request.arguments.size(), state->values);
     state->call.values = state->values;
