@@ -138,6 +138,9 @@ add_executable(string_output_tests TestStringOutput.cpp CallContract.cpp Invocat
 target_link_libraries(string_output_tests PRIVATE bcrypt fubi_boost_headers fubi_build_limits)
 add_dependencies(string_output_tests static_fixture)
 
+add_executable(exit_code_tests TestExitCodes.cpp)
+target_link_libraries(exit_code_tests PRIVATE fubi_boost_headers)
+
 enable_testing()
 add_test(NAME signature_parser COMMAND tests)
 add_test(NAME export_enumeration COMMAND export_tests)
@@ -149,6 +152,7 @@ add_test(NAME call_contract COMMAND call_contract_tests)
 add_test(NAME internal_rva COMMAND internal_rva_tests)
 add_test(NAME mixed_floating COMMAND mixed_floating_tests)
 add_test(NAME string_output COMMAND string_output_tests)
+add_test(NAME exit_code_constants COMMAND exit_code_tests)
 add_test(
     NAME static_cli_no_execution
     COMMAND ${CMAKE_COMMAND}
@@ -163,6 +167,12 @@ add_test(
         -DFIXTURE=$<TARGET_FILE:export_fixture>
         -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
         -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyJsonlSession.cmake)
+add_test(
+    NAME exit_code_contract
+    COMMAND ${CMAKE_COMMAND}
+        -DFUBI=$<TARGET_FILE:Fubi>
+        -DFIXTURE=$<TARGET_FILE:export_fixture>
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyExitCodes.cmake)
 add_test(
     NAME acceptance_static_catalog
     COMMAND ${CMAKE_COMMAND}

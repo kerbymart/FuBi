@@ -140,4 +140,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - test: harden parser boundary coverage (#70)
 - fix: reject invalid pointer results from workers (#74)
 - feat: enforce persistent JSONL session lifecycle (#76)
+- feat: define stable exit-code contract (#78)
 
