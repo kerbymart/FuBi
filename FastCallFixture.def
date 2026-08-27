@@ -1,0 +1,6 @@
+LIBRARY FastCallFixture
+EXPORTS
+    FastCallByte
+    FastCallWord
+    FastCallDword
+    FastCallRegisterCheck
