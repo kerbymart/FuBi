@@ -14,7 +14,7 @@ namespace
 void PrintUsage()
 {
     std::cerr << "Usage:\n"
-              << "  Fubi.exe <dll-file> [--list|--list-callable|--describe <name|#ordinal|0xRVA>|--call <selector>] [--arg <kind:value> ...] [--profile <file>] [--symbols] [--json]\n";
+              << "  Fubi.exe <dll-file> [--list|--list-callable|--describe <name|#ordinal|0xRVA>|--call <selector>] [--arg <kind:value> ...] [--profile <file>] [--prototype-override <file>] [--symbols] [--json]\n";
 }
 
 struct Options
@@ -24,6 +24,7 @@ struct Options
     std::string selector;
     bool json = false;
     std::string profilePath;
+    std::string prototypeOverridePath;
     bool symbols = false;
     std::vector<std::string> rawArguments;
 };
@@ -62,6 +63,11 @@ bool ParseOptions(int argc, char* argv[], Options& options)
         {
             if (!options.profilePath.empty()) return false;
             options.profilePath = argv[++index];
+        }
+        else if (argument == "--prototype-override" && index + 1 < argc)
+        {
+            if (!options.prototypeOverridePath.empty()) return false;
+            options.prototypeOverridePath = argv[++index];
         }
         else if (argument == "--symbols") options.symbols = true;
         else return false;
@@ -121,6 +127,19 @@ int main(int argc, char* argv[])
         request.selector = options.selector;
         request.correlationId = "cli-call";
         const FunctionRecord* record = catalog.Find(options.selector);
+        if (!options.prototypeOverridePath.empty())
+        {
+            std::ifstream overrideFile(options.prototypeOverridePath, std::ios::binary | std::ios::ate);
+            if (!overrideFile) { std::cerr << "Unable to open prototype override\n"; return 6; }
+            const std::streamoff size = overrideFile.tellg();
+            if (size < 0 || size > 4 * 1024 * 1024) { std::cerr << "Prototype override exceeds the 4 MiB limit\n"; return 6; }
+            std::string document(static_cast<size_t>(size), '\0'); overrideFile.seekg(0); if (!document.empty()) overrideFile.read(&document[0], static_cast<std::streamsize>(document.size()));
+            PrototypeProfile overrideProfile; std::vector<ProfileValidationError> overrideErrors;
+            if (!ParsePrototypeProfile(document, overrideProfile, overrideErrors)) { for (const auto& item : overrideErrors) std::cerr << item.code << " at " << item.path << ": " << item.message << "\n"; return 6; }
+            if (record == nullptr) { std::cerr << "Function selector not found or ambiguous\n"; return 8; }
+            for (const auto& item : overrideProfile.functions) if (item.rva == record->startRva) { request.hasPrototypeOverride = true; request.prototypeOverride = item.prototype; break; }
+            if (!request.hasPrototypeOverride) { std::cerr << "Prototype override has no matching function\n"; return 8; }
+        }
         if (record != nullptr && record->hasPrototype && record->prototype.parameters.size() == options.rawArguments.size())
         {
             for (size_t index = 0; index < options.rawArguments.size(); ++index)
