@@ -265,23 +265,23 @@ Evidence: _None_
 Status: **In progress**
 Branch: `feat/11-native-invocation-x86`
 Depends on: M8
-Evidence: _None_
+Evidence: x86 worker, register preservation, thiscall, fastcall, and convention matrix coverage in [PR #90](https://github.com/kerbymart/FuBi/pull/90), [PR #94](https://github.com/kerbymart/FuBi/pull/94), [PR #96](https://github.com/kerbymart/FuBi/pull/96), [PR #98](https://github.com/kerbymart/FuBi/pull/98), [PR #100](https://github.com/kerbymart/FuBi/pull/100), and [PR #102](https://github.com/kerbymart/FuBi/pull/102).
 
 - [ ] M9-01 Add an x86 worker and normalized x86 call frames.
 - [ ] M9-02 Implement and test x86 `cdecl`.
 - [ ] M9-03 Implement and test x86 `stdcall`.
 - [x] M9-04 Add `thiscall` as a separate reviewable increment ([issue #95](https://github.com/kerbymart/FuBi/issues/95)).
-- [ ] M9-05 Add `fastcall` as a separate reviewable increment.
-- [ ] M9-06 Verify convention-specific stack cleanup, register use, return
+- [x] M9-05 Add `fastcall` as a separate reviewable increment ([issue #97](https://github.com/kerbymart/FuBi/issues/97)).
+- [x] M9-06 Verify convention-specific stack cleanup, register use, return
   capture, and nonvolatile register preservation.
-- [ ] M9-07 Pass architecture and calling-convention fixture matrices.
+- [x] M9-07 Pass architecture and calling-convention fixture matrices ([PR #100](https://github.com/kerbymart/FuBi/pull/100), [PR #102](https://github.com/kerbymart/FuBi/pull/102)).
 
 ## Milestone 10 — Focused Windows call patterns
 
 Status: **In progress**
 Branch: `feat/12-windows-call-pattern-catalog`
 Depends on: M2; may proceed independently of M3 through M9 after D-10 permits it
-Evidence: Bounded WDF and CFG recognizers with positive and truncated fixtures in [PR #58](https://github.com/kerbymart/FuBi/pull/58).
+Evidence: Bounded WDF and CFG recognizers with positive, truncated, near-match, deterministic, and non-executing fixture coverage in [PR #58](https://github.com/kerbymart/FuBi/pull/58) and [PR #104](https://github.com/kerbymart/FuBi/pull/104).
 
 - [ ] M10-01 Keep this provider separate from the general catalog and do not
   expose a disassembly UI.
@@ -295,7 +295,7 @@ Evidence: Bounded WDF and CFG recognizers with positive and truncated fixtures i
   pattern name, version, and provenance.
 - [ ] M10-07 Treat pattern results as target/relationship evidence only; never
   as prototype evidence.
-- [ ] M10-08 Pass exact positive and near-match negative fixtures; unknown
+- [x] M10-08 Pass exact positive and near-match negative fixtures; unknown
   patterns remain unknown and no decoder dependency is present.
 
 ## Milestone 11 — t1pidd catalog acceptance
@@ -303,9 +303,9 @@ Evidence: Bounded WDF and CFG recognizers with positive and truncated fixtures i
 Status: **In progress**
 Branch: `test/13-t1pidd-catalog-acceptance`
 Depends on: M3
-Evidence: _None_
+Evidence: Opt-in path, pinned identity, export/candidate checks, static describe, marker, and prototype-skeleton coverage in [PR #106](https://github.com/kerbymart/FuBi/pull/106), with the external module skipped when unavailable or mismatched.
 
-- [ ] M11-01 Add an opt-in harness using `FUBI_T1PIDD_PATH`; skip clearly when
+- [x] M11-01 Add an opt-in harness using `FUBI_T1PIDD_PATH`; skip clearly when
   the path, DLL, or expected version is unavailable.
 - [ ] M11-02 Confirm the reference module hash/version or report a mismatch.
 - [ ] M11-03 Assert exports `FxDriverEntryUm` at RVA `0x7F40` and
@@ -316,7 +316,7 @@ Evidence: _None_
 - [ ] M11-06 Mark plain exports `requires-prototype` and `FxDriverEntryUm`
   `framework-managed` unless approved evidence changes their status.
 - [ ] M11-07 Prove `--list`, `--describe`, and `--inspect` never load the target.
-- [ ] M11-08 Provide a profile skeleton with no unverified prototype and do not
+- [x] M11-08 Provide a profile skeleton with no unverified prototype and do not
   add an automated t1pidd call test until its exact contract and safe test
   environment are known.
 
@@ -379,3 +379,4 @@ Evidence: _None_
 | Date | Change | Author |
 | --- | --- | --- |
 | 2026-08-27 | Created tracker from the technical design plan. | Codex |
+| 2026-08-27 | Added acceptance evidence for merged x86, Windows pattern, and opt-in reference-module tests. | Codex |
