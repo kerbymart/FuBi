@@ -126,6 +126,7 @@ int main(int argc, char* argv[])
         CallRequest request;
         request.selector = options.selector;
         request.correlationId = "cli-call";
+        request.moduleSha256 = catalog.Module().sha256;
         const FunctionRecord* record = catalog.Find(options.selector);
         if (!options.prototypeOverridePath.empty())
         {

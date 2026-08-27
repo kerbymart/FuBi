@@ -44,6 +44,11 @@ BOOST_AUTO_TEST_CASE(ValidTypedRequestAndDeterministicResult)
     BOOST_CHECK_EQUAL(parsed.arguments.size(), request.arguments.size());
     CallResult result;
     result.correlationId = request.correlationId;
+    result.resolvedModule = catalog.Module();
+    result.durationMs = 12;
+    result.returnType = request.prototypeOverride.returnType;
+    result.prototypeUsed = request.prototypeOverride;
+    result.outputValues = request.arguments;
     result.diagnostics = diagnostics;
     std::ostringstream resultJson;
     WriteCallResultJson(resultJson, result);
@@ -51,6 +56,8 @@ BOOST_AUTO_TEST_CASE(ValidTypedRequestAndDeterministicResult)
     CallResult parsedResult;
     BOOST_REQUIRE(ParseCallResultJson(resultJson.str(), parsedResult, diagnostics));
     BOOST_CHECK_EQUAL(parsedResult.correlationId, result.correlationId);
+    BOOST_CHECK_EQUAL(parsedResult.durationMs, result.durationMs);
+    BOOST_CHECK_EQUAL(parsedResult.outputValues.size(), result.outputValues.size());
 }
 
 BOOST_AUTO_TEST_CASE(ValidationRejectsBadRangeCountAndDisplayOnlyPrototype)
