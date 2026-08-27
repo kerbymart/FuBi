@@ -21,9 +21,9 @@ public:
 public:
 	Fubi(void);
 	~Fubi(void);
-	DWORD Call_cdecl( const void* args, size_t sz, DWORD func );
-	DWORD Call_stdcall( const void* args, size_t sz, DWORD func );
-	DWORD Call_thiscall( const void* args, size_t sz, void* object, DWORD func );
-	DWORD Call_thiscallvararg( const void* args, size_t sz, void* object, DWORD func );
+	DWORD Call_cdecl( const void* args, size_t sz, uintptr_t func );
+	DWORD Call_stdcall( const void* args, size_t sz, uintptr_t func );
+	DWORD Call_thiscall( const void* args, size_t sz, void* object, uintptr_t func );
+	DWORD Call_thiscallvararg( const void* args, size_t sz, void* object, uintptr_t func );
     Result Call_function(std::string funcName, const void* args);
 };
