@@ -9,3 +9,4 @@ EXPORTS
     ReturnWord @7
     ReturnDword @8
     ReturnQword @9
+    PointerEcho @10

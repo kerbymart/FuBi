@@ -20,8 +20,13 @@ std::string FixturePath()
 }
 
 std::string ProfileDocument(const FunctionCatalog& catalog, const std::string& architecture,
-    uint32_t rva = 0x1010)
+    uint32_t rva = 0)
 {
+    if (rva == 0)
+    {
+        const FunctionRecord* named = catalog.Find("NamedExport");
+        rva = named == nullptr ? 0 : named->startRva;
+    }
     std::ostringstream output;
     output << "{\"schema_version\":1,\"module\":{\"sha256\":\""
         << catalog.Module().sha256 << "\",\"architecture\":\"" << architecture
@@ -122,7 +127,7 @@ BOOST_AUTO_TEST_CASE(PdbIdentityAndTypeShapeAreRequiredWhenSupplied)
     profile.module.pdbAge = 1;
     BOOST_CHECK(!ValidatePrototypeProfile(profile, catalog, errors));
     BOOST_CHECK(std::any_of(errors.begin(), errors.end(), [](const ProfileValidationError& item) {
-        return item.code == "pdb-identity-unavailable";
+        return item.code == "pdb-identity-mismatch";
     }));
 
     FunctionRecord record;
@@ -148,6 +153,39 @@ BOOST_AUTO_TEST_CASE(SymbolProviderRejectsUnavailableOrMismatchedCodeView)
     BOOST_CHECK(!symbols.EnumerateExactFunctionSymbols(FixturePath(), expected, evidence, error));
     BOOST_CHECK(evidence.empty());
     BOOST_CHECK(!error.empty());
+}
+
+BOOST_AUTO_TEST_CASE(SymbolProviderMapsCompleteFixtureTypeGraph)
+{
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+    BOOST_REQUIRE_MESSAGE(!catalog.Module().pdbGuid.empty(),
+        "the controlled fixture must carry CodeView identity for this test");
+
+    DbgHelpDll symbols;
+    std::vector<SymbolPrototypeEvidence> evidence;
+    BOOST_REQUIRE_MESSAGE(symbols.EnumerateExactFunctionSymbols(
+        FixturePath(), catalog.Module(), evidence, error), error);
+    const auto match = std::find_if(evidence.begin(), evidence.end(),
+        [](const SymbolPrototypeEvidence& item) { return item.name == "NamedExport"; });
+    BOOST_REQUIRE(match != evidence.end());
+    BOOST_CHECK_EQUAL(match->prototype.source, "dbghelp-pdb-type-graph");
+    BOOST_CHECK(match->prototype.quality == PrototypeQuality::ExactSymbol);
+    BOOST_CHECK(match->prototype.abi == "x64" || match->prototype.abi == "__cdecl");
+    BOOST_CHECK(match->prototype.returnType.kind == TypeKind::Integer);
+    BOOST_CHECK_EQUAL(match->prototype.returnType.width, 32U);
+    BOOST_CHECK(match->prototype.parameters.empty());
+
+    const auto pointerMatch = std::find_if(evidence.begin(), evidence.end(),
+        [](const SymbolPrototypeEvidence& item) { return item.name == "PointerEcho"; });
+    BOOST_REQUIRE(pointerMatch != evidence.end());
+    BOOST_CHECK(pointerMatch->prototype.quality == PrototypeQuality::ExactSymbol);
+    BOOST_CHECK(pointerMatch->prototype.returnType.kind == TypeKind::Pointer);
+    BOOST_CHECK_EQUAL(pointerMatch->prototype.returnType.pointerDepth, 1U);
+    BOOST_REQUIRE_EQUAL(pointerMatch->prototype.parameters.size(), 1U);
+    BOOST_CHECK(pointerMatch->prototype.parameters.front().kind == TypeKind::Pointer);
+    BOOST_CHECK_EQUAL(pointerMatch->prototype.parameters.front().pointerDepth, 1U);
 }
 
 BOOST_AUTO_TEST_CASE(ExactSymbolEvidenceMakesMatchingRecordCallable)
@@ -196,7 +234,6 @@ BOOST_AUTO_TEST_CASE(InferredSymbolEvidenceRemainsDisplayOnly)
 BOOST_AUTO_TEST_CASE(IncompletePdbTypeGraphRemainsDisplayOnly)
 {
     SymbolPrototypeEvidence evidence;
-    evidence.rva = 0x1010;
     evidence.prototype.abi = "x64";
     evidence.prototype.quality = PrototypeQuality::Inferred;
     evidence.prototype.source = "dbghelp-type-metadata-display";
@@ -205,6 +242,7 @@ BOOST_AUTO_TEST_CASE(IncompletePdbTypeGraphRemainsDisplayOnly)
     std::string error;
     BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
     evidence.module = catalog.Module();
+    evidence.rva = catalog.Find("NamedExport")->startRva;
     evidence.name = "NamedExport";
     BOOST_REQUIRE(catalog.ApplySymbolEvidence({evidence}, error));
     BOOST_CHECK(static_cast<int>(catalog.Find("NamedExport")->callability) == static_cast<int>(Callability::RequiresPrototype));

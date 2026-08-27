@@ -29,6 +29,11 @@ extern "C" unsigned long long ReturnQword()
     return 0xFEDCBA9876543210ULL;
 }
 
+extern "C" int* PointerEcho(int* value)
+{
+    return value;
+}
+
 __declspec(dllexport) int AddNumbers(int left, int right)
 {
     return left + right;
