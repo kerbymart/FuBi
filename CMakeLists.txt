@@ -178,6 +178,12 @@ add_test(NAME static_catalog COMMAND static_catalog_tests)
 add_test(NAME windows_patterns COMMAND windows_pattern_tests)
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     add_test(
+        NAME t1pidd_catalog_acceptance
+        COMMAND ${CMAKE_COMMAND}
+            -DFUBI=$<TARGET_FILE:Fubi>
+            -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
+            -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyT1Pidd.cmake)
+    add_test(
         NAME windows_pattern_acceptance
         COMMAND windows_pattern_tests
             --run_test=ScansControlledPeForDirectAndImportCalls)
@@ -254,6 +260,12 @@ add_test(
         -DACCEPTANCE_FILE=${FUBI_ACCEPTANCE_BINARY}
         -DSHA256=${FUBI_ACCEPTANCE_SHA256}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyAcceptance.cmake)
+add_test(
+    NAME acceptance_t1pidd_catalog
+    COMMAND ${CMAKE_COMMAND}
+        -DFUBI=$<TARGET_FILE:Fubi>
+        -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyT1PiddAcceptance.cmake)
 if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 4)
     add_test(
         NAME x86_nonvolatile_registers
