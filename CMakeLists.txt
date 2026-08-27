@@ -126,6 +126,10 @@ add_executable(call_contract_tests TestCallContract.cpp CallContract.cpp Invocat
 target_link_libraries(call_contract_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 add_dependencies(call_contract_tests export_fixture FubiInvocationWorker)
 
+add_executable(internal_rva_tests TestInternalRva.cpp CallContract.cpp InvocationEngine.cpp FunctionCatalog.cpp PrototypeProfile.cpp StaticExportCatalog.cpp PEImage.cpp ${NATIVE_CALL_SOURCES})
+target_link_libraries(internal_rva_tests PRIVATE bcrypt fubi_boost_headers fubi_build_limits)
+add_dependencies(internal_rva_tests static_fixture)
+
 enable_testing()
 add_test(NAME signature_parser COMMAND tests)
 add_test(NAME export_enumeration COMMAND export_tests)
@@ -134,6 +138,7 @@ add_test(NAME windows_patterns COMMAND windows_pattern_tests)
 add_test(NAME function_catalog COMMAND function_catalog_tests)
 add_test(NAME prototype_profile COMMAND prototype_profile_tests)
 add_test(NAME call_contract COMMAND call_contract_tests)
+add_test(NAME internal_rva COMMAND internal_rva_tests)
 add_test(
     NAME static_cli_no_execution
     COMMAND ${CMAKE_COMMAND}
