@@ -36,6 +36,7 @@ target_compile_definitions(
 set(SOURCES
     PEImage.cpp
     StaticExportCatalog.cpp
+    FunctionCatalog.cpp
     fubimain.cpp
     stdafx.cpp)
 add_executable(Fubi ${SOURCES})
