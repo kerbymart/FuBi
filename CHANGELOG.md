@@ -159,4 +159,8 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - feat: add injectable invocation adapter seam (#115)
 - feat: support persistent JSONL pointer references (#119)
 - feat: add opaque handle ownership contract (#120)
+- test: cover string length fixture matrix
+- test: cover opaque echo validation
+- test: reject oversized string payloads
+- Merge pull request #125 from kerbymart/feat/124-string-fixture-matrix
 
