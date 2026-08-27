@@ -36,17 +36,27 @@ additional evidence, but parsing a type does not make it callable.
 | --- | --- | --- |
 | Supported ABI names | `x64`, `win64` | `__cdecl`, `__stdcall`, `__thiscall`, `__fastcall` |
 | Integer widths | 8, 16, 32, 64 bits | 8, 16, 32, 64 bits |
-| Boolean and floating values | Boolean, 32-bit and 64-bit floating point | Boolean, 32-bit and 64-bit floating point |
-| Strings and byte buffers | Bounded input and explicit-size output or inout descriptors where the adapter supports them | Same typed contract, subject to the selected x86 ABI and adapter validation |
-| Pointers | Input opaque references only | Input opaque references only |
-| Structures and aggregates | Not supported by the native invocation adapter | Not an invocation-grade contract in the current adapter |
-| Variadic prototypes | Not supported for invocation | Not supported for invocation |
+| Scalar arguments | Boolean, integer, floating point, and pointer values | Boolean, integer, floating point, and pointer values |
+| Scalar returns | Integer, Boolean, floating point, and pointer values | Integer, Boolean, floating point, and pointer values |
+| Structure and `void` returns | Rejected by the native adapter | Rejected by the native adapter |
+| Structures and aggregates as arguments | Rejected by the native adapter | Rejected by the native adapter |
+| Variadic prototypes | Not supported as an invocation contract | Not supported as an invocation contract |
+| Strings and byte buffers | Narrow `cstr` or `utf8`, wide `utf16` or `wstr`; `in`, `out`, and `inout` require explicit buffer rules | Narrow `cstr` or `utf8`, wide `utf16` or `wstr`; `in`, `out`, and `inout` require explicit buffer rules |
+| Buffer limit | 16 MiB per string or byte buffer | 16 MiB per string or byte buffer |
+| Pointer arguments | Input opaque references only, with no output buffer or ownership descriptor | Input opaque references only, with no output buffer or ownership descriptor |
+| Invocation worker | `FubiInvocationWorker.exe`, validated as x64 before launch | `FubiInvocationWorker_x86.exe`, validated as x86 before launch |
 
 Profiles use the schema documented in [Prototype profiles](#prototype-profiles).
 Every call still needs a complete invocation-grade prototype and arguments
 whose types, widths, direction, encoding, and buffer sizes match it. A
 function's export name or discovered RVA is evidence of identity, not proof of
 its ABI.
+
+For strings, narrow encodings use UTF-8 text and reject embedded NUL bytes.
+Wide encodings use UTF-16 and require output or inout buffer sizes divisible by
+two. `out` arguments start zeroed, while `inout` arguments preserve the input
+within the supplied size. Every string or byte buffer is capped at exactly
+16 MiB, and oversized or overflowing descriptors are rejected before loading.
 
 Internal RVAs require a hash-pinned profile, an executable catalog RVA, a
 complete module identity match, and explicit internal-call authorization.
