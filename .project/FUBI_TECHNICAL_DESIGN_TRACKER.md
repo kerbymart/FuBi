@@ -56,7 +56,7 @@ type vocabulary, internal-call policy, and scripting protocol are approved.
   invocation libraries.
 - [ ] D-08 Support repeated typed CLI arguments and a versioned JSONL session.
 - [x] D-09 Keep broad PE diagnostics secondary under `--inspect` only. See
-  [issue #136](https://github.com/kerbymart/FuBi/issues/136).
+  [PR #141](https://github.com/kerbymart/FuBi/pull/141).
 - [ ] D-10 Defer the focused Windows call-pattern scanner until the generic
   catalog and calling engine work.
 
@@ -321,7 +321,8 @@ Evidence: Opt-in path, pinned identity, export/candidate checks, static describe
 - [ ] M11-06 Mark plain exports `requires-prototype` and `FxDriverEntryUm`
   `framework-managed` unless approved evidence changes their status.
 - [x] M11-07 Prove `--list`, `--describe`, and `--inspect` never load the target.
-  See issue [#144](https://github.com/kerbymart/FuBi/issues/144).
+  See [PR #141](https://github.com/kerbymart/FuBi/pull/141) and the static CLI
+  marker coverage in [PR #145](https://github.com/kerbymart/FuBi/pull/145).
 - [x] M11-08 Provide a profile skeleton with no unverified prototype and do not
   add an automated t1pidd call test until its exact contract and safe test
   environment are known.
@@ -358,13 +359,15 @@ Evidence: Opt-in path, pinned identity, export/candidate checks, static describe
   ordinals, forwarders, decorated-name recovery, and human-readable output.
 - [x] DOC-06 Deprecate analysis-first language and general disassembly flags. ([PR #15](https://github.com/kerbymart/FuBi/pull/15))
 - [x] DOC-07 Keep broad PE diagnostics secondary under `--inspect`. See
-  [issue #136](https://github.com/kerbymart/FuBi/issues/136).
+  [PR #141](https://github.com/kerbymart/FuBi/pull/141).
 - [x] DOC-08 Record supported architecture, ABI, and type limitations. See [PR #88](https://github.com/kerbymart/FuBi/pull/88).
 
 ## Roadmap definition of done
 
-- [ ] DONE-01 Builds without retired decoder code, network downloads, or new
-  third-party runtime libraries.
+- [x] DONE-01 Builds without retired decoder code, network downloads, or new
+  third-party runtime libraries. See [PR #15](https://github.com/kerbymart/FuBi/pull/15),
+  [PR #43](https://github.com/kerbymart/FuBi/pull/43), and the offline wording
+  cleanup in [PR #138](https://github.com/kerbymart/FuBi/pull/138).
 - [x] DONE-02 The default command lists function candidates without executing
   the target. See [PR #15](https://github.com/kerbymart/FuBi/pull/15) and [PR #17](https://github.com/kerbymart/FuBi/pull/17).
 - [x] DONE-03 Every function exposes stable identity, evidence, exact prototype
