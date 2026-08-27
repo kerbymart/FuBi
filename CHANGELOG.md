@@ -78,4 +78,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - feat: add deterministic JSONL session mode
 - fix: enforce strict JSONL request boundaries
 - fix: validate JSON request structure completely
+- fix: enforce JSON number and unicode grammar
 
