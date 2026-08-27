@@ -62,6 +62,36 @@ BOOST_AUTO_TEST_CASE(ValidTypedRequestAndDeterministicResult)
     BOOST_CHECK_EQUAL(parsedResult.outputValues.size(), result.outputValues.size());
 }
 
+BOOST_AUTO_TEST_CASE(SessionActionsRoundTripWithoutCallSelectors)
+{
+    CallRequest hello;
+    std::vector<CallDiagnostic> diagnostics;
+    BOOST_REQUIRE(ParseCallRequestJson(
+        "{\"schema_version\":1,\"action\":\"hello\",\"correlation_id\":\"hello-1\"}",
+        hello, diagnostics));
+    BOOST_CHECK_EQUAL(hello.action, "hello");
+    BOOST_CHECK(hello.selector.empty());
+
+    CallResult response;
+    response.action = "list";
+    response.correlationId = "list-1";
+    response.status = "completed";
+    std::ostringstream encoded;
+    WriteCallResultJson(encoded, response);
+    CallResult decoded;
+    BOOST_REQUIRE(ParseCallResultJson(encoded.str(), decoded, diagnostics));
+    BOOST_CHECK_EQUAL(decoded.action, "list");
+    BOOST_CHECK_EQUAL(decoded.correlationId, response.correlationId);
+
+    CallRequest unknown;
+    diagnostics.clear();
+    BOOST_CHECK(!ParseCallRequestJson(
+        "{\"schema_version\":1,\"action\":\"unknown\",\"correlation_id\":\"bad\"}",
+        unknown, diagnostics));
+    BOOST_CHECK(std::any_of(diagnostics.begin(), diagnostics.end(),
+        [](const CallDiagnostic& item) { return item.code == "unsupported-action"; }));
+}
+
 BOOST_AUTO_TEST_CASE(ValidationRejectsBadRangeCountAndDisplayOnlyPrototype)
 {
     FunctionCatalog catalog;

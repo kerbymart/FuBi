@@ -8,15 +8,80 @@
 #include "ProcessInvocation.h"
 
 #include <fstream>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <string>
 
 namespace
 {
+void WriteJsonString(std::ostream& output, const std::string& value)
+{
+    output << '"';
+    for (const unsigned char character : value)
+    {
+        if (character == '"' || character == '\\') output << '\\' << character;
+        else if (character == '\n') output << "\\n";
+        else if (character == '\r') output << "\\r";
+        else if (character == '\t') output << "\\t";
+        else if (character < 0x20) output << "\\u00" << std::hex << std::setw(2)
+            << std::setfill('0') << static_cast<unsigned>(character) << std::dec
+            << std::setfill(' ');
+        else output << character;
+    }
+    output << '"';
+}
+
+void WriteSessionStatus(std::ostream& output, const std::string& action,
+    const std::string& correlationId, const FunctionCatalog& catalog,
+    bool success, const std::string& status, const std::vector<CallDiagnostic>& diagnostics = {})
+{
+    CallResult response;
+    response.action = action;
+    response.correlationId = correlationId;
+    response.resolvedModule = catalog.Module();
+    response.success = success;
+    response.status = status;
+    response.diagnostics = diagnostics;
+    WriteCallResultJson(output, response);
+    output << '\n';
+}
+
+void WriteSessionCatalog(std::ostream& output, const FunctionCatalog& catalog,
+    const std::string& correlationId)
+{
+    std::ostringstream payload;
+    catalog.WriteJson(payload);
+    output << "{\"schema_version\":1,\"action\":\"list\",\"correlation_id\":";
+    WriteJsonString(output, correlationId);
+    output << ",\"success\":true,\"status\":\"completed\",\"catalog\":"
+           << payload.str() << "}\n";
+}
+
+void WriteSessionDescription(std::ostream& output, const FunctionCatalog& catalog,
+    const std::string& correlationId, const std::string& selector)
+{
+    const std::vector<const FunctionRecord*> matches = catalog.FindAll(selector);
+    if (matches.size() != 1)
+    {
+        const char* code = matches.empty() ? "selector-not-found" : "selector-ambiguous";
+        const char* message = matches.empty() ? "selector does not identify a catalog record" : "selector identifies multiple catalog records";
+        WriteSessionStatus(output, "describe", correlationId, catalog, false,
+            "validation-failed", {{code, "selector", message}});
+        return;
+    }
+    std::ostringstream payload;
+    catalog.WriteJsonDescribe(payload, *matches.front());
+    output << "{\"schema_version\":1,\"action\":\"describe\",\"correlation_id\":";
+    WriteJsonString(output, correlationId);
+    output << ",\"success\":true,\"status\":\"completed\",\"description\":"
+           << payload.str() << "}\n";
+}
+
 void PrintUsage()
 {
     std::cerr << "Usage:\n"
-              << "  Fubi.exe <dll-file> [--list|--list-callable|--describe <name|#ordinal|0xRVA>|--call <selector>] [--arg <kind:value> ...] [--profile <file>] [--prototype-override <file>] [--symbols] [--json|--jsonl]\n";
+              << "  Fubi.exe <dll-file> [--list|--list-callable|--describe <name|#ordinal|0xRVA>|--call <selector>] [--arg <kind:value> ...] [--profile <file>] [--prototype-override <file>] [--symbols] [--json|--jsonl|--shell|--interactive]\n";
 }
 
 struct Options
@@ -26,6 +91,7 @@ struct Options
     std::string selector;
     bool json = false;
     bool jsonl = false;
+    bool shell = false;
     std::string profilePath;
     std::string prototypeOverridePath;
     bool symbols = false;
@@ -63,6 +129,7 @@ bool ParseOptions(int argc, char* argv[], Options& options)
         }
         else if (argument == "--json") options.json = true;
         else if (argument == "--jsonl") options.jsonl = true;
+        else if (argument == "--shell" || argument == "--interactive") { options.jsonl = true; options.shell = true; }
         else if (argument == "--profile" && index + 1 < argc)
         {
             if (!options.profilePath.empty()) return false;
@@ -133,21 +200,61 @@ int main(int argc, char* argv[])
             if (line.find_first_not_of(" \t\r\n") == std::string::npos) continue;
             CallRequest request;
             std::vector<CallDiagnostic> diagnostics;
-            CallResult response;
             const bool parsed = ParseCallRequestJson(line, request, diagnostics);
-            response.correlationId = request.correlationId.empty() ? "jsonl-error" : request.correlationId;
-            response.resolvedModule = catalog.Module();
-            response.status = "validation-failed";
-            response.diagnostics = diagnostics;
-            if (parsed)
+            const std::string correlationId = request.correlationId.empty() ? "jsonl-error" : request.correlationId;
+            if (!parsed)
             {
+                WriteSessionStatus(std::cout, request.action.empty() ? "call" : request.action,
+                    correlationId, catalog, false, "validation-failed", diagnostics);
+                continue;
+            }
+            if (request.action == "hello")
+            {
+                WriteSessionStatus(std::cout, "hello", correlationId, catalog, true, "ready");
+            }
+            else if (request.action == "list")
+            {
+                WriteSessionCatalog(std::cout, catalog, correlationId);
+            }
+            else if (request.action == "describe")
+            {
+                WriteSessionDescription(std::cout, catalog, correlationId, request.selector);
+            }
+            else if (request.action == "release")
+            {
+                WriteSessionStatus(std::cout, "release", correlationId, catalog, true, "released");
+            }
+            else if (request.action == "quit")
+            {
+                WriteSessionStatus(std::cout, "quit", correlationId, catalog, true, "closed");
+                break;
+            }
+            else
+            {
+                request.moduleSha256 = request.moduleSha256.empty() ? catalog.Module().sha256 : request.moduleSha256;
+                request.modulePath = request.modulePath.empty() ? catalog.Module().canonicalPath : request.modulePath;
+                request.moduleTimestamp = request.moduleTimestamp == 0 ? catalog.Module().timestamp : request.moduleTimestamp;
+                request.moduleImageSize = request.moduleImageSize == 0 ? catalog.Module().imageSize : request.moduleImageSize;
+                request.modulePreferredImageBase = request.modulePreferredImageBase == 0 ? catalog.Module().preferredImageBase : request.modulePreferredImageBase;
+                request.modulePdbGuid = request.modulePdbGuid.empty() ? catalog.Module().pdbGuid : request.modulePdbGuid;
+                request.modulePdbAge = request.modulePdbAge == 0 ? catalog.Module().pdbAge : request.modulePdbAge;
+                CallResult response;
+                response.action = "call";
+                response.correlationId = correlationId;
+                response.resolvedModule = catalog.Module();
                 response.prototypeUsed = request.prototypeOverride;
                 const bool valid = ValidateCallRequest(request, catalog, diagnostics);
-                response.diagnostics = diagnostics;
                 response.status = valid ? "not-executed" : "validation-failed";
+                response.diagnostics = diagnostics;
+                if (valid)
+                {
+                    std::string invocationError;
+                    if (!InvokeX64ExportProcess(options.targetPath, request, catalog, response, invocationError) && !invocationError.empty())
+                        response.diagnostics.push_back({"invocation-failed", "call", invocationError});
+                }
+                WriteCallResultJson(std::cout, response);
+                std::cout << '\n';
             }
-            WriteCallResultJson(std::cout, response);
-            std::cout << '\n';
         }
         return 0;
     }
