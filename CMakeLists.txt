@@ -186,6 +186,15 @@ add_test(
         -DARCHITECTURE=${FUBI_TEST_ARCHITECTURE}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyWorkerFailure.cmake)
 add_test(
+    NAME framework_managed_call_block
+    COMMAND ${CMAKE_COMMAND}
+        -DFUBI=$<TARGET_FILE:Fubi>
+        -DFIXTURE=$<TARGET_FILE:static_fixture>
+        -DCONTROL_FIXTURE=$<TARGET_FILE:export_fixture>
+        -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
+        -DARCHITECTURE=${FUBI_TEST_ARCHITECTURE}
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyFrameworkManaged.cmake)
+add_test(
     NAME acceptance_static_catalog
     COMMAND ${CMAKE_COMMAND}
         -DFUBI=$<TARGET_FILE:Fubi>
