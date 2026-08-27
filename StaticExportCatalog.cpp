@@ -106,11 +106,18 @@ bool StaticExportCatalog::Load(
         if (functionRva == 0) continue;
 
         StaticExport item;
-        item.ordinal = table.Base + index;
+        const uint64_t ordinal = static_cast<uint64_t>(table.Base) + index;
+        if (ordinal > UINT32_MAX)
+        {
+            error = "Export ordinal overflow";
+            return false;
+        }
+        item.ordinal = static_cast<uint32_t>(ordinal);
         item.rva = functionRva;
         item.names = std::move(namesByIndex[index]);
         if (functionRva >= directory->rva && static_cast<uint64_t>(functionRva) < exportEnd &&
-            !image.ReadCStringAtRva(functionRva, item.forwarder))
+            !image.ReadCStringAtRva(functionRva, item.forwarder,
+                static_cast<size_t>(exportEnd - functionRva)))
         {
             error = "Invalid export forwarder";
             return false;
