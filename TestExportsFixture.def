@@ -10,3 +10,5 @@ EXPORTS
     ReturnDword @8
     ReturnQword @9
     PointerEcho @10
+    CrashProcess @11
+    HangProcess @12
