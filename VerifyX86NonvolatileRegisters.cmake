@@ -3,11 +3,15 @@ if(NOT DEFINED FUBI OR NOT DEFINED FIXTURE OR NOT DEFINED OUTPUT_DIR)
 endif()
 
 file(SHA256 "${FIXTURE}" FIXTURE_HASH)
-file(REMOVE "x86_register_fixture.executed")
+set(marker "${OUTPUT_DIR}/x86_register_fixture.executed")
+file(REMOVE "${marker}")
 execute_process(COMMAND "${FUBI}" "${FIXTURE}" --list --json
     RESULT_VARIABLE list_result OUTPUT_VARIABLE list_output ERROR_VARIABLE list_diagnostics)
 if(NOT list_result EQUAL 0)
     message(FATAL_ERROR "sentinel fixture catalog failed: ${list_diagnostics}")
+endif()
+if(EXISTS "${marker}")
+    message(FATAL_ERROR "sentinel fixture was executed by a static operation")
 endif()
 
 function(run_sentinel selector abi label)
@@ -37,7 +41,3 @@ endfunction()
 
 run_sentinel(X86CdeclRegisterSentinel __cdecl "x86 cdecl register sentinel")
 run_sentinel(X86StdcallRegisterSentinel __stdcall "x86 stdcall register sentinel")
-
-if(EXISTS "x86_register_fixture.executed")
-    message(FATAL_ERROR "sentinel fixture was executed by a static operation")
-endif()
