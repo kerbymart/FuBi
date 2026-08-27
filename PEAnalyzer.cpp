@@ -240,6 +240,185 @@ std::string Lower(std::string value)
     return value;
 }
 
+bool HasImportNamed(const PEAnalysis& analysis, const std::string& expected)
+{
+    const auto contains = [&expected](const std::vector<PeImportModule>& modules)
+    {
+        for (const PeImportModule& module : modules)
+            for (const PeImport& symbol : module.symbols)
+                if (Lower(symbol.name) == expected) return true;
+        return false;
+    };
+    return contains(analysis.imports) || contains(analysis.delayImports);
+}
+
+bool HasExportNamed(const PEAnalysis& analysis, const std::string& expected)
+{
+    for (const PeExport& item : analysis.exports)
+        for (const std::string& name : item.names)
+            if (Lower(name) == expected) return true;
+    return false;
+}
+
+std::string RvaLabel(uint32_t rva)
+{
+    std::ostringstream value;
+    value << "RVA 0x" << std::hex << std::uppercase << rva;
+    return value.str();
+}
+
+std::string ReadUtf16Label(const PEImage& image, uint32_t rva)
+{
+    std::string value;
+    for (size_t index = 0; index < 128; ++index)
+    {
+        wchar_t character = 0;
+        const uint64_t characterRva = static_cast<uint64_t>(rva) + index * sizeof(character);
+        if (characterRva > UINT32_MAX ||
+            !image.ReadRva(static_cast<uint32_t>(characterRva), character) || character == 0)
+            break;
+        if (character < 0x20 || character > 0x7E) return {};
+        value.push_back(static_cast<char>(character));
+    }
+    return value;
+}
+
+const char* UmdfUsbFunctionName(uint32_t slot)
+{
+    static const char* names[] = {
+        "WdfUsbTargetDeviceCreate",
+        "WdfUsbTargetDeviceCreateWithParameters",
+        "WdfUsbTargetDeviceRetrieveInformation",
+        "WdfUsbTargetDeviceGetDeviceDescriptor",
+        "WdfUsbTargetDeviceRetrieveConfigDescriptor",
+        "WdfUsbTargetDeviceQueryString",
+        "WdfUsbTargetDeviceAllocAndQueryString",
+        "WdfUsbTargetDeviceFormatRequestForString",
+        "WdfUsbTargetDeviceGetNumInterfaces",
+        "WdfUsbTargetDeviceSelectConfig",
+        "WdfUsbTargetDeviceSendControlTransferSynchronously",
+        "WdfUsbTargetDeviceFormatRequestForControlTransfer",
+        "WdfUsbTargetDeviceResetPortSynchronously",
+        "WdfUsbTargetDeviceQueryUsbCapability",
+        "WdfUsbTargetPipeGetInformation",
+        "WdfUsbTargetPipeIsInEndpoint",
+        "WdfUsbTargetPipeIsOutEndpoint",
+        "WdfUsbTargetPipeGetType",
+        "WdfUsbTargetPipeSetNoMaximumPacketSizeCheck",
+        "WdfUsbTargetPipeWriteSynchronously",
+        "WdfUsbTargetPipeFormatRequestForWrite",
+        "WdfUsbTargetPipeReadSynchronously",
+        "WdfUsbTargetPipeFormatRequestForRead",
+        "WdfUsbTargetPipeConfigContinuousReader",
+        "WdfUsbTargetPipeAbortSynchronously",
+        "WdfUsbTargetPipeFormatRequestForAbort",
+        "WdfUsbTargetPipeResetSynchronously",
+        "WdfUsbTargetPipeFormatRequestForReset",
+        "WdfUsbInterfaceGetInterfaceNumber",
+        "WdfUsbInterfaceGetNumEndpoints",
+        "WdfUsbInterfaceGetDescriptor",
+        "WdfUsbInterfaceGetNumSettings",
+        "WdfUsbInterfaceSelectSetting",
+        "WdfUsbInterfaceGetEndpointInformation",
+        "WdfUsbTargetDeviceGetInterface",
+        "WdfUsbInterfaceGetConfiguredSettingIndex",
+        "WdfUsbInterfaceGetNumConfiguredPipes",
+        "WdfUsbInterfaceGetConfiguredPipe"
+    };
+    return slot >= 202 && slot < 202 + _countof(names) ? names[slot - 202] : nullptr;
+}
+
+const char* KmdfUsbFunctionName(uint32_t slot)
+{
+    static const char* names[] = {
+        "WdfUsbTargetDeviceCreate",
+        "WdfUsbTargetDeviceRetrieveInformation",
+        "WdfUsbTargetDeviceGetDeviceDescriptor",
+        "WdfUsbTargetDeviceRetrieveConfigDescriptor",
+        "WdfUsbTargetDeviceQueryString",
+        "WdfUsbTargetDeviceAllocAndQueryString",
+        "WdfUsbTargetDeviceFormatRequestForString",
+        "WdfUsbTargetDeviceGetNumInterfaces",
+        "WdfUsbTargetDeviceSelectConfig",
+        "WdfUsbTargetDeviceWdmGetConfigurationHandle",
+        "WdfUsbTargetDeviceRetrieveCurrentFrameNumber",
+        "WdfUsbTargetDeviceSendControlTransferSynchronously",
+        "WdfUsbTargetDeviceFormatRequestForControlTransfer",
+        "WdfUsbTargetDeviceIsConnectedSynchronous",
+        "WdfUsbTargetDeviceResetPortSynchronously",
+        "WdfUsbTargetDeviceCyclePortSynchronously",
+        "WdfUsbTargetDeviceFormatRequestForCyclePort",
+        "WdfUsbTargetDeviceSendUrbSynchronously",
+        "WdfUsbTargetDeviceFormatRequestForUrb",
+        "WdfUsbTargetPipeGetInformation",
+        "WdfUsbTargetPipeIsInEndpoint",
+        "WdfUsbTargetPipeIsOutEndpoint",
+        "WdfUsbTargetPipeGetType",
+        "WdfUsbTargetPipeSetNoMaximumPacketSizeCheck",
+        "WdfUsbTargetPipeWriteSynchronously",
+        "WdfUsbTargetPipeFormatRequestForWrite",
+        "WdfUsbTargetPipeReadSynchronously",
+        "WdfUsbTargetPipeFormatRequestForRead",
+        "WdfUsbTargetPipeConfigContinuousReader",
+        "WdfUsbTargetPipeAbortSynchronously",
+        "WdfUsbTargetPipeFormatRequestForAbort",
+        "WdfUsbTargetPipeResetSynchronously",
+        "WdfUsbTargetPipeFormatRequestForReset",
+        "WdfUsbTargetPipeSendUrbSynchronously",
+        "WdfUsbTargetPipeFormatRequestForUrb",
+        "WdfUsbInterfaceGetInterfaceNumber",
+        "WdfUsbInterfaceGetNumEndpoints",
+        "WdfUsbInterfaceGetDescriptor",
+        "WdfUsbInterfaceSelectSetting",
+        "WdfUsbInterfaceGetEndpointInformation",
+        "WdfUsbTargetDeviceGetInterface",
+        "WdfUsbInterfaceGetConfiguredSettingIndex",
+        "WdfUsbInterfaceGetNumConfiguredPipes",
+        "WdfUsbInterfaceGetConfiguredPipe",
+        "WdfUsbTargetPipeWdmGetPipeHandle"
+    };
+    if (slot >= 322 && slot < 322 + _countof(names)) return names[slot - 322];
+    if (slot == 386) return "WdfUsbInterfaceGetNumSettings";
+    switch (slot)
+    {
+    case 421: return "WdfUsbTargetDeviceCreateWithParameters";
+    case 422: return "WdfUsbTargetDeviceQueryUsbCapability";
+    case 423: return "WdfUsbTargetDeviceCreateUrb";
+    case 424: return "WdfUsbTargetDeviceCreateIsochUrb";
+    default: return nullptr;
+    }
+}
+
+const char* WdfFunctionName(const PeFrameworkBinding& binding, uint32_t slot)
+{
+    if (binding.majorVersion == 2) return UmdfUsbFunctionName(slot);
+    if (binding.majorVersion == 1) return KmdfUsbFunctionName(slot);
+    return nullptr;
+}
+
+struct WdfDispatchReference
+{
+    size_t bindingIndex = 0;
+    uint32_t slot = 0;
+    uint32_t expectedConsumerRva = 0;
+};
+
+void AnnotateWdfCall(
+    PeInstruction& instruction, PeFunction& function,
+    const PeFrameworkBinding& binding, uint32_t slot,
+    const std::string& dispatchProvenance)
+{
+    const char* functionName = WdfFunctionName(binding, slot);
+    instruction.frameworkCall = functionName
+        ? functionName : ("slot " + std::to_string(slot));
+    instruction.frameworkSlot = slot;
+    instruction.frameworkCallConfidence = functionName ? "high" : "medium";
+    instruction.frameworkCallProvenance = binding.provenance + "; " + dispatchProvenance;
+    instruction.annotation = binding.framework + "!" + instruction.frameworkCall +
+        " [slot " + std::to_string(slot) + "]";
+    AppendUnique(function.importedCalls, instruction.annotation);
+}
+
 std::string ResourceTypeName(uint32_t identifier)
 {
     switch (identifier)
@@ -295,6 +474,7 @@ bool PEAnalyzer::AnalyzeImage(
     ParseDebug(image, analysis);
     ParseRuntimeFunctions(image, analysis);
     ParseLoadConfig(image, analysis);
+    ParseFrameworkBindings(image, analysis);
     DisassembleFunctions(image, analysis);
     BuildCallGraph(analysis);
     ParseResources(image, analysis);
@@ -587,6 +767,95 @@ void PEAnalyzer::ParseRuntimeFunctions(const PEImage& image, PEAnalysis& analysi
     }
 }
 
+void PEAnalyzer::ParseFrameworkBindings(const PEImage& image, PEAnalysis& analysis) const
+{
+    const bool hasWdfEntry = HasExportNamed(analysis, "fxdriverentryum");
+    const bool hasWdfBindImport = HasImportNamed(analysis, "wdfversionbind") ||
+        HasImportNamed(analysis, "wdfversionbindclass");
+    if (!hasWdfEntry && !hasWdfBindImport) return;
+
+    const bool pe64 = image.Headers().isPe32Plus;
+    const uint32_t minimumSize = pe64 ? 48 : 32;
+    const uint32_t componentOffset = pe64 ? 8 : 4;
+    const uint32_t versionOffset = pe64 ? 16 : 8;
+    const uint32_t functionCountOffset = pe64 ? 28 : 20;
+    const uint32_t functionTableOffset = pe64 ? 32 : 24;
+    const uint32_t alignment = pe64 ? 8 : 4;
+
+    for (const PeSection& section : image.Sections())
+    {
+        if (section.rawSize < minimumSize) continue;
+        const uint64_t sectionEnd = static_cast<uint64_t>(section.rva) + section.rawSize;
+        for (uint64_t candidate = section.rva;
+             candidate + minimumSize <= sectionEnd && candidate <= UINT32_MAX;
+             candidate += alignment)
+        {
+            const uint32_t rva = static_cast<uint32_t>(candidate);
+            uint32_t size = 0;
+            uint32_t major = 0;
+            uint32_t minor = 0;
+            uint32_t build = 0;
+            uint32_t functionCount = 0;
+            if (!image.ReadRva(rva, size) || size < minimumSize || size > 256 ||
+                !image.ReadRva(rva + versionOffset, major) ||
+                !image.ReadRva(rva + versionOffset + 4, minor) ||
+                !image.ReadRva(rva + versionOffset + 8, build) ||
+                !image.ReadRva(rva + functionCountOffset, functionCount) ||
+                (major != 1 && major != 2) || minor > 100 || build > 1'000'000 ||
+                functionCount < 100 || functionCount > 4096)
+                continue;
+
+            uint64_t componentVa = 0;
+            uint64_t functionTableVa = 0;
+            if (pe64)
+            {
+                if (!image.ReadRva(rva + componentOffset, componentVa) ||
+                    !image.ReadRva(rva + functionTableOffset, functionTableVa))
+                    continue;
+            }
+            else
+            {
+                uint32_t componentVa32 = 0;
+                uint32_t functionTableVa32 = 0;
+                if (!image.ReadRva(rva + componentOffset, componentVa32) ||
+                    !image.ReadRva(rva + functionTableOffset, functionTableVa32))
+                    continue;
+                componentVa = componentVa32;
+                functionTableVa = functionTableVa32;
+            }
+
+            const uint32_t componentRva = VaToRva(componentVa, image);
+            const uint32_t functionTableRva = VaToRva(functionTableVa, image);
+            if (componentRva == 0 || functionTableRva == 0 ||
+                !image.FindSection(componentRva) || !image.FindSection(functionTableRva))
+                continue;
+            const std::string component = ReadUtf16Label(image, componentRva);
+            if (component.empty()) continue;
+
+            const bool duplicate = std::any_of(
+                analysis.frameworkBindings.begin(), analysis.frameworkBindings.end(),
+                [functionTableRva](const PeFrameworkBinding& binding)
+                {
+                    return binding.functionTableRva == functionTableRva;
+                });
+            if (duplicate) continue;
+
+            PeFrameworkBinding binding;
+            binding.framework = major == 2 ? "UMDF" : "KMDF";
+            binding.majorVersion = major;
+            binding.minorVersion = minor;
+            binding.buildVersion = build;
+            binding.functionCount = functionCount;
+            binding.functionTableRva = functionTableRva;
+            binding.indirectFunctionTable = major >= 2 || minor >= 15;
+            binding.confidence = "high";
+            binding.provenance = "WDF_BIND_INFO at " + RvaLabel(rva) +
+                ", component \"" + component + "\"";
+            analysis.frameworkBindings.push_back(std::move(binding));
+        }
+    }
+}
+
 void PEAnalyzer::DisassembleFunctions(const PEImage& image, PEAnalysis& analysis) const
 {
     std::unordered_map<uint32_t, std::string> importsByIat;
@@ -628,6 +897,7 @@ void PEAnalyzer::DisassembleFunctions(const PEImage& image, PEAnalysis& analysis
             {
                 function.name = item.names.front();
                 function.nameSource = "pe-export";
+                function.nameConfidence = "high";
                 function.aliases = item.names;
             }
         }
@@ -661,7 +931,9 @@ void PEAnalyzer::DisassembleFunctions(const PEImage& image, PEAnalysis& analysis
         function.endRva = static_cast<uint32_t>(end);
         function.name = item.names.front();
         function.nameSource = "pe-export";
+        function.nameConfidence = "high";
         function.boundarySource = "export-heuristic";
+        function.boundaryConfidence = "low";
         function.aliases = item.names;
         const std::optional<uint32_t> offset = image.RvaToFileOffset(item.rva);
         if (offset.has_value()) function.fileOffset = *offset;
@@ -696,6 +968,7 @@ void PEAnalyzer::DisassembleFunctions(const PEImage& image, PEAnalysis& analysis
         function.name = name.str();
         function.nameSource = "heuristic";
         function.boundarySource = "guard-cf";
+        function.boundaryConfidence = "low";
         const std::optional<uint32_t> offset = image.RvaToFileOffset(guardRva);
         if (offset.has_value()) function.fileOffset = *offset;
         function.section = section->name;
@@ -738,6 +1011,13 @@ void PEAnalyzer::DisassembleFunctions(const PEImage& image, PEAnalysis& analysis
         size_t decodedCount = 0;
         bool argumentConsumed[4] = {};
         bool argumentOverwritten[4] = {};
+        std::unordered_map<ZydisRegister, size_t> wdfTableRegisters;
+        std::unordered_map<ZydisRegister, WdfDispatchReference> wdfFunctionRegisters;
+        std::unordered_map<uint32_t, std::unordered_map<ZydisRegister, size_t>>
+            wdfTableRegistersAtBranchTarget;
+        std::unordered_map<uint32_t,
+            std::unordered_map<ZydisRegister, WdfDispatchReference>>
+            wdfFunctionRegistersAtBranchTarget;
         while (consumed < requestedSize)
         {
             ZydisDecodedInstruction decoded = {};
@@ -753,6 +1033,14 @@ void PEAnalyzer::DisassembleFunctions(const PEImage& image, PEAnalysis& analysis
 
             PeInstruction instruction;
             instruction.rva = function.beginRva + static_cast<uint32_t>(consumed);
+            const auto savedTables = wdfTableRegistersAtBranchTarget.find(instruction.rva);
+            if (savedTables != wdfTableRegistersAtBranchTarget.end())
+                for (const auto& entry : savedTables->second)
+                    wdfTableRegisters[entry.first] = entry.second;
+            const auto savedFunctions = wdfFunctionRegistersAtBranchTarget.find(instruction.rva);
+            if (savedFunctions != wdfFunctionRegistersAtBranchTarget.end())
+                for (const auto& entry : savedFunctions->second)
+                    wdfFunctionRegisters[entry.first] = entry.second;
             instruction.length = decoded.length;
             instruction.bytes = InstructionBytes(instructionBytes, decoded.length);
             std::array<char, 512> text = {};
@@ -791,6 +1079,23 @@ void PEAnalyzer::DisassembleFunctions(const PEImage& image, PEAnalysis& analysis
                 }
             }
             bool resolvedCall = false;
+            if (instruction.isCall && decoded.operand_count_visible >= 1 &&
+                operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER)
+            {
+                const ZydisRegister targetRegister = ZydisRegisterGetLargestEnclosing(
+                    machineMode, operands[0].reg.value);
+                const auto target = wdfFunctionRegisters.find(targetRegister);
+                if (target != wdfFunctionRegisters.end() &&
+                    target->second.expectedConsumerRva == instruction.rva)
+                {
+                    const WdfDispatchReference reference = target->second;
+                    AnnotateWdfCall(
+                        instruction, function,
+                        analysis.frameworkBindings[reference.bindingIndex], reference.slot,
+                        "function-table slot loaded into call target register");
+                    resolvedCall = true;
+                }
+            }
             for (uint8_t operandIndex = 0;
                  operandIndex < decoded.operand_count_visible; ++operandIndex)
             {
@@ -819,6 +1124,66 @@ void PEAnalyzer::DisassembleFunctions(const PEImage& image, PEAnalysis& analysis
                         AppendUnique(function.importedCalls, imported->second);
                         if (instruction.isCall) resolvedCall = true;
                     }
+
+                    if (instruction.isCall)
+                    {
+                        const ZydisRegister cfgTarget = image.Headers().isPe32Plus
+                            ? ZYDIS_REGISTER_RAX : ZYDIS_REGISTER_EAX;
+                        const auto pending = wdfFunctionRegisters.find(cfgTarget);
+                        if (pending != wdfFunctionRegisters.end() &&
+                            pending->second.expectedConsumerRva == instruction.rva)
+                        {
+                            const WdfDispatchReference reference = pending->second;
+                            AnnotateWdfCall(
+                                instruction, function,
+                                analysis.frameworkBindings[reference.bindingIndex], reference.slot,
+                                "function-table slot carried through Control Flow Guard dispatch");
+                            resolvedCall = true;
+                        }
+                    }
+
+                    if (instruction.isCall && instruction.frameworkCall.empty())
+                    {
+                        const uint32_t pointerSize = image.Headers().isPe32Plus ? 8 : 4;
+                        const PeFrameworkBinding* binding = nullptr;
+                        uint32_t slot = UINT32_MAX;
+
+                        const ZydisRegister base = ZydisRegisterGetLargestEnclosing(
+                            machineMode, operand.mem.base);
+                        const auto registerBinding = wdfTableRegisters.find(base);
+                        if (registerBinding != wdfTableRegisters.end() &&
+                            operand.mem.index == ZYDIS_REGISTER_NONE &&
+                            operand.mem.disp.value >= 0 &&
+                            static_cast<uint64_t>(operand.mem.disp.value) % pointerSize == 0)
+                        {
+                            binding = &analysis.frameworkBindings[registerBinding->second];
+                            slot = static_cast<uint32_t>(
+                                static_cast<uint64_t>(operand.mem.disp.value) / pointerSize);
+                        }
+                        else
+                        {
+                            for (const PeFrameworkBinding& candidate : analysis.frameworkBindings)
+                            {
+                                if (candidate.indirectFunctionTable ||
+                                    targetRva < candidate.functionTableRva) continue;
+                                const uint32_t difference = targetRva - candidate.functionTableRva;
+                                if (difference % pointerSize != 0) continue;
+                                const uint32_t candidateSlot = difference / pointerSize;
+                                if (candidateSlot >= candidate.functionCount) continue;
+                                binding = &candidate;
+                                slot = candidateSlot;
+                                break;
+                            }
+                        }
+
+                        if (binding && slot < binding->functionCount)
+                        {
+                            AnnotateWdfCall(
+                                instruction, function, *binding, slot,
+                                "dispatch offset mapped using pointer size and framework version");
+                            resolvedCall = true;
+                        }
+                    }
                 }
 
                 const auto string = stringsByRva.find(targetRva);
@@ -831,7 +1196,116 @@ void PEAnalyzer::DisassembleFunctions(const PEImage& image, PEAnalysis& analysis
                 }
             }
             instruction.indirectCall = instruction.isCall && !resolvedCall;
-            if (instruction.indirectCall) instruction.annotation = "indirect call - unresolved";
+            if (instruction.indirectCall)
+            {
+                if (!instruction.annotation.empty()) instruction.annotation += "; ";
+                instruction.annotation += "indirect call - unresolved";
+            }
+
+            if (decoded.operand_count_visible >= 1 &&
+                operands[0].type == ZYDIS_OPERAND_TYPE_REGISTER &&
+                (operands[0].actions & ZYDIS_OPERAND_ACTION_MASK_WRITE) != 0)
+            {
+                const ZydisRegister destination = ZydisRegisterGetLargestEnclosing(
+                    machineMode, operands[0].reg.value);
+                size_t sourceTableBindingIndex = SIZE_MAX;
+                if (decoded.operand_count_visible >= 2 &&
+                    operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY)
+                {
+                    const ZydisRegister sourceBase = ZydisRegisterGetLargestEnclosing(
+                        machineMode, operands[1].mem.base);
+                    const auto sourceTable = wdfTableRegisters.find(sourceBase);
+                    if (sourceTable != wdfTableRegisters.end())
+                        sourceTableBindingIndex = sourceTable->second;
+                }
+                wdfTableRegisters.erase(destination);
+                wdfFunctionRegisters.erase(destination);
+
+                if (decoded.operand_count_visible >= 2 &&
+                    (decoded.mnemonic == ZYDIS_MNEMONIC_MOV ||
+                     decoded.mnemonic == ZYDIS_MNEMONIC_LEA) &&
+                    operands[1].type == ZYDIS_OPERAND_TYPE_REGISTER)
+                {
+                    const ZydisRegister source = ZydisRegisterGetLargestEnclosing(
+                        machineMode, operands[1].reg.value);
+                    const auto sourceBinding = wdfTableRegisters.find(source);
+                    if (sourceBinding != wdfTableRegisters.end())
+                        wdfTableRegisters[destination] = sourceBinding->second;
+                    const auto sourceFunction = wdfFunctionRegisters.find(source);
+                    if (sourceFunction != wdfFunctionRegisters.end())
+                    {
+                        WdfDispatchReference reference = sourceFunction->second;
+                        reference.expectedConsumerRva = instruction.rva + decoded.length;
+                        wdfFunctionRegisters[destination] = reference;
+                    }
+                }
+                else if (decoded.operand_count_visible >= 2 &&
+                    (decoded.mnemonic == ZYDIS_MNEMONIC_MOV ||
+                     decoded.mnemonic == ZYDIS_MNEMONIC_LEA) &&
+                    operands[1].type == ZYDIS_OPERAND_TYPE_MEMORY)
+                {
+                    const uint32_t pointerSize = image.Headers().isPe32Plus ? 8 : 4;
+                    if (sourceTableBindingIndex != SIZE_MAX &&
+                        operands[1].mem.index == ZYDIS_REGISTER_NONE &&
+                        operands[1].mem.disp.value >= 0 &&
+                        static_cast<uint64_t>(operands[1].mem.disp.value) % pointerSize == 0)
+                    {
+                        const uint32_t slot = static_cast<uint32_t>(
+                            static_cast<uint64_t>(operands[1].mem.disp.value) / pointerSize);
+                        const PeFrameworkBinding& binding =
+                            analysis.frameworkBindings[sourceTableBindingIndex];
+                        if (slot < binding.functionCount)
+                            wdfFunctionRegisters[destination] = {
+                                sourceTableBindingIndex, slot,
+                                instruction.rva + decoded.length};
+                    }
+
+                    ZyanU64 sourceAddress = 0;
+                    if (ZYAN_SUCCESS(ZydisCalcAbsoluteAddress(
+                            &decoded, &operands[1], instruction.rva, &sourceAddress)) &&
+                        sourceAddress <= UINT32_MAX)
+                    {
+                        for (size_t bindingIndex = 0;
+                             bindingIndex < analysis.frameworkBindings.size(); ++bindingIndex)
+                        {
+                            const PeFrameworkBinding& binding =
+                                analysis.frameworkBindings[bindingIndex];
+                            if (static_cast<uint32_t>(sourceAddress) ==
+                                binding.functionTableRva)
+                            {
+                                wdfTableRegisters[destination] = bindingIndex;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            if (instruction.isCall) wdfFunctionRegisters.clear();
+
+            if (decoded.meta.category == ZYDIS_CATEGORY_COND_BR ||
+                decoded.meta.category == ZYDIS_CATEGORY_UNCOND_BR)
+            {
+                for (uint8_t operandIndex = 0;
+                     operandIndex < decoded.operand_count_visible; ++operandIndex)
+                {
+                    if (operands[operandIndex].type != ZYDIS_OPERAND_TYPE_IMMEDIATE) continue;
+                    ZyanU64 branchTarget = 0;
+                    if (!ZYAN_SUCCESS(ZydisCalcAbsoluteAddress(
+                            &decoded, &operands[operandIndex], instruction.rva,
+                            &branchTarget)) || branchTarget > UINT32_MAX)
+                        continue;
+                    wdfTableRegistersAtBranchTarget[static_cast<uint32_t>(branchTarget)] =
+                        wdfTableRegisters;
+                    wdfFunctionRegistersAtBranchTarget[static_cast<uint32_t>(branchTarget)] =
+                        wdfFunctionRegisters;
+                    break;
+                }
+                if (decoded.meta.category == ZYDIS_CATEGORY_UNCOND_BR)
+                {
+                    wdfTableRegisters.clear();
+                    wdfFunctionRegisters.clear();
+                }
+            }
             function.instructions.push_back(std::move(instruction));
             consumed += decoded.length;
             ++decodedCount;
@@ -845,7 +1319,10 @@ void PEAnalyzer::DisassembleFunctions(const PEImage& image, PEAnalysis& analysis
             function.inferredMinimumArguments = index + 1;
         }
         if (function.inferredMinimumArguments != 0)
+        {
             function.abiConfidence = "low";
+            function.abiProvenance = "x64-register-use-heuristic";
+        }
     }
 }
 
@@ -896,6 +1373,10 @@ void PEAnalyzer::ParseLoadConfig(const PEImage& image, PEAnalysis& analysis) con
             return;
         }
         analysis.security.securityCookieRva = VaToRva(config.SecurityCookie, image);
+        analysis.security.guardCheckFunctionPointerRva =
+            VaToRva(config.GuardCFCheckFunctionPointer, image);
+        analysis.security.guardDispatchFunctionPointerRva =
+            VaToRva(config.GuardCFDispatchFunctionPointer, image);
         analysis.security.guardFlags = config.GuardFlags;
         analysis.security.guardFunctionCount = config.GuardCFFunctionCount;
         guardTableVa = config.GuardCFFunctionTable;
@@ -910,6 +1391,10 @@ void PEAnalyzer::ParseLoadConfig(const PEImage& image, PEAnalysis& analysis) con
             return;
         }
         analysis.security.securityCookieRva = VaToRva(config.SecurityCookie, image);
+        analysis.security.guardCheckFunctionPointerRva =
+            VaToRva(config.GuardCFCheckFunctionPointer, image);
+        analysis.security.guardDispatchFunctionPointerRva =
+            VaToRva(config.GuardCFDispatchFunctionPointer, image);
         analysis.security.guardFlags = config.GuardFlags;
         analysis.security.guardFunctionCount = config.GuardCFFunctionCount;
         analysis.security.safeSeh = config.SEHandlerTable != 0 && config.SEHandlerCount != 0;
@@ -1036,13 +1521,13 @@ void PEAnalyzer::ParseVersionInfo(const std::string& path, PEAnalysis& analysis)
 void PEAnalyzer::Classify(PEAnalysis& analysis) const
 {
     analysis.capabilities = {
-        {"IddCx", false, {}},
-        {"WDF USB", false, {}},
-        {"WinUSB", false, {}},
-        {"SetupAPI", false, {}},
-        {"file I/O", false, {}},
-        {"DeviceIoControl", false, {}},
-        {"Direct3D/DXGI", false, {}}
+        {"IddCx", "not observed", "none", {}},
+        {"WDF USB", "not observed", "none", {}},
+        {"WinUSB", "not observed", "none", {}},
+        {"SetupAPI", "not observed", "none", {}},
+        {"file I/O", "not observed", "none", {}},
+        {"DeviceIoControl", "not observed", "none", {}},
+        {"Direct3D/DXGI", "not observed", "none", {}}
     };
 
     const auto add = [&analysis](const std::string& name, const std::string& evidence)
@@ -1057,14 +1542,29 @@ void PEAnalyzer::Classify(PEAnalysis& analysis) const
         }
         AppendUnique(found->evidence, evidence);
     };
-    const auto capability = [&analysis](const std::string& name, const std::string& evidence)
+    const auto capability = [&analysis](
+        const std::string& name, const std::string& state,
+        const std::string& confidence, const std::string& source,
+        const std::string& detail)
     {
         auto found = std::find_if(
             analysis.capabilities.begin(), analysis.capabilities.end(),
             [&name](const PeCapability& item) { return item.name == name; });
         if (found == analysis.capabilities.end()) return;
-        found->present = true;
-        AppendUnique(found->evidence, evidence);
+        const bool strongerState = found->state == "not observed" ||
+            found->state == "unknown" || state == "observed";
+        if (strongerState)
+        {
+            found->state = state;
+            found->confidence = confidence;
+        }
+        const bool duplicate = std::any_of(
+            found->evidence.begin(), found->evidence.end(),
+            [&source, &detail](const PeCapability::Evidence& evidence)
+            {
+                return evidence.source == source && evidence.detail == detail;
+            });
+        if (!duplicate) found->evidence.push_back({source, detail});
     };
 
     for (const PeExport& item : analysis.exports)
@@ -1074,10 +1574,15 @@ void PEAnalyzer::Classify(PEAnalysis& analysis) const
 
     if (Lower(analysis.resources.fileDescription).find("indirect display driver") !=
         std::string::npos)
+    {
         add("probable Indirect Display Driver",
             "version description " + analysis.resources.fileDescription);
+        capability("IddCx", "inferred", "medium", "version-resource",
+            "file description: " + analysis.resources.fileDescription);
+    }
 
-    const auto inspectImports = [&add, &capability](const std::vector<PeImportModule>& modules)
+    const auto inspectImports = [&add, &capability](
+        const std::vector<PeImportModule>& modules, const std::string& source)
     {
         for (const PeImportModule& module : modules)
         {
@@ -1085,20 +1590,24 @@ void PEAnalyzer::Classify(PEAnalysis& analysis) const
             if (lowerModule.find("iddcx") != std::string::npos)
             {
                 add("probable Indirect Display Driver", "import module " + module.name);
-                capability("IddCx", "import module " + module.name);
+                capability("IddCx", "observed", "high", source,
+                    "module " + module.name);
             }
             if (lowerModule.find("wudf") != std::string::npos)
                 add("probable UMDF/WDF user-mode driver", "import module " + module.name);
             if (lowerModule.find("winusb") != std::string::npos)
             {
                 add("probable WinUSB client", "import module " + module.name);
-                capability("WinUSB", "import module " + module.name);
+                capability("WinUSB", "observed", "high", source,
+                    "module " + module.name);
             }
             if (lowerModule.find("setupapi") != std::string::npos)
-                capability("SetupAPI", "import module " + module.name);
+                capability("SetupAPI", "observed", "high", source,
+                    "module " + module.name);
             if (lowerModule.find("d3d") != std::string::npos ||
                 lowerModule.find("dxgi") != std::string::npos)
-                capability("Direct3D/DXGI", "import module " + module.name);
+                capability("Direct3D/DXGI", "observed", "high", source,
+                    "module " + module.name);
 
             for (const PeImport& symbol : module.symbols)
             {
@@ -1106,33 +1615,69 @@ void PEAnalyzer::Classify(PEAnalysis& analysis) const
                 if (lowerName.find("iddcx") == 0)
                 {
                     add("probable Indirect Display Driver", "import " + symbol.name);
-                    capability("IddCx", "import " + symbol.name);
+                    capability("IddCx", "observed", "high", source,
+                        "symbol " + symbol.name);
                 }
                 if (lowerName.find("wdfusb") == 0)
                 {
                     add("probable WDF USB client", "import " + symbol.name);
-                    capability("WDF USB", "import " + symbol.name);
+                    capability("WDF USB", "observed", "high", source,
+                        "symbol " + symbol.name);
                 }
                 if (lowerName.find("setupdi") == 0)
                 {
                     add("uses SetupAPI device discovery", "import " + symbol.name);
-                    capability("SetupAPI", "import " + symbol.name);
+                    capability("SetupAPI", "observed", "high", source,
+                        "symbol " + symbol.name);
                 }
                 if (lowerName.find("winusb") == 0)
                 {
                     add("probable WinUSB client", "import " + symbol.name);
-                    capability("WinUSB", "import " + symbol.name);
+                    capability("WinUSB", "observed", "high", source,
+                        "symbol " + symbol.name);
                 }
                 if (lowerName == "createfilea" || lowerName == "createfilew" ||
                     lowerName == "readfile" || lowerName == "writefile")
-                    capability("file I/O", "import " + symbol.name);
+                    capability("file I/O", "observed", "high", source,
+                        "symbol " + symbol.name);
                 if (lowerName == "deviceiocontrol")
-                    capability("DeviceIoControl", "import " + symbol.name);
+                    capability("DeviceIoControl", "observed", "high", source,
+                        "symbol " + symbol.name);
                 if (lowerName.find("d3d") == 0 || lowerName.find("dxgi") == 0)
-                    capability("Direct3D/DXGI", "import " + symbol.name);
+                    capability("Direct3D/DXGI", "observed", "high", source,
+                        "symbol " + symbol.name);
             }
         }
     };
-    inspectImports(analysis.imports);
-    inspectImports(analysis.delayImports);
+    inspectImports(analysis.imports, "pe-import");
+    inspectImports(analysis.delayImports, "delay-import");
+
+    for (const PeFunction& function : analysis.functions)
+    {
+        for (const PeInstruction& instruction : function.instructions)
+        {
+            if (instruction.frameworkCall.find("WdfUsb") != 0) continue;
+            capability("WDF USB", "observed", instruction.frameworkCallConfidence,
+                "wdf-function-table", instruction.frameworkCall + " at " +
+                RvaLabel(instruction.rva) + "; " + instruction.frameworkCallProvenance);
+            add("probable WDF USB client", "recovered call " + instruction.frameworkCall);
+        }
+    }
+
+    if (!analysis.frameworkBindings.empty())
+    {
+        for (const std::string& name : {std::string("IddCx"), std::string("WDF USB")})
+        {
+            auto found = std::find_if(
+                analysis.capabilities.begin(), analysis.capabilities.end(),
+                [&name](const PeCapability& item) { return item.name == name; });
+            if (found == analysis.capabilities.end() || found->state != "not observed") continue;
+            found->state = "unknown";
+            found->confidence = "none";
+            found->evidence.push_back({
+                "analysis-limitation",
+                "WDF function-table binding was recovered, but no supporting " + name +
+                    " dispatch slot was resolved; absence is not evidence of false"});
+        }
+    }
 }

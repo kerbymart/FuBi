@@ -30,4 +30,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - feat: enumerate and dump complete DLL exports
 - feat: add static PE reverse-engineering analysis
 - docs: standardize README and usage guide
+- fix: make capability analysis evidence-aware
 
