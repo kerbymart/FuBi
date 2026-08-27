@@ -122,6 +122,12 @@ unavailable.
 The no-option command is equivalent to `--list`. It is deliberately a static,
 non-executing operation.
 
+Machine-readable output can be selected with either the compatibility aliases
+`--json` and `--jsonl`, or the documented format options `--format json` and
+`--format jsonl`. The `--session` option is an alias for `--format jsonl` and
+reads the versioned JSONL request stream from standard input. `--shell` and
+`--interactive` remain aliases for a JSONL session with shell behavior.
+
 Example output:
 
 ```text
