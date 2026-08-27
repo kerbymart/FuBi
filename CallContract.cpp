@@ -135,6 +135,30 @@ bool ValidateCallRequest(const CallRequest& request, const FunctionCatalog& cata
     if (request.hasPrototypeOverride && !ValidPrototype(prototype)) Diagnostic(diagnostics, "invalid-prototype-override", "prototype_override", "override must be a complete invocation-grade prototype");
     if ((request.hasPrototypeOverride || (record != nullptr && record->hasPrototype)) && !ValidAbiForModule(prototype.abi, catalog.Module().architecture)) Diagnostic(diagnostics, "unsupported-abi", "prototype.abi", "ABI does not match module architecture");
     if (!request.hasPrototypeOverride && record != nullptr && record->callability != Callability::Callable) Diagnostic(diagnostics, "target-not-callable", "selector", "catalog callability does not authorize invocation");
+#if defined(_M_IX86)
+    if (prototype.abi == "__thiscall")
+    {
+        if (request.arguments.empty())
+            Diagnostic(diagnostics, "missing-object-pointer", "arguments[0]", "__thiscall requires a non-null opaque object pointer as its first argument");
+        else
+        {
+            const CallArgument& object = request.arguments.front();
+            bool validObject = object.type.kind == TypeKind::Pointer && object.type.pointerDepth == 1 &&
+                object.type.direction == ParameterDirection::In && object.ownership.empty();
+            if (validObject && object.value.rfind("opaque:", 0) == 0)
+            {
+                errno = 0;
+                char* end = nullptr;
+                const unsigned long long address = std::strtoull(object.value.c_str() + 7, &end, 0);
+                validObject = errno != ERANGE && end != object.value.c_str() + 7 && *end == '\0' &&
+                    address != 0 && address <= UINT32_MAX;
+            }
+            else validObject = false;
+            if (!validObject)
+                Diagnostic(diagnostics, "invalid-object-pointer", "arguments[0]", "__thiscall object pointer must be a non-null 32-bit opaque reference");
+        }
+    }
+#endif
     if (record != nullptr && prototype.parameters.size() != request.arguments.size()) Diagnostic(diagnostics, "argument-count-mismatch", "arguments", "argument count does not match the selected prototype");
     if (record != nullptr && prototype.parameters.size() == request.arguments.size()) for (size_t index=0; index<request.arguments.size(); ++index)
     {
@@ -193,6 +217,6 @@ bool ParseCallResultJson(const std::string& document, CallResult& result, std::v
     if(document.find("\"return_type\":null")!=std::string::npos) { result.returnType = {}; } else if(pos!=std::string::npos && NextObject(document,pos,object)) { if(!TypeObject(object,result.returnType)) Diagnostic(diagnostics,"invalid-return-type","return_type","return type is malformed"); } else Diagnostic(diagnostics,"missing-field","return_type","return type is required");
     pos=document.find("\"resolved_module\":"); if(pos!=std::string::npos && NextObject(document,pos,object)){StringField(object,"path",result.resolvedModule.canonicalPath);StringField(object,"sha256",result.resolvedModule.sha256);StringField(object,"architecture",result.resolvedModule.architecture);if(UIntField(object,"timestamp",number)&&number<=UINT32_MAX)result.resolvedModule.timestamp=static_cast<uint32_t>(number);if(UIntField(object,"image_size",number)&&number<=UINT32_MAX)result.resolvedModule.imageSize=static_cast<uint32_t>(number);UIntField(object,"preferred_image_base",result.resolvedModule.preferredImageBase);StringField(object,"pdb_guid",result.resolvedModule.pdbGuid);if(UIntField(object,"pdb_age",number)&&number<=UINT32_MAX)result.resolvedModule.pdbAge=static_cast<uint32_t>(number);}
     pos=document.find("\"prototype_used\":"); if(pos!=std::string::npos && document.find("null",pos) < document.find('{',pos)) { result.prototypeUsed = {}; } else if(pos!=std::string::npos && NextObject(document,pos,object)) { if(!PrototypeObject(object,result.prototypeUsed)) Diagnostic(diagnostics,"invalid-prototype","prototype_used","prototype is malformed"); }
-    pos=document.find("\"output_values\":["); if(pos!=std::string::npos){pos+=16; while(true){if(!NextObject(document,pos,object))break; CallArgument value; size_t typePos=object.find("\"type\":"); std::string typeObject; if(typePos==std::string::npos||!NextObject(object,typePos,typeObject)||!TypeObject(typeObject,value.type)||!StringField(object,"value",value.value)){Diagnostic(diagnostics,"invalid-output","output_values","output value is invalid");break;} UIntField(object,"buffer_size",value.bufferSize); StringField(object,"ownership",value.ownership); result.outputValues.push_back(std::move(value)); if(document.find(']',pos)!=std::string::npos&&document.find(']',pos)<document.find('{',pos))break; }}
+    pos=document.find("\"output_values\":["); if(pos!=std::string::npos){pos+=17; while(true){while(pos<document.size()&&std::isspace(static_cast<unsigned char>(document[pos])))++pos; if(pos<document.size()&&document[pos]==']'){++pos;break;} if(!NextObject(document,pos,object))break; CallArgument value; size_t typePos=object.find("\"type\":"); std::string typeObject; if(typePos==std::string::npos||!NextObject(object,typePos,typeObject)||!TypeObject(typeObject,value.type)||!StringField(object,"value",value.value)){Diagnostic(diagnostics,"invalid-output","output_values","output value is invalid");break;} UIntField(object,"buffer_size",value.bufferSize); StringField(object,"ownership",value.ownership); result.outputValues.push_back(std::move(value)); if(document.find(']',pos)!=std::string::npos&&document.find(']',pos)<document.find('{',pos))break; }}
     pos=document.find("\"diagnostics\":["); if(pos!=std::string::npos){pos+=15; while(true){if(!NextObject(document,pos,object))break; CallDiagnostic item; if(StringField(object,"code",item.code)&&StringField(object,"path",item.path)&&StringField(object,"message",item.message))result.diagnostics.push_back(std::move(item)); else {Diagnostic(diagnostics,"invalid-diagnostic","diagnostics","diagnostic is incomplete");break;} if(document.find(']',pos)!=std::string::npos&&document.find(']',pos)<document.find('{',pos))break; }} return diagnostics.empty();
 }
