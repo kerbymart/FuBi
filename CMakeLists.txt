@@ -190,6 +190,7 @@ add_test(
     COMMAND ${CMAKE_COMMAND}
         -DFUBI=$<TARGET_FILE:Fubi>
         -DFIXTURE=$<TARGET_FILE:static_fixture>
+        -DCONTROL_FIXTURE=$<TARGET_FILE:export_fixture>
         -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
         -DARCHITECTURE=${FUBI_TEST_ARCHITECTURE}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyFrameworkManaged.cmake)
