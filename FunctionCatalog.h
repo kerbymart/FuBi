@@ -7,6 +7,9 @@
 #include <string>
 #include <vector>
 
+struct PrototypeProfile;
+struct ProfileValidationError;
+
 enum class TypeKind
 {
     Unknown,
@@ -99,6 +102,7 @@ struct FunctionRecord
     std::vector<std::string> boundarySources;
     PrototypeSpec prototype;
     bool hasPrototype = false;
+    std::vector<std::string> prototypeConflicts;
     Callability callability = Callability::NotAddressable;
     std::vector<std::string> callabilityReasons;
     bool executable = false;
@@ -130,6 +134,8 @@ public:
 
     std::vector<const FunctionRecord*> FindAll(const std::string& selector) const;
     const FunctionRecord* Find(const std::string& selector) const;
+    bool ApplyProfile(const PrototypeProfile& profile,
+        std::vector<ProfileValidationError>& errors);
 
 private:
     ModuleIdentity module_;
