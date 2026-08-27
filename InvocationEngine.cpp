@@ -15,15 +15,10 @@ namespace
 // still be running. Keep one bounded context until process isolation (issue
 // #10) replaces this adapter.
 std::atomic<unsigned> retainedTimeoutWorkers{0};
-using Call0 = uint64_t(*)();
-using Call1 = uint64_t(*)(uint64_t);
-using Call2 = uint64_t(*)(uint64_t,uint64_t);
-using Call3 = uint64_t(*)(uint64_t,uint64_t,uint64_t);
-using Call4 = uint64_t(*)(uint64_t,uint64_t,uint64_t,uint64_t);
-using Call5 = uint64_t(*)(uint64_t,uint64_t,uint64_t,uint64_t,uint64_t);
-using Call6 = uint64_t(*)(uint64_t,uint64_t,uint64_t,uint64_t,uint64_t,uint64_t);
-using Call7 = uint64_t(*)(uint64_t,uint64_t,uint64_t,uint64_t,uint64_t,uint64_t,uint64_t);
-using Call8 = uint64_t(*)(uint64_t,uint64_t,uint64_t,uint64_t,uint64_t,uint64_t,uint64_t,uint64_t);
+using Call0 = uintptr_t(*)(); using Call1 = uintptr_t(*)(uintptr_t); using Call2 = uintptr_t(*)(uintptr_t,uintptr_t); using Call3 = uintptr_t(*)(uintptr_t,uintptr_t,uintptr_t); using Call4 = uintptr_t(*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t); using Call5 = uintptr_t(*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using Call6 = uintptr_t(*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using Call7 = uintptr_t(*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using Call8 = uintptr_t(*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t);
+#if defined(_M_IX86)
+using StdCall0 = uintptr_t (__stdcall*)(); using StdCall1 = uintptr_t (__stdcall*)(uintptr_t); using StdCall2 = uintptr_t (__stdcall*)(uintptr_t,uintptr_t); using StdCall3 = uintptr_t (__stdcall*)(uintptr_t,uintptr_t,uintptr_t); using StdCall4 = uintptr_t (__stdcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t); using StdCall5 = uintptr_t (__stdcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using StdCall6 = uintptr_t (__stdcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using StdCall7 = uintptr_t (__stdcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using StdCall8 = uintptr_t (__stdcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t);
+#endif
 
 bool Number(const std::string& text, int base, uint64_t& value)
 { if(text.empty()) return false; errno=0; char* end=nullptr; const unsigned long long parsed=std::strtoull(text.c_str(),&end,base); if(errno==ERANGE||end==text.c_str()||*end!='\0') return false; value=static_cast<uint64_t>(parsed); return true; }
@@ -51,7 +46,7 @@ bool SameIdentity(const ModuleIdentity& left, const ModuleIdentity& right)
 struct CallContext
 {
     FARPROC address;
-    const uint64_t* values;
+    const uintptr_t* values;
     size_t count;
     uint64_t returned;
     int exceptionCode;
@@ -60,7 +55,7 @@ struct CallContext
 struct WorkerState
 {
     HMODULE module;
-    uint64_t values[8];
+    uintptr_t values[8];
     CallContext call;
 };
 
@@ -77,7 +72,7 @@ DWORD WINAPI CallWorker(void* raw)
 bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     const FunctionCatalog& catalog, CallResult& result, std::string& error)
 {
-#if !defined(_M_X64)
+#if !defined(_M_X64) && !defined(_M_IX86)
     (void)imagePath; (void)request; (void)catalog; (void)result; error = "x64 invocation requires an x64 build"; return false;
 #else
     std::vector<CallDiagnostic> diagnostics;
@@ -103,6 +98,9 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     if (selected == nullptr) { error="function selector is unavailable"; return false; }
     if (selected->exportNames.empty() && (!request.allowInternal || !selected->executable)) { error="internal target is not executable or authorized"; return false; }
     const PrototypeSpec prototype=request.hasPrototypeOverride?request.prototypeOverride:selected->prototype;
+#if defined(_M_IX86)
+    if (prototype.abi != "__cdecl") { result={}; result.correlationId=request.correlationId; result.status="validation-failed"; result.diagnostics.push_back({"unsupported-abi","prototype.abi","x86 adapter currently supports __cdecl only"}); error="unsupported x86 calling convention"; return false; }
+#endif
     if (prototype.returnType.kind == TypeKind::Floating || prototype.returnType.kind == TypeKind::Structure || prototype.returnType.kind == TypeKind::Void)
     { result={}; result.correlationId=request.correlationId; result.status="validation-failed"; result.diagnostics.push_back({"unsupported-return-type","prototype.return_type","x64 adapter supports scalar integer, bool, and pointer returns only"}); error="unsupported x64 return type"; return false; }
     FunctionCatalog current; if (!FunctionCatalog::Load(imagePath, current, error) || !SameIdentity(current.Module(), catalog.Module())) { error = "runtime module identity changed"; return false; }
@@ -120,6 +118,9 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     if(address==nullptr){FreeLibrary(module);error="target address is unavailable";return false;}
     uint64_t values[8]={}; if(request.arguments.size()>8){FreeLibrary(module);error="x64 adapter supports at most eight arguments";return false;}
     for(size_t i=0;i<request.arguments.size();++i) if(!Value(request.arguments[i],values[i])) { FreeLibrary(module); error="invalid typed argument"; return false; }
+#if defined(_M_IX86)
+    for(size_t i=0;i<request.arguments.size();++i) if(values[i] > UINT32_MAX) { FreeLibrary(module); error="x86 argument exceeds pointer width"; return false; }
+#endif
     const uintptr_t functionAddress=reinterpret_cast<uintptr_t>(address);
     if (functionAddress < moduleBase || functionAddress-moduleBase > UINT32_MAX || static_cast<uint32_t>(functionAddress-moduleBase) != record->startRva) { FreeLibrary(module); error="resolved target does not match static RVA"; return false; }
     unsigned available=0;
