@@ -52,4 +52,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: bind symbol evidence to module identity
 - fix: keep undecorated symbols display-only
 - Merge pull request #18 from kerbymart/feat/5-symbol-and-profile-prototypes
+- feat: add typed call request contracts
 
