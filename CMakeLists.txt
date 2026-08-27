@@ -46,6 +46,9 @@ set(SOURCES
 add_executable(Fubi ${SOURCES})
 target_link_libraries(Fubi PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 
+add_executable(FubiInvocationWorker InvocationWorkerMain.cpp InvocationEngine.cpp CallContract.cpp FunctionCatalog.cpp PrototypeProfile.cpp DbgHelpDll.cpp StaticExportCatalog.cpp PEImage.cpp stdafx.cpp)
+target_link_libraries(FubiInvocationWorker PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
+
 set(TEST_SOURCES TestSignatureParser.cpp)
 add_executable(tests ${TEST_SOURCES})
 target_link_libraries(tests PRIVATE fubi_boost_headers)
