@@ -28,4 +28,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 ### 2026-08-27
 
 - feat: enumerate and dump complete DLL exports
+- feat: add static PE reverse-engineering analysis
 
