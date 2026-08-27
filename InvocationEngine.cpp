@@ -15,11 +15,16 @@ namespace
 // still be running. Keep one bounded context until process isolation (issue
 // #10) replaces this adapter.
 std::atomic<unsigned> retainedTimeoutWorkers{0};
-using Call0 = uintptr_t(*)(); using Call1 = uintptr_t(*)(uintptr_t); using Call2 = uintptr_t(*)(uintptr_t,uintptr_t); using Call3 = uintptr_t(*)(uintptr_t,uintptr_t,uintptr_t); using Call4 = uintptr_t(*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t); using Call5 = uintptr_t(*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using Call6 = uintptr_t(*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using Call7 = uintptr_t(*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using Call8 = uintptr_t(*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t);
 #if defined(_M_IX86)
+using Call0 = uintptr_t(*)(); using Call1 = uintptr_t(*)(uintptr_t); using Call2 = uintptr_t(*)(uintptr_t,uintptr_t); using Call3 = uintptr_t(*)(uintptr_t,uintptr_t,uintptr_t); using Call4 = uintptr_t(*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t); using Call5 = uintptr_t(*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using Call6 = uintptr_t(*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using Call7 = uintptr_t(*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using Call8 = uintptr_t(*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t);
 using StdCall0 = uintptr_t (__stdcall*)(); using StdCall1 = uintptr_t (__stdcall*)(uintptr_t); using StdCall2 = uintptr_t (__stdcall*)(uintptr_t,uintptr_t); using StdCall3 = uintptr_t (__stdcall*)(uintptr_t,uintptr_t,uintptr_t); using StdCall4 = uintptr_t (__stdcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t); using StdCall5 = uintptr_t (__stdcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using StdCall6 = uintptr_t (__stdcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using StdCall7 = uintptr_t (__stdcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using StdCall8 = uintptr_t (__stdcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t);
 using ThisCall0 = uintptr_t (__thiscall*)(); using ThisCall1 = uintptr_t (__thiscall*)(uintptr_t); using ThisCall2 = uintptr_t (__thiscall*)(uintptr_t,uintptr_t); using ThisCall3 = uintptr_t (__thiscall*)(uintptr_t,uintptr_t,uintptr_t); using ThisCall4 = uintptr_t (__thiscall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t); using ThisCall5 = uintptr_t (__thiscall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using ThisCall6 = uintptr_t (__thiscall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using ThisCall7 = uintptr_t (__thiscall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using ThisCall8 = uintptr_t (__thiscall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t);
 using FastCall0 = uintptr_t (__fastcall*)(); using FastCall1 = uintptr_t (__fastcall*)(uintptr_t); using FastCall2 = uintptr_t (__fastcall*)(uintptr_t,uintptr_t); using FastCall3 = uintptr_t (__fastcall*)(uintptr_t,uintptr_t,uintptr_t); using FastCall4 = uintptr_t (__fastcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t); using FastCall5 = uintptr_t (__fastcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using FastCall6 = uintptr_t (__fastcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using FastCall7 = uintptr_t (__fastcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t); using FastCall8 = uintptr_t (__fastcall*)(uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t,uintptr_t);
+#endif
+
+#if defined(_M_X64)
+extern "C" void NativeCallX64(uintptr_t targetAddress,
+    const uintptr_t* arguments, uint32_t argumentCount, uintptr_t* returned);
 #endif
 
 bool Number(const std::string& text, int base, uint64_t& value)
@@ -56,19 +61,25 @@ bool SameIdentity(const ModuleIdentity& left, const ModuleIdentity& right)
 
 struct CallContext
 {
+#if defined(_M_X64)
+    NativeCallFrameX64 frame;
+#else
     FARPROC address;
     const char* abi;
     const uintptr_t* values;
     size_t count;
     uint64_t returned;
+#endif
     int exceptionCode;
 };
 
 struct WorkerState
 {
     HMODULE module;
+#if defined(_M_IX86)
     std::string abi;
     uintptr_t values[8];
+#endif
     CallContext call;
 };
 
@@ -76,6 +87,10 @@ DWORD WINAPI CallWorker(void* raw)
 {
     CallContext* context=static_cast<CallContext*>(raw);
     __try {
+#if defined(_M_X64)
+        NativeCallX64(context->frame.targetAddress, context->frame.arguments.data(),
+            context->frame.argumentCount, &context->frame.targetAddress);
+#else
 #if defined(_M_IX86)
         if (std::strcmp(context->abi, "__stdcall") == 0)
         {
@@ -92,9 +107,36 @@ DWORD WINAPI CallWorker(void* raw)
         else
 #endif
         switch(context->count){case 0:context->returned=reinterpret_cast<Call0>(context->address)();break;case 1:context->returned=reinterpret_cast<Call1>(context->address)(context->values[0]);break;case 2:context->returned=reinterpret_cast<Call2>(context->address)(context->values[0],context->values[1]);break;case 3:context->returned=reinterpret_cast<Call3>(context->address)(context->values[0],context->values[1],context->values[2]);break;case 4:context->returned=reinterpret_cast<Call4>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3]);break;case 5:context->returned=reinterpret_cast<Call5>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4]);break;case 6:context->returned=reinterpret_cast<Call6>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4],context->values[5]);break;case 7:context->returned=reinterpret_cast<Call7>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4],context->values[5],context->values[6]);break;default:context->returned=reinterpret_cast<Call8>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4],context->values[5],context->values[6],context->values[7]);break;}
+#endif
     } __except(context->exceptionCode=GetExceptionCode(), EXCEPTION_EXECUTE_HANDLER) { }
     return 0;
 }
+
+}
+
+bool InvokeNativeCallX64(const NativeCallFrameX64& frame, uintptr_t& returned,
+    std::string& error)
+{
+#if !defined(_M_X64)
+    (void)frame;
+    (void)returned;
+    error = "x64 native adapter requires an x64 build";
+    return false;
+#else
+    if (frame.targetAddress == 0)
+    {
+        error = "x64 native adapter requires a target address";
+        return false;
+    }
+    if (frame.argumentCount > frame.arguments.size())
+    {
+        error = "x64 native adapter supports at most eight arguments";
+        return false;
+    }
+    NativeCallX64(frame.targetAddress, frame.arguments.data(), frame.argumentCount,
+        &returned);
+    return true;
+#endif
 }
 
 bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
@@ -161,10 +203,15 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
         error="invocation worker capacity exhausted";
         return false;
     }
+#if defined(_M_X64)
+    WorkerState* state = new WorkerState{module, {functionAddress, {}, static_cast<uint32_t>(request.arguments.size())}};
+    std::copy(values, values + request.arguments.size(), state->call.frame.arguments.begin());
+#else
     WorkerState* state = new WorkerState{module, prototype.abi, {}, {address, nullptr, nullptr, request.arguments.size(), 0, 0}};
     state->call.abi = state->abi.c_str();
     std::copy(values, values + request.arguments.size(), state->values);
     state->call.values = state->values;
+#endif
     HANDLE worker=CreateThread(nullptr, 0, CallWorker, &state->call, 0, nullptr);
     if (worker == nullptr) { retainedTimeoutWorkers.store(0, std::memory_order_release); FreeLibrary(module); delete state; error="unable to create invocation worker"; return false; }
     const DWORD timeout=request.timeoutMs == 0 ? 30000U : request.timeoutMs;
@@ -184,7 +231,11 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
         return false;
     }
     CloseHandle(worker);
+#if defined(_M_X64)
+    const uint64_t returned=static_cast<uint64_t>(state->call.frame.targetAddress);
+#else
     const uint64_t returned=state->call.returned;
+#endif
     const int exceptionCode=state->call.exceptionCode;
     delete state;
     retainedTimeoutWorkers.store(0, std::memory_order_release);
