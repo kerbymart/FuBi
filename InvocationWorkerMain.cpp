@@ -2,16 +2,141 @@
 
 #include "CallContract.h"
 #include "InvocationEngine.h"
+#include "SessionReferences.h"
 
 #include <fstream>
 #include <iostream>
 #include <sstream>
+#include <windows.h>
+
+namespace
+{
+bool ParseWorkerPointer(const std::string& text, uint64_t& value)
+{
+    if (text.rfind("opaque:0x", 0) != 0 || text.size() == 9) return false;
+    errno = 0;
+    char* end = nullptr;
+    const unsigned long long parsed = std::strtoull(text.c_str() + 9, &end, 16);
+    if (errno == ERANGE || end == text.c_str() + 9 || *end != '\0') return false;
+    value = parsed;
+    return true;
+}
+
+int RunSession(const char* imagePath)
+{
+    FunctionCatalog catalog;
+    std::string error;
+    if (!FunctionCatalog::Load(imagePath, catalog, error)) return 3;
+    // Keep one module reference for the whole session. Individual invocation
+    // calls may temporarily add/release a reference, but returned addresses
+    // remain valid until this process exits or the session is terminated.
+    HMODULE pinnedModule = LoadLibraryA(imagePath);
+    if (pinnedModule == nullptr) return 7;
+    SessionReferences references;
+    std::string line;
+    while (std::getline(std::cin, line))
+    {
+        if (line.find_first_not_of(" \t\r\n") == std::string::npos) continue;
+        CallRequest request;
+        std::vector<CallDiagnostic> diagnostics;
+        CallResult result;
+        result.action = "call";
+        if (!ParseCallRequestJson(line, request, diagnostics))
+        {
+            result.correlationId = request.correlationId;
+            result.status = "validation-failed";
+            result.diagnostics = std::move(diagnostics);
+        }
+        else if (request.action == "release")
+        {
+            result.action = "release";
+            result.correlationId = request.correlationId;
+            result.resolvedModule = catalog.Module();
+            if (references.Release(request.reference))
+            {
+                result.success = true;
+                result.status = "released";
+                result.releasedReference = request.reference;
+            }
+            else
+            {
+                result.status = "validation-failed";
+                result.diagnostics.push_back({"reference-not-found", "reference",
+                    "reference is unknown or already released"});
+            }
+        }
+        else
+        {
+            // Resolve only worker-issued tokens. The numeric address is kept
+            // inside this worker and never crosses the protocol boundary.
+            bool referencesValid = true;
+            for (CallArgument& argument : request.arguments)
+            {
+                if (argument.type.kind != TypeKind::Pointer ||
+                    argument.value.rfind("opaque:session-", 0) != 0) continue;
+                uint64_t address = 0;
+                if (!references.Resolve(argument.value, address))
+                {
+                    referencesValid = false;
+                    diagnostics.push_back({"reference-not-found", "arguments",
+                        "reference is unknown, stale, or belongs to another session"});
+                    break;
+                }
+                std::ostringstream pointer;
+                pointer << "opaque:0x" << std::hex << address;
+                argument.value = pointer.str();
+            }
+            if (!referencesValid)
+            {
+                result.correlationId = request.correlationId;
+                result.status = "validation-failed";
+                result.diagnostics = std::move(diagnostics);
+            }
+            else if (!ValidateCallRequest(request, catalog, diagnostics))
+            {
+                result.correlationId = request.correlationId;
+                result.resolvedModule = catalog.Module();
+                result.status = "validation-failed";
+                result.diagnostics = std::move(diagnostics);
+            }
+            else if (!InvokeX64Export(imagePath, request, catalog, result, error) && !error.empty())
+            {
+                result.diagnostics.push_back({"worker-failed", "call", error});
+            }
+            if (result.success && result.prototypeUsed.returnType.kind == TypeKind::Pointer)
+            {
+                uint64_t address = 0;
+                if (!ParseWorkerPointer(result.returnValue, address) || address == 0)
+                {
+                    result.success = false;
+                    result.status = "worker-failed";
+                    result.returnValue.clear();
+                    result.diagnostics.push_back({"pointer-result-invalid", "return_value",
+                        "worker returned an invalid pointer representation"});
+                }
+                else
+                {
+                    result.returnValue = references.Issue(address);
+                    result.issuedReferences.push_back(result.returnValue);
+                }
+            }
+        }
+        WriteCallResultJson(std::cout, result);
+        std::cout << '\n' << std::flush;
+        if (request.action == "quit") break;
+    }
+    FreeLibrary(pinnedModule);
+    return 0;
+}
+}
 
 // The worker is deliberately a separate executable. It accepts one bounded
 // request file and writes one structured result file, so a supervisor can
 // terminate this process without leaving target code in its own address space.
 int main(int argc, char* argv[])
 {
+    if (argc == 3 && std::string(argv[2]) == "--session")
+        return RunSession(argv[1]);
     if (argc != 4) return 2;
     std::ifstream input(argv[2], std::ios::binary | std::ios::ate);
     if (!input) return 3;

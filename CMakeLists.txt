@@ -82,7 +82,7 @@ add_executable(Fubi ${SOURCES})
 target_sources(Fubi PRIVATE ${NATIVE_CALL_SOURCES})
 target_link_libraries(Fubi PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 
-add_executable(FubiInvocationWorker InvocationWorkerMain.cpp InvocationEngine.cpp CallContract.cpp FunctionCatalog.cpp PrototypeProfile.cpp DbgHelpDll.cpp StaticExportCatalog.cpp PEImage.cpp stdafx.cpp ${NATIVE_CALL_SOURCES})
+add_executable(FubiInvocationWorker InvocationWorkerMain.cpp InvocationEngine.cpp CallContract.cpp FunctionCatalog.cpp PrototypeProfile.cpp DbgHelpDll.cpp StaticExportCatalog.cpp PEImage.cpp SessionReferences.cpp stdafx.cpp ${NATIVE_CALL_SOURCES})
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
     set_target_properties(FubiInvocationWorker PROPERTIES OUTPUT_NAME "FubiInvocationWorker_x86")
 endif()
@@ -234,6 +234,13 @@ add_test(
         -DFIXTURE=$<TARGET_FILE:export_fixture>
         -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
         -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyOpaqueSessionReferences.cmake)
+add_test(
+    NAME persistent_session_references
+    COMMAND ${CMAKE_COMMAND}
+        -DFUBI=$<TARGET_FILE:Fubi>
+        -DFIXTURE=$<TARGET_FILE:export_fixture>
+        -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyPersistentSessionReferences.cmake)
 add_test(
     NAME exit_code_contract
     COMMAND ${CMAKE_COMMAND}
