@@ -160,4 +160,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - feat: support persistent JSONL pointer references (#119)
 - feat: add opaque handle ownership contract (#120)
 - test: cover string length fixture matrix
+- test: cover opaque echo validation
 

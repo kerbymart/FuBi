@@ -7,6 +7,7 @@
 
 #include <windows.h>
 
+#include <algorithm>
 #include <string>
 
 namespace
@@ -17,6 +18,14 @@ std::string FixturePath()
     GetModuleFileNameA(nullptr, path, MAX_PATH);
     const std::string value(path);
     return value.substr(0, value.find_last_of("\\/") + 1) + "export_fixture.dll";
+}
+
+std::string HandleFixturePath()
+{
+    char path[MAX_PATH] = {};
+    GetModuleFileNameA(nullptr, path, MAX_PATH);
+    const std::string value(path);
+    return value.substr(0, value.find_last_of("\\/") + 1) + "handle_fixture.dll";
 }
 
 CallRequest LengthRequest(const char* selector, const char* encoding,
@@ -63,7 +72,7 @@ BOOST_AUTO_TEST_CASE(CStringAndUtf16LengthFixtures)
 #endif
 }
 
-BOOST_AUTO_TEST_CASE(StringLengthRejectsMissingTerminatorCapacity)
+BOOST_AUTO_TEST_CASE(StringLengthRejectsInsufficientTerminatorCapacity)
 {
 #if defined(_M_X64)
     FunctionCatalog catalog;
@@ -73,5 +82,57 @@ BOOST_AUTO_TEST_CASE(StringLengthRejectsMissingTerminatorCapacity)
     CallResult result;
     BOOST_CHECK(!InvokeX64Export(FixturePath(), request, catalog, result, error));
     BOOST_CHECK(error.find("exceeds its buffer size") != std::string::npos);
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(PointerEchoRejectsMismatchedPointerWidth)
+{
+#if defined(_M_X64)
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+
+    CallRequest request;
+    request.correlationId = "pointer-width";
+    request.selector = "PointerEcho";
+    request.hasPrototypeOverride = true;
+    request.prototypeOverride.quality = PrototypeQuality::UserDeclared;
+    request.prototypeOverride.abi = "x64";
+    request.prototypeOverride.returnType = {TypeKind::Pointer, 64, false, 1};
+    request.prototypeOverride.parameters = {{TypeKind::Pointer, 64, false, 1}};
+    request.arguments = {{{TypeKind::Pointer, 32, false, 1}, "opaque:0x1"}};
+
+    std::vector<CallDiagnostic> diagnostics;
+    BOOST_CHECK(!ValidateCallRequest(request, catalog, diagnostics));
+    BOOST_CHECK(std::any_of(diagnostics.begin(), diagnostics.end(), [](const auto& item) {
+        return item.code == "argument-type-mismatch";
+    }));
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(HandleEchoRejectsRawReferenceBeforeInvocation)
+{
+#if defined(_M_X64)
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(HandleFixturePath(), catalog, error));
+
+    TypeSpec handle{TypeKind::Handle, 64, false, 0, ParameterDirection::In,
+        0, {}, "borrowed"};
+    CallRequest request;
+    request.correlationId = "handle-reference";
+    request.selector = "EchoHandle";
+    request.hasPrototypeOverride = true;
+    request.prototypeOverride.quality = PrototypeQuality::UserDeclared;
+    request.prototypeOverride.abi = "x64";
+    request.prototypeOverride.returnType = handle;
+    request.prototypeOverride.parameters = {handle};
+    request.arguments = {{{handle, "opaque:0x1"}}};
+
+    std::vector<CallDiagnostic> diagnostics;
+    BOOST_CHECK(!ValidateCallRequest(request, catalog, diagnostics));
+    BOOST_CHECK(std::any_of(diagnostics.begin(), diagnostics.end(), [](const auto& item) {
+        return item.code == "raw-handle-rejected";
+    }));
 #endif
 }
