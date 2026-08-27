@@ -121,4 +121,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - feat: add normalized x64 call adapter
 - fix: place x64 stack arguments correctly
 - fix: align x64 outgoing stack arguments
+- fix: preserve x64 register arguments
 
