@@ -7,9 +7,14 @@
 #include <limits>
 #include <sstream>
 #include <algorithm>
+#include <atomic>
 
 namespace
 {
+// In-process timeout contexts cannot be safely reclaimed while target code may
+// still be running. Keep one bounded context until process isolation (issue
+// #10) replaces this adapter.
+std::atomic<unsigned> retainedTimeoutWorkers{0};
 using Call0 = uint64_t(*)();
 using Call1 = uint64_t(*)(uint64_t);
 using Call2 = uint64_t(*)(uint64_t,uint64_t);
@@ -94,6 +99,13 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
             return false;
         }
     }
+    if (retainedTimeoutWorkers.load(std::memory_order_acquire) != 0)
+    {
+        result = {}; result.correlationId=request.correlationId; result.status="worker-capacity";
+        result.diagnostics.push_back({"worker-capacity-exhausted", "call", "a timed-out worker is retained; process isolation is required before another call"});
+        error="invocation worker capacity exhausted";
+        return false;
+    }
     FunctionRecord const* selected=catalog.Find(request.selector);
     if (selected == nullptr) { error="function selector is unavailable"; return false; }
     if (selected->exportNames.empty()) { error="internal targets are not supported by the export invocation engine"; return false; }
@@ -118,6 +130,7 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     const DWORD wait=WaitForSingleObject(worker, timeout);
     if (wait == WAIT_TIMEOUT)
     {
+        retainedTimeoutWorkers.fetch_add(1, std::memory_order_release);
         CloseHandle(worker);
         result={}; result.correlationId=request.correlationId; result.status="timed-out"; result.diagnostics.push_back({"timeout","timeout_ms","target exceeded the invocation timeout"});
         error="target invocation timed out";

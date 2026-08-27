@@ -68,4 +68,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: harden x64 invocation safety checks
 - feat: bound invocation worker execution
 - fix: retain timed out invocation context
+- fix: cap retained timeout workers
 
