@@ -14,6 +14,7 @@
 #include <cstdlib>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
 
@@ -229,7 +230,7 @@ int main(int argc, char* argv[])
     if (options.jsonl)
     {
         bool negotiated = false;
-        SessionReferences sessionReferences;
+        std::unique_ptr<PersistentWorkerSession> persistentWorker;
         std::string line;
         while (std::getline(std::cin, line))
         {
@@ -265,12 +266,24 @@ int main(int argc, char* argv[])
             }
             else if (request.action == "release")
             {
-                if (!sessionReferences.Release(request.reference))
+                CallResult response;
+                std::string workerError;
+                if (persistentWorker == nullptr || !persistentWorker->Invoke(request, response, workerError))
+                {
+                    if (response.diagnostics.empty())
+                        response.diagnostics.push_back({"reference-not-found", "reference",
+                            "reference is unknown or already released"});
                     WriteSessionStatus(std::cout, "release", correlationId, catalog, false,
-                        "validation-failed", {{"reference-not-found", "reference", "reference is unknown or already released"}});
+                        "validation-failed", response.diagnostics);
+                }
                 else
-                    WriteSessionStatus(std::cout, "release", correlationId, catalog, true,
-                        "released", {}, {}, request.reference);
+                {
+                    response.action = "release";
+                    response.correlationId = correlationId;
+                    response.resolvedModule = catalog.Module();
+                    WriteCallResultJson(std::cout, response);
+                    std::cout << '\n';
+                }
             }
             else if (request.action == "quit")
             {
@@ -296,34 +309,21 @@ int main(int argc, char* argv[])
                 response.diagnostics = diagnostics;
                 if (valid)
                 {
-                    for (const CallArgument& argument : request.arguments)
-                        if (argument.type.kind == TypeKind::Pointer && argument.value.rfind("opaque:session-", 0) == 0)
-                        {
-                            response.status = "validation-failed";
-                            response.diagnostics.push_back({"session-reference-unsupported", "arguments", "session references are not resolved into isolated worker calls"});
-                            break;
-                        }
                     std::string invocationError;
                     const bool referenceRejected = !response.diagnostics.empty();
-                    WorkerInvocationAdapter invocationAdapter(options.targetPath,
-                        catalog, true);
-                    if (!referenceRejected && !DispatchCall(request, catalog,
-                        invocationAdapter, response, invocationError) && !invocationError.empty())
-                        response.diagnostics.push_back({"invocation-failed", "call", invocationError});
-                    if (!referenceRejected && response.success && response.prototypeUsed.returnType.kind == TypeKind::Pointer)
+                    if (!referenceRejected)
                     {
-                        uint64_t address = 0;
-                        if (!ParseWorkerPointer(response.returnValue, address))
+                        if (persistentWorker == nullptr)
+                            persistentWorker = std::make_unique<PersistentWorkerSession>(options.targetPath, catalog);
+                        if (!persistentWorker->IsRunning() && !persistentWorker->Start(invocationError))
                         {
                             response.success = false;
                             response.status = "worker-failed";
-                            response.returnValue.clear();
-                            response.diagnostics.push_back({"pointer-result-invalid", "return_value", "worker returned an invalid pointer representation"});
+                            response.diagnostics.push_back({"worker-start-failed", "worker", invocationError});
                         }
-                        else
+                        else if (!persistentWorker->Invoke(request, response, invocationError) && !invocationError.empty())
                         {
-                            response.returnValue = sessionReferences.Issue(address);
-                            response.issuedReferences.push_back(response.returnValue);
+                            response.diagnostics.push_back({"invocation-failed", "call", invocationError});
                         }
                     }
                 }
