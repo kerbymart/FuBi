@@ -70,6 +70,7 @@ bool ValidateCallRequest(const CallRequest& request, const FunctionCatalog& cata
     std::vector<CallDiagnostic>& diagnostics);
 void WriteCallRequestJson(std::ostream& output, const CallRequest& request);
 void WriteCallResultJson(std::ostream& output, const CallResult& result);
+void WriteCallResultText(std::ostream& output, const CallResult& result);
 bool ParseCallRequestJson(const std::string& document, CallRequest& request,
     std::vector<CallDiagnostic>& diagnostics);
 bool ParseCallResultJson(const std::string& document, CallResult& result,

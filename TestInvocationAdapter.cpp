@@ -84,4 +84,11 @@ BOOST_AUTO_TEST_CASE(ValidRequestsUseNormalizedContractAndDeterministicResult)
     WriteCallResultJson(first, result);
     WriteCallResultJson(second, result);
     BOOST_CHECK_EQUAL(first.str(), second.str());
+
+    std::ostringstream text;
+    WriteCallResultText(text, result);
+    BOOST_CHECK_EQUAL(text.str(),
+        "schema_version: 1\naction: call\ncorrelation_id: adapter-test\n"
+        "status: completed\nsuccess: true\nreturn_value: fake-result\n"
+        "diagnostics: 0\n");
 }
