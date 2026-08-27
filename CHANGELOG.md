@@ -113,4 +113,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: keep x86 catalog validation portable
 - fix: retain x86 worker ABI lifetime
 - Merge pull request #39 from kerbymart/feat/38-x86-calling-conventions
+- feat: recognize bounded x64 call patterns
 
