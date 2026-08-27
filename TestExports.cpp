@@ -79,7 +79,7 @@ BOOST_AUTO_TEST_CASE(EnumeratesNamedOrdinalAndForwardedExports)
 	std::ifstream dump(dumpPath);
     std::ostringstream contents;
     contents << dump.rdbuf();
-    BOOST_CHECK(contents.str().find("export_count = 13") != std::string::npos);
+    BOOST_CHECK(contents.str().find("export_count = 17") != std::string::npos);
     BOOST_CHECK(contents.str().find("name = #2") != std::string::npos);
     BOOST_CHECK(contents.str().find("forwarder = KERNEL32.Sleep") != std::string::npos);
     BOOST_CHECK(contents.str().find("signature = int __cdecl AddNumbers(int,int)") != std::string::npos);

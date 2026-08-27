@@ -188,4 +188,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - docs: document export and signature evidence
 - Merge pull request #147 from kerbymart/docs/146-export-signature-docs
 - test: align export count expectations
+- fix: match complete export fixture count
 
