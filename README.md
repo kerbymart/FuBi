@@ -97,15 +97,13 @@ FuBi never downloads dependencies during configuration. If the bundled
 `boost_1_87_0` headers are not available, CMake first checks the explicit
 `FUBI_BOOST_ROOT` path and then uses a locally installed Boost package found
 through `CMAKE_PREFIX_PATH`. To verify an offline configuration, use a clean
-build directory and disable all package-manager and FetchContent network
-behavior explicitly:
+build directory and disable package-manager and network behavior explicitly:
 
 ```powershell
 cmake -S . -B build-offline -A x64 `
   -DFUBI_BOOST_ROOT=C:\path\to\boost `
   -DCMAKE_FIND_USE_PACKAGE_REGISTRY=OFF `
-  -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF `
-  -DFETCHCONTENT_FULLY_DISCONNECTED=ON
+  -DCMAKE_FIND_USE_SYSTEM_PACKAGE_REGISTRY=OFF
 ```
 
 The command must complete using only the supplied local headers and the
