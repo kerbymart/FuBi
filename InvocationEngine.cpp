@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include <limits>
 #include <sstream>
+#include <algorithm>
 
 namespace
 {
@@ -49,6 +50,13 @@ struct CallContext
     size_t count;
     uint64_t returned;
     int exceptionCode;
+};
+
+struct WorkerState
+{
+    HMODULE module;
+    uint64_t values[8];
+    CallContext call;
 };
 
 DWORD WINAPI CallWorker(void* raw)
@@ -101,21 +109,32 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     for(size_t i=0;i<request.arguments.size();++i) if(!Value(request.arguments[i],values[i])) { FreeLibrary(module); error="invalid typed argument"; return false; }
     const uintptr_t moduleBase=reinterpret_cast<uintptr_t>(module); const uintptr_t functionAddress=reinterpret_cast<uintptr_t>(address);
     if (functionAddress < moduleBase || functionAddress-moduleBase > UINT32_MAX || static_cast<uint32_t>(functionAddress-moduleBase) != record->startRva) { FreeLibrary(module); error="resolved export does not match static RVA"; return false; }
-    CallContext context{address, values, request.arguments.size(), 0, 0};
-    HANDLE worker=CreateThread(nullptr, 0, CallWorker, &context, 0, nullptr);
-    if (worker == nullptr) { FreeLibrary(module); error="unable to create invocation worker"; return false; }
+    WorkerState* state = new WorkerState{module, {}, {address, nullptr, request.arguments.size(), 0, 0}};
+    std::copy(values, values + request.arguments.size(), state->values);
+    state->call.values = state->values;
+    HANDLE worker=CreateThread(nullptr, 0, CallWorker, &state->call, 0, nullptr);
+    if (worker == nullptr) { FreeLibrary(module); delete state; error="unable to create invocation worker"; return false; }
     const DWORD timeout=request.timeoutMs == 0 ? 30000U : request.timeoutMs;
     const DWORD wait=WaitForSingleObject(worker, timeout);
     if (wait == WAIT_TIMEOUT)
     {
-        TerminateThread(worker, ERROR_TIMEOUT); CloseHandle(worker);
+        CloseHandle(worker);
         result={}; result.correlationId=request.correlationId; result.status="timed-out"; result.diagnostics.push_back({"timeout","timeout_ms","target exceeded the invocation timeout"});
         error="target invocation timed out";
         return false;
     }
+    if (wait == WAIT_FAILED)
+    {
+        CloseHandle(worker); FreeLibrary(module); delete state;
+        result={}; result.correlationId=request.correlationId; result.status="worker-failed"; result.diagnostics.push_back({"worker-wait-failed","call","unable to wait for invocation worker"});
+        error="unable to wait for invocation worker";
+        return false;
+    }
     CloseHandle(worker);
-    const uint64_t returned=context.returned;
-    if (context.exceptionCode != 0) { FreeLibrary(module); result={}; result.correlationId=request.correlationId; result.status="crashed"; result.diagnostics.push_back({"target-exception","call","target raised a structured exception"}); error="target raised a structured exception"; return false; }
+    const uint64_t returned=state->call.returned;
+    const int exceptionCode=state->call.exceptionCode;
+    delete state;
+    if (exceptionCode != 0) { FreeLibrary(module); result={}; result.correlationId=request.correlationId; result.status="crashed"; result.diagnostics.push_back({"target-exception","call","target raised a structured exception"}); error="target raised a structured exception"; return false; }
     FreeLibrary(module); result={}; result.correlationId=request.correlationId; result.success=true; result.status="completed"; result.returnValue=ReturnValue(returned,prototype.returnType); result.returnType=prototype.returnType; result.prototypeUsed=prototype; result.resolvedModule=catalog.Module(); return true;
 #endif
 }
