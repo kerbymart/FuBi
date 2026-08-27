@@ -166,7 +166,7 @@ add_dependencies(string_output_tests static_fixture)
 if(CMAKE_SIZEOF_VOID_P EQUAL 8)
     add_executable(fixture_matrix_tests TestFixtureMatrix.cpp CallContract.cpp InvocationEngine.cpp FunctionCatalog.cpp PrototypeProfile.cpp StaticExportCatalog.cpp PEImage.cpp ${NATIVE_CALL_SOURCES})
     target_link_libraries(fixture_matrix_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
-    add_dependencies(fixture_matrix_tests export_fixture)
+    add_dependencies(fixture_matrix_tests export_fixture handle_fixture)
 endif()
 
 add_executable(exit_code_tests TestExitCodes.cpp)
