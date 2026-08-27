@@ -1,0 +1,40 @@
+name: Chore
+description: Propose repository maintenance or project housekeeping
+title: "[CHORE] <title>"
+labels: ["needs-triage"]
+body:
+  - type: checkboxes
+    attributes:
+      label: Existing issue check
+      description: Search the issue tracker before opening a duplicate.
+      options:
+        - label: I have searched the existing issues
+          required: true
+  - type: textarea
+    attributes:
+      label: Maintenance task
+      description: Describe the repository maintenance or housekeeping work.
+      placeholder: Update, remove, or reorganize...
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Why this is needed
+      description: Explain the current problem, risk, or cost of leaving it unchanged.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Completion criteria
+      description: List the observable conditions that will make this task complete.
+      placeholder: |
+        - [ ] ...
+        - [ ] ...
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: Add relevant links, constraints, or alternatives. Use only synthetic data and sanitized logs.
+    validations:
+      required: false

@@ -1,0 +1,42 @@
+name: Refactor
+description: Propose a behavior-preserving code or architecture improvement
+title: "[REFACTOR] <title>"
+labels: ["needs-triage"]
+body:
+  - type: checkboxes
+    attributes:
+      label: Existing issue check
+      description: Search the issue tracker before opening a duplicate.
+      options:
+        - label: I have searched the existing issues
+          required: true
+  - type: textarea
+    attributes:
+      label: Area to refactor
+      description: Name the package, boundary, or workflow and describe the current design problem.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Behavior and invariants to preserve
+      description: List the externally visible behavior, ownership rules, safety properties, and compatibility guarantees that must not change.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Proposed structure
+      description: Describe the intended design and why it improves clarity, safety, or testability.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Characterization and verification
+      description: Identify existing coverage to establish first and the commands or simulator scenarios that will verify unchanged behavior.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: Add alternatives, dependencies, migration notes, or relevant links.
+    validations:
+      required: false

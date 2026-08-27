@@ -1,0 +1,37 @@
+name: Documentation
+description: Report missing, incorrect, or unclear documentation
+title: "[DOCS] <title>"
+labels: ["documentation", "needs-triage"]
+body:
+  - type: checkboxes
+    attributes:
+      label: Existing issue check
+      description: Search the issue tracker before opening a duplicate.
+      options:
+        - label: I have searched the existing issues
+          required: true
+  - type: textarea
+    attributes:
+      label: Documentation location
+      description: Link to or name the file, section, command, or workflow that needs attention.
+      placeholder: docs/..., README section..., or a user workflow
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Current problem
+      description: Explain what is missing, incorrect, ambiguous, or outdated.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Proposed improvement
+      description: Describe the wording, example, structure, or clarification you want.
+    validations:
+      required: true
+  - type: textarea
+    attributes:
+      label: Additional context
+      description: Add relevant specifications, links, or screenshots. Do not include real disc contents, personal labels, secrets, or sensitive logs.
+    validations:
+      required: false
