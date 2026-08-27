@@ -37,4 +37,11 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: bound static export parsing
 - fix: cap static catalog allocations
 - Merge pull request #15 from kerbymart/chore/remove-decoder-dependency
+- feat: add static function catalog core
+- fix: tighten function catalog identity and selectors
+- fix: preserve complete catalog evidence output
+- fix: reject non-executable function evidence
+- fix: count complete export identity set
+- fix: correct canonical path length check
+- Merge pull request #17 from kerbymart/refactor/4-function-catalog-core
 
