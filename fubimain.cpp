@@ -127,7 +127,7 @@ int main(int argc, char* argv[])
             {
                 const std::string& raw = options.rawArguments[index];
                 const size_t separator = raw.find(':');
-                if (separator == std::string::npos) { std::cerr << "--arg requires kind:value\n"; return 2; }
+                if (separator == std::string::npos) { CallResult malformed; malformed.correlationId="cli-call"; malformed.status="validation-failed"; malformed.diagnostics.push_back({"invalid-argument-syntax","arguments","--arg requires kind:value"}); if(options.json) WriteCallResultJson(std::cout,malformed); else std::cerr << "--arg requires kind:value\n"; return 8; }
                 CallArgument argument;
                 argument.type = record->prototype.parameters[index];
                 const std::string kind = raw.substr(0, separator);
@@ -140,6 +140,8 @@ int main(int argc, char* argv[])
         const bool valid = ValidateCallRequest(request, catalog, diagnostics);
         CallResult result;
         result.correlationId = request.correlationId;
+        result.resolvedModule = catalog.Module();
+        if (record != nullptr && record->hasPrototype) result.prototypeUsed = record->prototype;
         result.success = false;
         result.status = valid ? "not-executed" : "validation-failed";
         result.diagnostics = diagnostics;
