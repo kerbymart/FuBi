@@ -12,6 +12,7 @@
 #include <ostream>
 #include <sstream>
 #include <set>
+#include <functional>
 
 namespace
 {
@@ -79,12 +80,16 @@ bool StrictTopLevel(const std::string& document, std::vector<CallDiagnostic>& di
 {
     size_t first=0; while(first<document.size() && std::isspace(static_cast<unsigned char>(document[first]))) ++first;
     if(first==document.size() || document[first]!='{') { Diagnostic(diagnostics,"invalid-json","$","request must be one JSON object"); return false; }
-    size_t end=first; std::string object; if(!NextObject(document,end,object)) { Diagnostic(diagnostics,"invalid-json","$","request object is incomplete"); return false; }
+    std::function<bool(size_t&, size_t)> value;
+    std::function<bool(size_t&)> stringValue = [&](size_t& position) { if(position>=document.size()||document[position++]!='"') return false; bool escaped=false; while(position<document.size()){const char c=document[position++];if(escaped){if(c=='u'){if(position+4>document.size())return false;position+=4;}escaped=false;}else if(c=='\\')escaped=true;else if(c=='"')return true;else if(static_cast<unsigned char>(c)<0x20)return false;}return false; };
+    value = [&](size_t& position, size_t depth) { if(depth>32)return false; while(position<document.size()&&std::isspace(static_cast<unsigned char>(document[position])))++position; if(position>=document.size())return false; const char c=document[position]; if(c=='"')return stringValue(position); if(c=='{'){++position;while(true){while(position<document.size()&&std::isspace(static_cast<unsigned char>(document[position])))++position;if(position<document.size()&&document[position]=='}'){++position;return true;}if(!stringValue(position))return false;while(position<document.size()&&std::isspace(static_cast<unsigned char>(document[position])))++position;if(position>=document.size()||document[position++]!=':')return false;if(!value(position,depth+1))return false;while(position<document.size()&&std::isspace(static_cast<unsigned char>(document[position])))++position;if(position<document.size()&&document[position]==','){++position;continue;}if(position<document.size()&&document[position]=='}'){++position;return true;}return false;}} if(c=='['){++position;while(true){while(position<document.size()&&std::isspace(static_cast<unsigned char>(document[position])))++position;if(position<document.size()&&document[position]==']'){++position;return true;}if(!value(position,depth+1))return false;while(position<document.size()&&std::isspace(static_cast<unsigned char>(document[position])))++position;if(position<document.size()&&document[position]==','){++position;continue;}if(position<document.size()&&document[position]==']'){++position;return true;}return false;}} const size_t start=position;while(position<document.size()&&!std::isspace(static_cast<unsigned char>(document[position]))&&document[position]!=','&&document[position]!=']'&&document[position]!='}')++position;const std::string token=document.substr(start,position-start);return token=="true"||token=="false"||token=="null"||(!token.empty()&&(std::isdigit(static_cast<unsigned char>(token[0]))||token[0]=='-')); };
+    size_t end=first; if(!value(end,0)) { Diagnostic(diagnostics,"invalid-json","$","request contains malformed JSON"); return false; }
     while(end<document.size() && std::isspace(static_cast<unsigned char>(document[end]))) ++end;
     if(end!=document.size()) { Diagnostic(diagnostics,"trailing-garbage","$","trailing text after request object is not allowed"); return false; }
     const std::set<std::string> allowed={"schema_version","correlation_id","selector","module_sha256","module_path","module_timestamp","module_image_size","module_preferred_image_base","module_pdb_guid","module_pdb_age","authorization_provenance","internal_authorization","timeout_ms","allow_internal","has_prototype_override","prototype_override","arguments"};
     std::map<std::string,unsigned> counts; int depth=0; bool quoted=false,escaped=false;
     for(size_t i=first;i<end;++i){const char c=document[i];if(quoted){if(escaped)escaped=false;else if(c=='\\')escaped=true;else if(c=='"')quoted=false;continue;}if(c=='"'){size_t keyStart=i+1,keyEnd=keyStart;while(keyEnd<end&&document[keyEnd]!='"')++keyEnd;size_t colon=keyEnd+1;while(colon<end&&std::isspace(static_cast<unsigned char>(document[colon])))++colon;if(depth==1&&keyEnd<end&&colon<end&&document[colon]==':'){const std::string key=document.substr(keyStart,keyEnd-keyStart);if(!allowed.count(key))Diagnostic(diagnostics,"unknown-field",key,"unknown top-level field");if(++counts[key]>1)Diagnostic(diagnostics,"duplicate-field",key,"duplicate top-level field");}quoted=true;continue;}if(c=='{')++depth;else if(c=='}')--depth;}
+    const size_t argumentsKey=document.find("\"arguments\""); if(argumentsKey!=std::string::npos){size_t colon=document.find(':',argumentsKey);while(colon!=std::string::npos&&++colon<end&&std::isspace(static_cast<unsigned char>(document[colon]))){}if(colon==std::string::npos||colon>=end||document[colon]!='[')Diagnostic(diagnostics,"invalid-json","arguments","arguments must be an array");}
     return diagnostics.empty();
 }
 }
