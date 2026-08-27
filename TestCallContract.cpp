@@ -62,6 +62,22 @@ BOOST_AUTO_TEST_CASE(ValidTypedRequestAndDeterministicResult)
     BOOST_CHECK_EQUAL(parsedResult.outputValues.size(), result.outputValues.size());
 }
 
+BOOST_AUTO_TEST_CASE(NormalizedX64FrameRejectsInvalidAdapterInputs)
+{
+    NativeCallFrameX64 frame;
+    uintptr_t returned = 0;
+    std::string error;
+
+    BOOST_CHECK(!InvokeNativeCallX64(frame, returned, error));
+    BOOST_CHECK_EQUAL(error, "x64 native adapter requires a target address");
+
+    frame.targetAddress = 1;
+    frame.argumentCount = 9;
+    error.clear();
+    BOOST_CHECK(!InvokeNativeCallX64(frame, returned, error));
+    BOOST_CHECK_EQUAL(error, "x64 native adapter supports at most eight arguments");
+}
+
 BOOST_AUTO_TEST_CASE(SessionActionsRoundTripWithoutCallSelectors)
 {
     CallRequest hello;
