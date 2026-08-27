@@ -164,6 +164,42 @@ policy, a complete module identity match, and the corresponding request fields
 such as `allow_internal`, `authorization_provenance`, `module_sha256`,
 `module_path`, `module_timestamp`, `module_image_size`,
 `module_preferred_image_base`, `module_pdb_guid`, and `module_pdb_age`.
+
+For example, this is a distinct internal-RVA profile entry. The identity and
+RVA values are synthetic and must be replaced with values obtained from the
+same trusted catalog and target image:
+
+```json
+{
+  "schema_version": 1,
+  "module": {
+    "sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "architecture": "x64",
+    "timestamp": 305419896,
+    "image_size": 65536,
+    "preferred_image_base": 6442450944,
+    "pdb_guid": "00000000-0000-0000-0000-000000000000",
+    "pdb_age": 1
+  },
+  "functions": [
+    {
+      "rva": 8192,
+      "selector": "internal_candidate",
+      "abi": "x64",
+      "return_type": { "kind": "integer", "width": 32, "signed": true },
+      "parameters": [],
+      "variadic": false,
+      "framework_managed": false
+    }
+  ]
+}
+```
+
+This profile does not authorize a call by itself. The caller must opt into the
+internal-call policy and provide complete matching identity evidence. FuBi
+rejects framework-managed functions, non-executable RVAs, stale identities,
+and missing authorization before loading the target.
+
 Profiles do not prove that a declaration matches machine code. They record a
 user-declared contract, and framework-managed entries remain blocked by
 default. Invalid JSON, unknown fields, duplicate RVAs, unsupported types or
