@@ -76,14 +76,6 @@ struct ModuleIdentity
     uint32_t pdbAge = 0;
 };
 
-// A release adapter is opt-in profile data.  The selector identifies an
-// exported function whose complete prototype is supplied by the same trusted
-// profile.  No close/free routine is inferred from a handle value.
-struct HandleReleaseAdapterConfig
-{
-    std::string selector;
-};
-
 struct FunctionId
 {
     std::string moduleSha256;
@@ -141,7 +133,6 @@ public:
         std::string& error);
 
     const ModuleIdentity& Module() const { return module_; }
-    const HandleReleaseAdapterConfig& HandleReleaseAdapter() const { return handleReleaseAdapter_; }
     const std::vector<FunctionRecord>& Functions() const { return functions_; }
 
     void WriteText(std::ostream& output, bool callableOnly = false) const;
@@ -162,5 +153,4 @@ private:
     std::vector<FunctionRecord> functions_;
     std::string trustedProfileProvenance_;
     std::vector<uint32_t> trustedProfileRvas_;
-    HandleReleaseAdapterConfig handleReleaseAdapter_;
 };
