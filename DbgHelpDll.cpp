@@ -102,11 +102,19 @@ bool ReadCodeView(const std::string& path, ModuleIdentity& identity, std::string
     const PeDataDirectory* directory = nullptr;
     for (const auto& item : image.Headers().dataDirectories) if (item.index == IMAGE_DIRECTORY_ENTRY_DEBUG && item.rva && item.size) directory = &item;
     if (directory == nullptr || directory->size < sizeof(IMAGE_DEBUG_DIRECTORY)) { error = "PDB CodeView identity is unavailable"; return false; }
-    IMAGE_DEBUG_DIRECTORY debug = {}; if (!image.ReadRva(directory->rva, debug) || debug.Type != IMAGE_DEBUG_TYPE_CODEVIEW || debug.AddressOfRawData == 0 || debug.SizeOfData < 24) { error = "PDB CodeView identity is unavailable"; return false; }
-    uint32_t signature = 0; GUID guid = {}; uint32_t age = 0;
-    if (!image.ReadRva(debug.AddressOfRawData, signature) || signature != 0x53445352 || debug.AddressOfRawData > UINT32_MAX - 24 || !image.ReadRva(debug.AddressOfRawData + 4, guid) || !image.ReadRva(debug.AddressOfRawData + 20, age)) { error = "invalid PDB CodeView identity"; return false; }
-    std::ostringstream text; text << std::hex << std::setfill('0') << std::uppercase << std::setw(8) << guid.Data1 << '-' << std::setw(4) << guid.Data2 << '-' << std::setw(4) << guid.Data3 << '-' << std::setw(2) << static_cast<unsigned>(guid.Data4[0]) << std::setw(2) << static_cast<unsigned>(guid.Data4[1]) << '-' << std::setw(2) << static_cast<unsigned>(guid.Data4[2]) << std::setw(2) << static_cast<unsigned>(guid.Data4[3]) << std::setw(2) << static_cast<unsigned>(guid.Data4[4]) << std::setw(2) << static_cast<unsigned>(guid.Data4[5]) << std::setw(2) << static_cast<unsigned>(guid.Data4[6]) << std::setw(2) << static_cast<unsigned>(guid.Data4[7]);
-    identity.pdbGuid = text.str(); identity.pdbAge = age; return true;
+    const uint32_t count = directory->size / sizeof(IMAGE_DEBUG_DIRECTORY);
+    for (uint32_t index = 0; index < count; ++index)
+    {
+        const uint64_t offset = static_cast<uint64_t>(index) * sizeof(IMAGE_DEBUG_DIRECTORY);
+        if (offset > UINT32_MAX - directory->rva) break;
+        IMAGE_DEBUG_DIRECTORY debug = {};
+        if (!image.ReadRva(directory->rva + static_cast<uint32_t>(offset), debug) || debug.Type != IMAGE_DEBUG_TYPE_CODEVIEW || debug.AddressOfRawData == 0 || debug.SizeOfData < 24) continue;
+        uint32_t signature = 0; GUID guid = {}; uint32_t age = 0;
+        if (debug.AddressOfRawData > UINT32_MAX - 24 || !image.ReadRva(debug.AddressOfRawData, signature) || signature != 0x53445352 || !image.ReadRva(debug.AddressOfRawData + 4, guid) || !image.ReadRva(debug.AddressOfRawData + 20, age)) continue;
+        std::ostringstream text; text << std::hex << std::setfill('0') << std::uppercase << std::setw(8) << guid.Data1 << '-' << std::setw(4) << guid.Data2 << '-' << std::setw(4) << guid.Data3 << '-' << std::setw(2) << static_cast<unsigned>(guid.Data4[0]) << std::setw(2) << static_cast<unsigned>(guid.Data4[1]) << '-' << std::setw(2) << static_cast<unsigned>(guid.Data4[2]) << std::setw(2) << static_cast<unsigned>(guid.Data4[3]) << std::setw(2) << static_cast<unsigned>(guid.Data4[4]) << std::setw(2) << static_cast<unsigned>(guid.Data4[5]) << std::setw(2) << static_cast<unsigned>(guid.Data4[6]) << std::setw(2) << static_cast<unsigned>(guid.Data4[7]);
+        identity.pdbGuid = text.str(); identity.pdbAge = age; return true;
+    }
+    error = "PDB CodeView identity is unavailable"; return false;
 }
 }
 

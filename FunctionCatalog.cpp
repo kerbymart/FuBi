@@ -1,6 +1,7 @@
 #include "stdafx.h"
 #include "FunctionCatalog.h"
 #include "PrototypeProfile.h"
+#include "DbgHelpDll.h"
 
 #include "PEImage.h"
 
@@ -530,5 +531,24 @@ bool FunctionCatalog::ApplyProfile(const PrototypeProfile& profile,
     }
     if (!applyErrors.empty()) { errors.insert(errors.end(), applyErrors.begin(), applyErrors.end()); return false; }
     *this = std::move(candidate);
+    return true;
+}
+
+bool FunctionCatalog::ApplySymbolEvidence(
+    const std::vector<SymbolPrototypeEvidence>& evidence, std::string& error)
+{
+    FunctionCatalog candidate = *this;
+    for (const SymbolPrototypeEvidence& item : evidence)
+    {
+        FunctionRecord* record = nullptr;
+        for (FunctionRecord& candidateRecord : candidate.functions_)
+            if (candidateRecord.startRva == item.rva) { record = &candidateRecord; break; }
+        if (record == nullptr) { error = "symbol RVA is not in the catalog"; return false; }
+        if (!record->executable || !record->forwarder.empty()) { error = "symbol RVA is not a callable code address"; return false; }
+        if (!MergePrototypeEvidence(*record, item.prototype, "dbghelp-pdb", PrototypeQuality::ExactSymbol))
+        { error = "symbol prototype conflicts with existing evidence"; return false; }
+    }
+    *this = std::move(candidate);
+    error.clear();
     return true;
 }
