@@ -100,6 +100,11 @@ forwarder = <none>
 - Internal RVAs will require stronger authorization than exported functions.
 - Process isolation limits failure propagation; it is not a security sandbox.
 
+The isolated controller validates the target architecture before launching a
+worker. x64 builds use `FubiInvocationWorker.exe`; an x86 build emits
+`FubiInvocationWorker_x86.exe`. A worker is rejected when it is unavailable or
+its PE bitness does not match the target.
+
 ## Testing
 
 The test suite includes a fixture DLL whose `DllMain` writes a marker. Both the

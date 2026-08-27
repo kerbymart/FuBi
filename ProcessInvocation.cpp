@@ -10,13 +10,21 @@
 namespace
 {
 std::string Quote(const std::string& value) { return "\"" + value + "\""; }
-std::string WorkerPath()
+std::string ControllerDirectory()
 {
     char path[MAX_PATH] = {};
     GetModuleFileNameA(nullptr, path, MAX_PATH);
     std::string result(path);
     const size_t slash = result.find_last_of("\\/");
-    return result.substr(0, slash + 1) + "FubiInvocationWorker.exe";
+    return result.substr(0, slash + 1);
+}
+bool BinaryMatchesArchitecture(const std::string& path,
+    const std::string& architecture)
+{
+    DWORD type = 0;
+    if (GetBinaryTypeA(path.c_str(), &type) == FALSE) return false;
+    if (architecture == "x64") return type == SCS_64BIT_BINARY;
+    return architecture == "x86" && type == SCS_32BIT_BINARY;
 }
 void RecordExitCode(HANDLE process, CallResult& result)
 {
@@ -64,6 +72,35 @@ void RetainWorker(PROCESS_INFORMATION& process, const char* requestPath, const c
 }
 }
 
+bool SelectInvocationWorker(const std::string& targetArchitecture,
+    std::string& workerPath, std::string& error)
+{
+    workerPath.clear();
+    error.clear();
+    if (targetArchitecture != "x64" && targetArchitecture != "x86")
+    {
+        error = "unsupported target architecture";
+        return false;
+    }
+#if defined(_M_IX86)
+    if (targetArchitecture == "x64")
+    {
+        error = "x64 target cannot run under an x86 controller";
+        return false;
+    }
+#endif
+    const std::string fileName = targetArchitecture == "x86"
+        ? "FubiInvocationWorker_x86.exe" : "FubiInvocationWorker.exe";
+    workerPath = ControllerDirectory() + fileName;
+    if (!BinaryMatchesArchitecture(workerPath, targetArchitecture))
+    {
+        workerPath.clear();
+        error = "selected invocation worker is unavailable or has the wrong architecture";
+        return false;
+    }
+    return true;
+}
+
 bool InvokeX64ExportProcess(const std::string& imagePath, const CallRequest& request,
     const FunctionCatalog& catalog, CallResult& result, std::string& error)
 {
@@ -87,6 +124,15 @@ bool InvokeX64ExportProcess(const std::string& imagePath, const CallRequest& req
         error = "call request validation failed";
         return false;
     }
+    std::string workerPath;
+    if (!SelectInvocationWorker(catalog.Module().architecture, workerPath, error))
+    {
+        result = {};
+        result.correlationId = request.correlationId;
+        result.status = "worker-failed";
+        result.diagnostics.push_back({"worker-architecture", "worker", error});
+        return false;
+    }
     char tempPath[MAX_PATH] = {};
     if (!GetTempPathA(MAX_PATH, tempPath)) return failure("worker-failed", "ipc-temp-path", "unable to locate temporary directory");
     char requestPath[MAX_PATH] = {};
@@ -107,7 +153,7 @@ bool InvokeX64ExportProcess(const std::string& imagePath, const CallRequest& req
         if (!output) { DeleteFileA(requestPath); DeleteFileA(resultPath); return failure("worker-failed", "ipc-write", "unable to write worker request"); }
         WriteCallRequestJson(output, request);
     }
-    std::string command = Quote(WorkerPath()) + " " + Quote(imagePath) + " " + Quote(requestPath) + " " + Quote(resultPath);
+    std::string command = Quote(workerPath) + " " + Quote(imagePath) + " " + Quote(requestPath) + " " + Quote(resultPath);
     std::vector<char> commandLine(command.begin(), command.end()); commandLine.push_back('\0');
     STARTUPINFOA startup = {}; startup.cb = sizeof(startup); PROCESS_INFORMATION process = {};
     if (!CreateProcessA(nullptr, commandLine.data(), nullptr, nullptr, FALSE, CREATE_NO_WINDOW, nullptr, nullptr, &startup, &process))
