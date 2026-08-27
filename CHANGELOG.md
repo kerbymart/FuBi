@@ -81,4 +81,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: enforce JSON number and unicode grammar
 - Merge pull request #23 from kerbymart/feat/9-script-session-protocol
 - feat: add isolated invocation worker executable
+- feat: supervise calls in isolated worker process
 
