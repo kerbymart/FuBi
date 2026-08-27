@@ -129,6 +129,7 @@ int main(int argc, char* argv[])
         std::string line;
         while (std::getline(std::cin, line))
         {
+            if (line.find_first_not_of(" \t\r\n") == std::string::npos) continue;
             CallRequest request;
             std::vector<CallDiagnostic> diagnostics;
             CallResult response;
