@@ -163,6 +163,12 @@ add_executable(string_output_tests TestStringOutput.cpp CallContract.cpp Invocat
 target_link_libraries(string_output_tests PRIVATE bcrypt fubi_boost_headers fubi_build_limits)
 add_dependencies(string_output_tests static_fixture)
 
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    add_executable(fixture_matrix_tests TestFixtureMatrix.cpp CallContract.cpp InvocationEngine.cpp FunctionCatalog.cpp PrototypeProfile.cpp StaticExportCatalog.cpp PEImage.cpp ${NATIVE_CALL_SOURCES})
+    target_link_libraries(fixture_matrix_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
+    add_dependencies(fixture_matrix_tests export_fixture)
+endif()
+
 add_executable(exit_code_tests TestExitCodes.cpp)
 target_link_libraries(exit_code_tests PRIVATE fubi_boost_headers)
 
@@ -205,6 +211,9 @@ add_test(NAME invocation_adapter COMMAND invocation_adapter_tests)
 add_test(NAME internal_rva COMMAND internal_rva_tests)
 add_test(NAME mixed_floating COMMAND mixed_floating_tests)
 add_test(NAME string_output COMMAND string_output_tests)
+if(CMAKE_SIZEOF_VOID_P EQUAL 8)
+    add_test(NAME fixture_matrix COMMAND fixture_matrix_tests)
+endif()
 add_test(NAME exit_code_constants COMMAND exit_code_tests)
 add_test(NAME session_references COMMAND session_reference_tests)
 if(CMAKE_SIZEOF_VOID_P EQUAL 4)
