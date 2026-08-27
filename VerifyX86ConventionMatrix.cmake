@@ -1,0 +1,40 @@
+if(NOT DEFINED FUBI OR NOT DEFINED OUTPUT_DIR OR NOT DEFINED X86_FIXTURE OR
+   NOT DEFINED THISCALL_FIXTURE OR NOT DEFINED FASTCALL_FIXTURE)
+    message(FATAL_ERROR "FUBI, OUTPUT_DIR, and all x86 fixtures are required")
+endif()
+
+function(run_matrix_script SCRIPT)
+    execute_process(COMMAND "${CMAKE_COMMAND}"
+        "-DFUBI=${FUBI}" "-DFIXTURE=${X86_FIXTURE}"
+        "-DOUTPUT_DIR=${OUTPUT_DIR}" "-DARCHITECTURE=x86"
+        "-P" "${CMAKE_CURRENT_LIST_DIR}/${SCRIPT}"
+        WORKING_DIRECTORY "${OUTPUT_DIR}" RESULT_VARIABLE RESULT
+        OUTPUT_VARIABLE OUTPUT ERROR_VARIABLE ERROR)
+    if(NOT RESULT EQUAL 0)
+        message(FATAL_ERROR "${SCRIPT} failed: ${RESULT}: ${ERROR}: ${OUTPUT}")
+    endif()
+endfunction()
+
+# The cdecl/stdcall verifier supplies the baseline fixture and invalid-profile
+# pre-load check. The member-function verifiers supply their own ABI fixtures.
+run_matrix_script(VerifyX86Worker.cmake)
+
+execute_process(COMMAND "${CMAKE_COMMAND}"
+    "-DFUBI=${FUBI}" "-DFIXTURE=${THISCALL_FIXTURE}"
+    "-DOUTPUT_DIR=${OUTPUT_DIR}" "-P"
+    "${CMAKE_CURRENT_LIST_DIR}/VerifyX86ThisCall.cmake"
+    WORKING_DIRECTORY "${OUTPUT_DIR}" RESULT_VARIABLE THISCALL_RESULT
+    OUTPUT_VARIABLE THISCALL_OUTPUT ERROR_VARIABLE THISCALL_ERROR)
+if(NOT THISCALL_RESULT EQUAL 0)
+    message(FATAL_ERROR "VerifyX86ThisCall.cmake failed: ${THISCALL_RESULT}: ${THISCALL_ERROR}: ${THISCALL_OUTPUT}")
+endif()
+
+execute_process(COMMAND "${CMAKE_COMMAND}"
+    "-DFUBI=${FUBI}" "-DFIXTURE=${FASTCALL_FIXTURE}"
+    "-DOUTPUT_DIR=${OUTPUT_DIR}" "-P"
+    "${CMAKE_CURRENT_LIST_DIR}/VerifyX86FastCall.cmake"
+    WORKING_DIRECTORY "${OUTPUT_DIR}" RESULT_VARIABLE FASTCALL_RESULT
+    OUTPUT_VARIABLE FASTCALL_OUTPUT ERROR_VARIABLE FASTCALL_ERROR)
+if(NOT FASTCALL_RESULT EQUAL 0)
+    message(FATAL_ERROR "VerifyX86FastCall.cmake failed: ${FASTCALL_RESULT}: ${FASTCALL_ERROR}: ${FASTCALL_OUTPUT}")
+endif()
