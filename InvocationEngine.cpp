@@ -272,6 +272,11 @@ DWORD WINAPI CallWorker(void* raw)
             context->frame.floatingReturn);
 #else
 #if defined(_M_IX86)
+        if (!InvokeNativeCallX86(context->frame, context->frameError))
+            context->exceptionCode = ERROR_INVALID_PARAMETER;
+        else
+            context->returned = context->frame.returned;
+        return 0;
         if (std::strcmp(context->abi, "__stdcall") == 0)
         {
             switch(context->count){case 0:context->returned=reinterpret_cast<StdCall0>(context->address)();break;case 1:context->returned=reinterpret_cast<StdCall1>(context->address)(context->values[0]);break;case 2:context->returned=reinterpret_cast<StdCall2>(context->address)(context->values[0],context->values[1]);break;case 3:context->returned=reinterpret_cast<StdCall3>(context->address)(context->values[0],context->values[1],context->values[2]);break;case 4:context->returned=reinterpret_cast<StdCall4>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3]);break;case 5:context->returned=reinterpret_cast<StdCall5>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4]);break;case 6:context->returned=reinterpret_cast<StdCall6>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4],context->values[5]);break;case 7:context->returned=reinterpret_cast<StdCall7>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4],context->values[5],context->values[6]);break;default:context->returned=reinterpret_cast<StdCall8>(context->address)(context->values[0],context->values[1],context->values[2],context->values[3],context->values[4],context->values[5],context->values[6],context->values[7]);break;}
