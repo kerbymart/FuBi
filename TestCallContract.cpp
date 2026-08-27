@@ -491,7 +491,10 @@ BOOST_AUTO_TEST_CASE(IsolatedInvocationRejectsPointerResultsBeforeWorkerLaunch)
 {
     FunctionCatalog catalog;
     std::string error;
-    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+    const std::string fixture = FixturePath();
+    const std::string marker = fixture.substr(0, fixture.find_last_of("\\/")) + "\\export_fixture.executed";
+    DeleteFileA(marker.c_str());
+    BOOST_REQUIRE(FunctionCatalog::Load(fixture, catalog, error));
     CallRequest request;
     request.correlationId = "pointer-result";
     request.selector = "PointerEcho";
@@ -502,12 +505,13 @@ BOOST_AUTO_TEST_CASE(IsolatedInvocationRejectsPointerResultsBeforeWorkerLaunch)
     request.prototypeOverride.parameters = {{TypeKind::Pointer, 64, false, 1}};
     request.arguments = {{{TypeKind::Pointer, 64, false, 1}, "opaque:0x1"}};
     CallResult result;
-    BOOST_CHECK(!InvokeX64ExportProcess(FixturePath(), request, catalog, result, error));
+    BOOST_CHECK(!InvokeX64ExportProcess(fixture, request, catalog, result, error));
     BOOST_CHECK_EQUAL(result.status, "validation-failed");
     BOOST_CHECK(result.returnValue.empty());
     BOOST_CHECK(result.outputValues.empty());
     BOOST_REQUIRE_EQUAL(result.diagnostics.size(), 1U);
     BOOST_CHECK_EQUAL(result.diagnostics.front().code, "pointer-result-unsupported");
+    BOOST_CHECK_EQUAL(GetFileAttributesA(marker.c_str()), INVALID_FILE_ATTRIBUTES);
 }
 
 BOOST_AUTO_TEST_CASE(ProcessWorkerReturnsStructuredResult)
