@@ -6,11 +6,14 @@ set(INPUT_FILE "${OUTPUT_DIR}/jsonl-session-input.txt")
 set(OUTPUT_FILE "${OUTPUT_DIR}/jsonl-session-output.txt")
 file(WRITE "${INPUT_FILE}"
     "{malformed-json}\n"
+    "{\"schema_version\":1,\"action\":\"list\",\"correlation_id\":\"before-hello\"}\n"
     "{\"schema_version\":1,\"action\":\"hello\",\"correlation_id\":\"hello\"}\n"
     "{\"schema_version\":1,\"action\":\"list\",\"correlation_id\":\"list\"}\n"
     "{\"schema_version\":1,\"action\":\"describe\",\"correlation_id\":\"describe\",\"selector\":\"NamedExport\"}\n"
     "{\"schema_version\":1,\"action\":\"release\",\"correlation_id\":\"release\"}\n"
-    "{\"schema_version\":1,\"action\":\"quit\",\"correlation_id\":\"quit\"}\n")
+    "{\"schema_version\":1,\"action\":\"release\",\"correlation_id\":\"release-again\",\"reference\":\"opaque:unknown\"}\n"
+    "{\"schema_version\":1,\"action\":\"quit\",\"correlation_id\":\"quit\"}\n"
+    "{\"schema_version\":1,\"action\":\"list\",\"correlation_id\":\"after-quit\"}\n")
 
 execute_process(
     COMMAND powershell -NoProfile -NonInteractive -Command
@@ -35,8 +38,8 @@ foreach(LINE IN LISTS LINES)
         math(EXPR LINE_COUNT "${LINE_COUNT} + 1")
     endif()
 endforeach()
-if(NOT LINE_COUNT EQUAL 6)
-    message(FATAL_ERROR "expected exactly six JSONL response lines, got ${LINE_COUNT}: ${OUTPUT}")
+if(NOT LINE_COUNT EQUAL 8)
+    message(FATAL_ERROR "expected exactly eight JSONL response lines, got ${LINE_COUNT}: ${OUTPUT}")
 endif()
 foreach(ACTION hello list describe release quit)
     string(FIND "${OUTPUT}" "\"action\":\"${ACTION}\"" POSITION)
@@ -44,7 +47,26 @@ foreach(ACTION hello list describe release quit)
         message(FATAL_ERROR "JSONL response for ${ACTION} was not found: ${OUTPUT}")
     endif()
 endforeach()
+foreach(CORRELATION jsonl-error before-hello hello list describe release release-again quit)
+    string(FIND "${OUTPUT}" "\"correlation_id\":\"${CORRELATION}\"" POSITION)
+    if(POSITION LESS 0)
+        message(FATAL_ERROR "missing correlation id ${CORRELATION}: ${OUTPUT}")
+    endif()
+endforeach()
+string(FIND "${OUTPUT}" "\"correlation_id\":\"after-quit\"" AFTER_QUIT_POSITION)
+if(NOT AFTER_QUIT_POSITION LESS 0)
+    message(FATAL_ERROR "session produced a response after quit: ${OUTPUT}")
+endif()
+string(FIND "${OUTPUT}" "\"code\":\"session-not-negotiated\",\"path\":\"action\"" PREHELLO_POSITION)
+if(PREHELLO_POSITION LESS 0)
+    message(FATAL_ERROR "pre-hello action did not return the stable negotiation diagnostic: ${OUTPUT}")
+endif()
 string(FIND "${OUTPUT}" "\"status\":\"validation-failed\"" MALFORMED_POSITION)
 if(MALFORMED_POSITION LESS 0)
     message(FATAL_ERROR "malformed JSONL input was not recovered as a structured response: ${OUTPUT}")
+endif()
+string(REGEX MATCHALL "reference-not-found" RELEASE_ERRORS "${OUTPUT}")
+list(LENGTH RELEASE_ERRORS RELEASE_ERROR_COUNT)
+if(NOT RELEASE_ERROR_COUNT EQUAL 2)
+    message(FATAL_ERROR "expected two deterministic unknown-reference diagnostics: ${OUTPUT}")
 endif()

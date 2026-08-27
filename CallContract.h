@@ -22,6 +22,7 @@ struct CallRequest
     std::string action = "call";
     std::string correlationId;
     std::string selector;
+    std::string reference;
     std::string moduleSha256;
     std::string modulePath;
     uint32_t moduleTimestamp = 0;
@@ -53,6 +54,8 @@ struct CallResult
     bool success = false;
     std::string status = "not-executed";
     std::string returnValue;
+    std::vector<std::string> issuedReferences;
+    std::string releasedReference;
     TypeSpec returnType;
     std::vector<CallArgument> outputValues;
     ModuleIdentity resolvedModule;
