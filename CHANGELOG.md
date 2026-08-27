@@ -58,4 +58,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: round-trip call diagnostics
 - fix: preserve call contract metadata and errors
 - fix: preserve call metadata and override transport
+- fix: complete call result transport and policy
 
