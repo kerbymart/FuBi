@@ -1,0 +1,6 @@
+LIBRARY ThisCallFixture
+EXPORTS
+    ThisCallByte
+    ThisCallWord
+    ThisCallDword
+    ThisCallRepeated

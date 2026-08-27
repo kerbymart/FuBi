@@ -329,6 +329,13 @@ int main(int argc, char* argv[])
                 request.arguments.push_back(std::move(argument));
             }
         }
+        // The isolated worker reloads the module independently, so forward
+        // catalog-owned profile evidence as an explicit invocation contract.
+        if (!request.hasPrototypeOverride && record != nullptr && record->hasPrototype)
+        {
+            request.hasPrototypeOverride = true;
+            request.prototypeOverride = record->prototype;
+        }
         std::vector<CallDiagnostic> diagnostics;
         const bool valid = ValidateCallRequest(request, catalog, diagnostics);
         CallResult result;
