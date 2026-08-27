@@ -4,7 +4,6 @@
 
 #include <windows.h>
 #include <fstream>
-#include <memory>
 
 namespace
 {
@@ -34,39 +33,6 @@ void AddExitDiagnostic(CallResult& result)
 bool IsCrashExitCode(DWORD exitCode)
 {
     return (exitCode & 0xC0000000U) == 0xC0000000U;
-}
-struct DeferredCleanup
-{
-    HANDLE process = nullptr;
-    HANDLE thread = nullptr;
-    std::string requestPath;
-    std::string resultPath;
-};
-DWORD WINAPI DeferredCleanupThread(void* raw)
-{
-    std::unique_ptr<DeferredCleanup> cleanup(static_cast<DeferredCleanup*>(raw));
-    WaitForSingleObject(cleanup->process, INFINITE);
-    CloseHandle(cleanup->thread);
-    CloseHandle(cleanup->process);
-    DeleteFileA(cleanup->requestPath.c_str());
-    DeleteFileA(cleanup->resultPath.c_str());
-    return 0;
-}
-bool DeferCleanupUntilExit(PROCESS_INFORMATION& process, const char* requestPath, const char* resultPath)
-{
-    auto cleanup = std::make_unique<DeferredCleanup>();
-    cleanup->process = process.hProcess;
-    cleanup->thread = process.hThread;
-    cleanup->requestPath = requestPath;
-    cleanup->resultPath = resultPath;
-    HANDLE cleanupThread = CreateThread(nullptr, 0, DeferredCleanupThread, cleanup.get(), 0, nullptr);
-    if (cleanupThread == nullptr)
-        return false;
-    cleanup.release();
-    CloseHandle(cleanupThread);
-    process.hProcess = nullptr;
-    process.hThread = nullptr;
-    return true;
 }
 }
 
@@ -132,15 +98,9 @@ bool InvokeX64ExportProcess(const std::string& imagePath, const CallRequest& req
         result.diagnostics.push_back({terminated && stopped ? "timeout" : "termination-failed", "timeout_ms", terminated && stopped ? "worker process exceeded the invocation timeout" : "worker could not be terminated safely"});
         AddExitDiagnostic(result);
         if (!(terminated && stopped))
-        {
-            if (!DeferCleanupUntilExit(process, requestPath, resultPath))
-                result.diagnostics.push_back({"cleanup-deferred", "worker", "worker handles retained because termination was not confirmed"});
-        }
-        else
-        {
-            CloseHandle(process.hThread); CloseHandle(process.hProcess);
-            if (!cleanup()) result.diagnostics.push_back({"cleanup-failed", "ipc", "unable to remove worker IPC files"});
-        }
+            WaitForSingleObject(process.hProcess, INFINITE);
+        CloseHandle(process.hThread); CloseHandle(process.hProcess);
+        if (!cleanup()) result.diagnostics.push_back({"cleanup-failed", "ipc", "unable to remove worker IPC files"});
         error = terminated && stopped ? "invocation worker timed out" : "unable to terminate invocation worker";
         return false;
     }
