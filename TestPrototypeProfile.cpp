@@ -193,6 +193,24 @@ BOOST_AUTO_TEST_CASE(InferredSymbolEvidenceRemainsDisplayOnly)
     BOOST_CHECK(catalog.Find("NamedExport")->callability == Callability::RequiresPrototype);
 }
 
+BOOST_AUTO_TEST_CASE(IncompletePdbTypeGraphRemainsDisplayOnly)
+{
+    SymbolPrototypeEvidence evidence;
+    evidence.rva = 0x1010;
+    evidence.prototype.abi = "x64";
+    evidence.prototype.quality = PrototypeQuality::Inferred;
+    evidence.prototype.source = "dbghelp-type-metadata-display";
+    evidence.prototype.returnType = {TypeKind::Integer, 32};
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+    evidence.module = catalog.Module();
+    evidence.name = "NamedExport";
+    BOOST_REQUIRE(catalog.ApplySymbolEvidence({evidence}, error));
+    BOOST_CHECK(static_cast<int>(catalog.Find("NamedExport")->callability) == static_cast<int>(Callability::RequiresPrototype));
+    BOOST_CHECK(static_cast<int>(catalog.Find("NamedExport")->prototype.quality) == static_cast<int>(PrototypeQuality::Inferred));
+}
+
 BOOST_AUTO_TEST_CASE(InternalAuthorizationIsCatalogOwned)
 {
     FunctionCatalog catalog;
