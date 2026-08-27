@@ -44,4 +44,12 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: count complete export identity set
 - fix: correct canonical path length check
 - Merge pull request #17 from kerbymart/refactor/4-function-catalog-core
+- feat: add hash-pinned prototype profiles
+- fix: harden prototype profile integration
+- fix: validate profile identities and type shapes
+- feat: add validated local PDB symbol evidence
+- feat: apply static symbol evidence to catalogs
+- fix: bind symbol evidence to module identity
+- fix: keep undecorated symbols display-only
+- Merge pull request #18 from kerbymart/feat/5-symbol-and-profile-prototypes
 

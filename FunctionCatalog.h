@@ -7,6 +7,10 @@
 #include <string>
 #include <vector>
 
+struct PrototypeProfile;
+struct ProfileValidationError;
+struct SymbolPrototypeEvidence;
+
 enum class TypeKind
 {
     Unknown,
@@ -65,6 +69,8 @@ struct ModuleIdentity
     uint32_t timestamp = 0;
     uint32_t imageSize = 0;
     uint64_t preferredImageBase = 0;
+    std::string pdbGuid;
+    uint32_t pdbAge = 0;
 };
 
 struct FunctionId
@@ -99,6 +105,8 @@ struct FunctionRecord
     std::vector<std::string> boundarySources;
     PrototypeSpec prototype;
     bool hasPrototype = false;
+    std::vector<std::string> prototypeConflicts;
+    std::vector<PrototypeSpec> prototypeConflictEvidence;
     Callability callability = Callability::NotAddressable;
     std::vector<std::string> callabilityReasons;
     bool executable = false;
@@ -130,6 +138,10 @@ public:
 
     std::vector<const FunctionRecord*> FindAll(const std::string& selector) const;
     const FunctionRecord* Find(const std::string& selector) const;
+    bool ApplyProfile(const PrototypeProfile& profile,
+        std::vector<ProfileValidationError>& errors);
+    bool ApplySymbolEvidence(const std::vector<SymbolPrototypeEvidence>& evidence,
+        std::string& error);
 
 private:
     ModuleIdentity module_;
