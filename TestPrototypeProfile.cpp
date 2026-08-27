@@ -141,6 +141,19 @@ BOOST_AUTO_TEST_CASE(PdbIdentityAndTypeShapeAreRequiredWhenSupplied)
     BOOST_CHECK(!record.hasPrototype);
 }
 
+BOOST_AUTO_TEST_CASE(RejectsTruncatedAndOversizedProfiles)
+{
+    PrototypeProfile profile;
+    std::vector<ProfileValidationError> errors;
+    BOOST_CHECK(!ParsePrototypeProfile("{", profile, errors));
+    BOOST_CHECK(!errors.empty());
+
+    errors.clear();
+    const std::string oversized(4 * 1024 * 1024 + 1, 'x');
+    BOOST_CHECK(!ParsePrototypeProfile(oversized, profile, errors));
+    BOOST_CHECK(!errors.empty());
+}
+
 BOOST_AUTO_TEST_CASE(SymbolProviderRejectsUnavailableOrMismatchedCodeView)
 {
     FunctionCatalog catalog;

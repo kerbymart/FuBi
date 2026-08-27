@@ -176,3 +176,48 @@ BOOST_AUTO_TEST_CASE(RejectsImagesAboveTheConfiguredSizeLimit)
     BOOST_CHECK_EQUAL(error, "PE file exceeds the configured maximum image size");
     DeleteFileA(oversizedPath.c_str());
 }
+
+BOOST_AUTO_TEST_CASE(RejectsDeterministicTruncatedPeInputs)
+{
+    const std::vector<std::vector<uint8_t>> inputs = {
+        {},
+        {0x4D},
+        {0x4D, 0x5A, 0x00, 0x00},
+        std::vector<uint8_t>(64, 0x00),
+        std::vector<uint8_t>(512, 0xCC)};
+    for (const auto& bytes : inputs)
+    {
+        PEImage image;
+        std::string error;
+        BOOST_CHECK(!PEImage::FromBytes(bytes, "truncated-fixture", image, error));
+        BOOST_CHECK(!error.empty());
+    }
+}
+
+BOOST_AUTO_TEST_CASE(RejectsMalformedSectionBounds)
+{
+    std::vector<uint8_t> bytes = ReadBytes(ExportFixturePath());
+    BOOST_REQUIRE(bytes.size() >= sizeof(IMAGE_DOS_HEADER));
+    uint32_t ntOffset = 0;
+    std::memcpy(&ntOffset, bytes.data() + offsetof(IMAGE_DOS_HEADER, e_lfanew), sizeof(ntOffset));
+    BOOST_REQUIRE(ntOffset <= bytes.size() - sizeof(uint32_t) - sizeof(IMAGE_FILE_HEADER));
+    const size_t sectionCountOffset = ntOffset + sizeof(uint32_t) + offsetof(IMAGE_FILE_HEADER, NumberOfSections);
+    uint16_t sectionCount = 0;
+    std::memcpy(&sectionCount, bytes.data() + sectionCountOffset, sizeof(sectionCount));
+    BOOST_REQUIRE(sectionCount > 0);
+    const size_t optionalOffset = ntOffset + sizeof(uint32_t) + sizeof(IMAGE_FILE_HEADER);
+    uint16_t optionalSize = 0;
+    std::memcpy(&optionalSize, bytes.data() + ntOffset + sizeof(uint32_t) + offsetof(IMAGE_FILE_HEADER, SizeOfOptionalHeader), sizeof(optionalSize));
+    const size_t sectionOffset = optionalOffset + optionalSize;
+    BOOST_REQUIRE(sectionOffset <= bytes.size() - sizeof(IMAGE_SECTION_HEADER));
+
+    IMAGE_SECTION_HEADER section = {};
+    std::memcpy(&section, bytes.data() + sectionOffset, sizeof(section));
+    section.PointerToRawData = UINT32_MAX;
+    std::memcpy(bytes.data() + sectionOffset, &section, sizeof(section));
+
+    PEImage image;
+    std::string error;
+    BOOST_CHECK(!PEImage::FromBytes(std::move(bytes), "malformed-section", image, error));
+    BOOST_CHECK(!error.empty());
+}
