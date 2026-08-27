@@ -89,7 +89,11 @@ add_executable(export_tests TestExports.cpp SysExports.cpp DbgHelpDll.cpp PEImag
 target_link_libraries(export_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 add_dependencies(export_tests export_fixture)
 
-add_library(static_fixture SHARED TestStaticFixture.cpp TestStaticFixture.rc)
+set(STATIC_FIXTURE_SOURCES TestStaticFixture.cpp TestStaticFixture.rc)
+if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+    list(APPEND STATIC_FIXTURE_SOURCES StaticPatternFixture.asm)
+endif()
+add_library(static_fixture SHARED ${STATIC_FIXTURE_SOURCES})
 target_link_libraries(static_fixture PRIVATE user32 delayimp)
 target_compile_options(static_fixture PRIVATE /guard:cf)
 target_link_options(static_fixture PRIVATE /DELAYLOAD:user32.dll /DEBUG:FULL /guard:cf)
