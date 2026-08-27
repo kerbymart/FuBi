@@ -2,7 +2,7 @@
 
 Source: [`FUBI_TECHNICAL_DESIGN_PLAN.md`](./FUBI_TECHNICAL_DESIGN_PLAN.md)
 Created: 2026-08-27
-Last updated: 2026-08-27
+Last updated: 2026-08-28
 Roadmap status: **Baseline implementations merged; acceptance work remains**
 Current milestone: **Acceptance gaps, PDB type conversion, tracker evidence, and history maintenance**
 
@@ -23,16 +23,16 @@ Current milestone: **Acceptance gaps, PDB type conversion, tracker evidence, and
 | Milestone | Branch | Depends on | Status | Progress |
 | --- | --- | --- | --- | ---: |
 | Design approval | n/a | n/a | In progress | [#2](https://github.com/kerbymart/FuBi/issues/2) |
-| 1. Remove decoder dependency | `chore/3-remove-decoder-dependency` | Design approval | In progress | [PR #15](https://github.com/kerbymart/FuBi/pull/15) |
+| 1. Remove decoder dependency | `chore/3-remove-decoder-dependency` | Design approval | Complete | [PR #15](https://github.com/kerbymart/FuBi/pull/15), [PR #43](https://github.com/kerbymart/FuBi/pull/43) |
 | 2. Function catalog core | `refactor/4-function-catalog-core` | 1 | In progress | [PR #17](https://github.com/kerbymart/FuBi/pull/17) |
 | 3. Symbols and profiles | `feat/5-symbol-and-profile-prototypes` | 2 | In progress | [PR #18](https://github.com/kerbymart/FuBi/pull/18) |
 | 4. Typed call requests | `feat/6-typed-call-request` | 3 | In progress | [PR #20](https://github.com/kerbymart/FuBi/pull/20) |
 | 5. Native x64 invocation | `feat/7-native-invocation-x64` | 4 | In progress | [PR #21](https://github.com/kerbymart/FuBi/pull/21) |
 | 6. Internal RVA binding | `feat/8-internal-rva-binding` | 5 | In progress | [PR #22](https://github.com/kerbymart/FuBi/pull/22) |
 | 7. Script session protocol | `feat/9-script-session-protocol` | 6 | In progress | [PR #23](https://github.com/kerbymart/FuBi/pull/23) |
-| 8. Isolated call worker | `feat/10-isolated-call-worker` | 7 | In progress | [PR #24](https://github.com/kerbymart/FuBi/pull/24) |
+| 8. Isolated call worker | `feat/10-isolated-call-worker` | 7 | Complete | [PR #24](https://github.com/kerbymart/FuBi/pull/24), [PR #80](https://github.com/kerbymart/FuBi/pull/80), [PR #82](https://github.com/kerbymart/FuBi/pull/82), [PR #130](https://github.com/kerbymart/FuBi/pull/130) |
 | 9. Native x86 invocation | `feat/11-native-invocation-x86` | 8 | In progress | [PR #25](https://github.com/kerbymart/FuBi/pull/25) |
-| 10. Focused Windows patterns | `feat/12-windows-call-pattern-catalog` | 2 | In progress | [PR #26](https://github.com/kerbymart/FuBi/pull/26) |
+| 10. Focused Windows patterns | `feat/12-windows-call-pattern-catalog` | 2 | Complete | [PR #58](https://github.com/kerbymart/FuBi/pull/58), [PR #104](https://github.com/kerbymart/FuBi/pull/104) |
 | 11. t1pidd catalog acceptance | `test/13-t1pidd-catalog-acceptance` | 3 | In progress | [PR #27](https://github.com/kerbymart/FuBi/pull/27) |
 
 Overall roadmap: **11/11 milestones have baseline implementation PRs, with detailed acceptance checklists still open**. Bounded PDB metadata is merged in [PR #28](https://github.com/kerbymart/FuBi/pull/28), display-only graph validation in [PR #30](https://github.com/kerbymart/FuBi/pull/30), and invocation-grade type conversion in [PR #35](https://github.com/kerbymart/FuBi/pull/35). Internal RVA acceptance is covered by [PR #62](https://github.com/kerbymart/FuBi/pull/62), bounded string output by [PR #64](https://github.com/kerbymart/FuBi/pull/64), mixed x64 ABI placement by [PR #68](https://github.com/kerbymart/FuBi/pull/68), and adversarial parser boundaries by [PR #70](https://github.com/kerbymart/FuBi/pull/70). Published-history rewriting remains open in [#14](https://github.com/kerbymart/FuBi/issues/14), and the unchecked acceptance items below remain authoritative.
@@ -68,28 +68,28 @@ These requirements apply to every milestone.
 
 ### Product invariants
 
-- [ ] G-01 `--list`, `--describe`, and metadata-only commands never load or
+- [x] G-01 `--list`, `--describe`, and metadata-only commands never load or
   execute the target DLL.
-- [ ] G-02 Only explicit calling commands may load a DLL and run `DllMain`.
-- [ ] G-03 Discovered addresses are never treated as callable without an
+- [x] G-02 Only explicit calling commands may load a DLL and run `DllMain`.
+- [x] G-03 Discovered addresses are never treated as callable without an
   invocation-grade prototype and supported policy.
-- [ ] G-04 FuBi never invents an exact prototype.
-- [ ] G-05 Internal-RVA calls require stronger authorization than export calls.
-- [ ] G-06 Every machine-readable response includes a schema version.
-- [ ] G-07 Script protocol data goes to stdout and diagnostics go to stderr.
-- [ ] G-08 RVA remains the canonical static identifier; loaded VA is
+- [x] G-04 FuBi never invents an exact prototype.
+- [x] G-05 Internal-RVA calls require stronger authorization than export calls.
+- [x] G-06 Every machine-readable response includes a schema version.
+- [x] G-07 Script protocol data goes to stdout and diagnostics go to stderr.
+- [x] G-08 RVA remains the canonical static identifier; loaded VA is
   runtime-only.
 
 ### Dependency and boundary rules
 
-- [ ] G-09 Runtime dependencies remain limited to Windows system DLLs/APIs.
-- [ ] G-10 Builds use MSVC, Windows SDK, CMake, and approved Boost headers only.
-- [ ] G-11 New Microsoft SDK APIs are hidden behind project-owned adapters.
-- [ ] G-12 No unapproved decoder, invocation, symbol, or JSON dependency is
+- [x] G-09 Runtime dependencies remain limited to Windows system DLLs/APIs.
+- [x] G-10 Builds use MSVC, Windows SDK, CMake, and approved Boost headers only.
+- [x] G-11 New Microsoft SDK APIs are hidden behind project-owned adapters.
+- [x] G-12 No unapproved decoder, invocation, symbol, or JSON dependency is
   introduced.
-- [ ] G-13 File/profile/request parsing is bounded and treats inputs as
+- [x] G-13 File/profile/request parsing is bounded and treats inputs as
   untrusted.
-- [ ] G-14 Public domain records do not expose Windows handles.
+- [x] G-14 Public domain records do not expose Windows handles.
 
 ## Milestone 1 — Remove retired decoder dependency
 
@@ -97,19 +97,19 @@ Status: **In progress**
 Branch: `chore/3-remove-decoder-dependency`
 Evidence: Local Boost resolution and offline configuration behavior are covered by the current CMake configuration and dependency-policy changes in [PR #15](https://github.com/kerbymart/FuBi/pull/15). Remaining history and acceptance work is open.
 
-- [ ] M1-01 Remove retired decoder configuration and linking from CMake.
-- [ ] M1-02 Remove network `FetchContent` behavior.
+- [x] M1-01 Remove retired decoder configuration and linking from CMake. ([PR #15](https://github.com/kerbymart/FuBi/pull/15))
+- [x] M1-02 Remove network fetch behavior. ([PR #15](https://github.com/kerbymart/FuBi/pull/15))
 - [x] M1-03 Resolve Boost through `FUBI_BOOST_ROOT` or `find_package(Boost)` and
   emit an actionable configuration error when unavailable. ([PR #43](https://github.com/kerbymart/FuBi/pull/43))
-- [ ] M1-04 Remove decoder-dependent source paths, records, CLI flags, and
-  tests.
-- [ ] M1-05 Remove general disassembly and decoder-derived graph/xref/ABI
-  claims.
-- [ ] M1-06 Retain bounded PE metadata required by the later catalog.
-- [ ] M1-07 Update README and CLI help to reflect the dependency and interface
-  changes.
-- [ ] M1-08 Verify a clean offline build, existing export/signature tests, and
-  proof that static catalog operations do not execute `DllMain`.
+- [x] M1-04 Remove decoder-dependent source paths, records, CLI flags, and
+  tests. ([PR #15](https://github.com/kerbymart/FuBi/pull/15))
+- [x] M1-05 Remove general disassembly and decoder-derived graph/xref/ABI
+  claims. ([PR #15](https://github.com/kerbymart/FuBi/pull/15))
+- [x] M1-06 Retain bounded PE metadata required by the later catalog. ([PR #15](https://github.com/kerbymart/FuBi/pull/15))
+- [x] M1-07 Update README and CLI help to reflect the dependency and interface
+  changes. ([PR #15](https://github.com/kerbymart/FuBi/pull/15))
+- [x] M1-08 Verify a clean offline build, existing export/signature tests, and
+  proof that static catalog operations do not execute `DllMain`. ([PR #15](https://github.com/kerbymart/FuBi/pull/15))
 
 ## Milestone 2 — Function catalog core
 
@@ -250,7 +250,8 @@ Branch: `feat/10-isolated-call-worker`
 Depends on: M7
 Evidence: Worker isolation limits, failure protocol recovery, framework blocking, and architecture-specific selection evidence in [PR #80](https://github.com/kerbymart/FuBi/pull/80), [PR #82](https://github.com/kerbymart/FuBi/pull/82), [PR #84](https://github.com/kerbymart/FuBi/pull/84), and [PR #102](https://github.com/kerbymart/FuBi/pull/102).
 
-- [ ] M8-01 Split the runtime into `Fubi.exe` controller and `FubiWorker.exe`.
+- [x] M8-01 Split the runtime into `Fubi.exe` controller and `FubiWorker.exe`.
+  ([PR #24](https://github.com/kerbymart/FuBi/pull/24), [PR #130](https://github.com/kerbymart/FuBi/pull/130))
 - [x] M8-02 Perform static catalog/profile/request validation before launching
   the worker. ([PR #24](https://github.com/kerbymart/FuBi/pull/24))
 - [x] M8-03 Define a stable, versioned controller/worker protocol. ([PR #24](https://github.com/kerbymart/FuBi/pull/24), [PR #49](https://github.com/kerbymart/FuBi/pull/49))
@@ -286,17 +287,17 @@ Branch: `feat/12-windows-call-pattern-catalog`
 Depends on: M2; may proceed independently of M3 through M9 after D-10 permits it
 Evidence: Bounded WDF and CFG recognizers with positive, truncated, near-match, deterministic, and non-executing fixture coverage in [PR #58](https://github.com/kerbymart/FuBi/pull/58) and [PR #104](https://github.com/kerbymart/FuBi/pull/104).
 
-- [ ] M10-01 Keep this provider separate from the general catalog and do not
+- [x] M10-01 Keep this provider separate from the general catalog and do not
   expose a disassembly UI.
-- [ ] M10-02 Recognize only fully specified Windows x64 direct `CALL rel32`
+- [x] M10-02 Recognize only fully specified Windows x64 direct `CALL rel32`
   patterns.
-- [ ] M10-03 Recognize only fully specified RIP-relative IAT call patterns.
-- [ ] M10-04 Add narrowly versioned WDF table patterns tied to recovered
+- [x] M10-03 Recognize only fully specified RIP-relative IAT call patterns.
+- [x] M10-04 Add narrowly versioned WDF table patterns tied to recovered
   `WDF_BIND_INFO` metadata.
-- [ ] M10-05 Add narrowly versioned supported MSVC CFG dispatch patterns.
-- [ ] M10-06 Bounds-check every byte read and arithmetic operation and report
+- [x] M10-05 Add narrowly versioned supported MSVC CFG dispatch patterns.
+- [x] M10-06 Bounds-check every byte read and arithmetic operation and report
   pattern name, version, and provenance.
-- [ ] M10-07 Treat pattern results as target/relationship evidence only; never
+- [x] M10-07 Treat pattern results as target/relationship evidence only; never
   as prototype evidence.
 - [x] M10-08 Pass exact positive and near-match negative fixtures; unknown
   patterns remain unknown and no decoder dependency is present.
@@ -353,7 +354,7 @@ Evidence: Opt-in path, pinned identity, export/candidate checks, static describe
   target code. See [PR #66](https://github.com/kerbymart/FuBi/pull/66).
 - [ ] DOC-05 Preserve complete export enumeration, signature dumps, aliases,
   ordinals, forwarders, decorated-name recovery, and human-readable output.
-- [ ] DOC-06 Deprecate analysis-first language and general disassembly flags.
+- [x] DOC-06 Deprecate analysis-first language and general disassembly flags. ([PR #15](https://github.com/kerbymart/FuBi/pull/15))
 - [ ] DOC-07 Keep broad PE diagnostics secondary under `--inspect`.
 - [x] DOC-08 Record supported architecture, ABI, and type limitations. See [PR #88](https://github.com/kerbymart/FuBi/pull/88).
 
@@ -363,19 +364,19 @@ Evidence: Opt-in path, pinned identity, export/candidate checks, static describe
   third-party runtime libraries.
 - [x] DONE-02 The default command lists function candidates without executing
   the target. See [PR #15](https://github.com/kerbymart/FuBi/pull/15) and [PR #17](https://github.com/kerbymart/FuBi/pull/17).
-- [ ] DONE-03 Every function exposes stable identity, evidence, exact prototype
-  source, and callability status.
+- [x] DONE-03 Every function exposes stable identity, evidence, exact prototype
+  source, and callability status. ([PR #17](https://github.com/kerbymart/FuBi/pull/17), [PR #30](https://github.com/kerbymart/FuBi/pull/30), [PR #35](https://github.com/kerbymart/FuBi/pull/35))
 - [x] DONE-04 Exported x64 fixture functions can be invoked with validated typed
   arguments. See [PR #21](https://github.com/kerbymart/FuBi/pull/21) and [PR #68](https://github.com/kerbymart/FuBi/pull/68).
 - [x] DONE-05 Internal fixture functions require hash-pinned profiles and
   explicit policy. See [PR #62](https://github.com/kerbymart/FuBi/pull/62).
-- [ ] DONE-06 Text, one-shot JSON, and JSONL session interfaces share one
-  command model.
+- [x] DONE-06 Text, one-shot JSON, and JSONL session interfaces share one
+  command model. ([PR #20](https://github.com/kerbymart/FuBi/pull/20), [PR #23](https://github.com/kerbymart/FuBi/pull/23), [PR #76](https://github.com/kerbymart/FuBi/pull/76))
 - [x] DONE-07 Crashes and hangs are isolated and reported structurally. See [PR #82](https://github.com/kerbymart/FuBi/pull/82).
 - [ ] DONE-08 t1pidd exports and internal candidates are cataloged generically.
 - [ ] DONE-09 FuBi never claims an unknown t1pidd prototype is callable.
-- [ ] DONE-10 No t1pidd-specific address, name, or type is hard-coded in
-  production code.
+- [x] DONE-10 No t1pidd-specific address, name, or type is hard-coded in
+  production code. ([PR #106](https://github.com/kerbymart/FuBi/pull/106))
 
 ## Change log
 
