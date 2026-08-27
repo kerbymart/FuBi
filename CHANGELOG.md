@@ -104,4 +104,6 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - test: cover x64 invocation fixture matrix
 - fix: preserve narrow scalar return widths
 - Merge pull request #34 from kerbymart/test/33-x64-invocation-fixture-matrix
+- feat: convert bounded PDB type graphs
+- Merge pull request #35 from kerbymart/feat/29-pdb-type-graph-complete
 
