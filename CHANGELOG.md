@@ -176,4 +176,6 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - Merge pull request #130 from kerbymart/feat/129-worker-artifact-names
 - chore: remove retired dependency names
 - Merge pull request #132 from kerbymart/chore/131-retired-dependency-wording
+- docs: remove fetch mechanism wording
+- Merge pull request #138 from kerbymart/chore/135-fetch-wording-cleanup
 
