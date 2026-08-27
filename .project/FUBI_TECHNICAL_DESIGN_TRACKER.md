@@ -267,11 +267,11 @@ Evidence: Worker isolation limits, failure protocol recovery, framework blocking
 Status: **In progress**
 Branch: `feat/11-native-invocation-x86`
 Depends on: M8
-Evidence: x86 worker, register preservation, thiscall, fastcall, and convention matrix coverage in [PR #90](https://github.com/kerbymart/FuBi/pull/90), [PR #94](https://github.com/kerbymart/FuBi/pull/94), [PR #96](https://github.com/kerbymart/FuBi/pull/96), [PR #98](https://github.com/kerbymart/FuBi/pull/98), [PR #100](https://github.com/kerbymart/FuBi/pull/100), and [PR #102](https://github.com/kerbymart/FuBi/pull/102).
+Evidence: x86 worker, normalized call frames, register preservation, thiscall, fastcall, and convention matrix coverage in [PR #90](https://github.com/kerbymart/FuBi/pull/90), [PR #94](https://github.com/kerbymart/FuBi/pull/94), [PR #96](https://github.com/kerbymart/FuBi/pull/96), [PR #98](https://github.com/kerbymart/FuBi/pull/98), [PR #100](https://github.com/kerbymart/FuBi/pull/100), [PR #102](https://github.com/kerbymart/FuBi/pull/102), and [PR #126](https://github.com/kerbymart/FuBi/pull/126).
 
-- [ ] M9-01 Add an x86 worker and normalized x86 call frames.
-- [ ] M9-02 Implement and test x86 `cdecl`.
-- [ ] M9-03 Implement and test x86 `stdcall`.
+- [x] M9-01 Add an x86 worker and normalized x86 call frames ([PR #126](https://github.com/kerbymart/FuBi/pull/126)).
+- [x] M9-02 Implement and test x86 `cdecl` ([PR #90](https://github.com/kerbymart/FuBi/pull/90)).
+- [x] M9-03 Implement and test x86 `stdcall` ([PR #90](https://github.com/kerbymart/FuBi/pull/90)).
 - [x] M9-04 Add `thiscall` as a separate reviewable increment ([issue #95](https://github.com/kerbymart/FuBi/issues/95)).
 - [x] M9-05 Add `fastcall` as a separate reviewable increment ([issue #97](https://github.com/kerbymart/FuBi/issues/97)).
 - [x] M9-06 Verify convention-specific stack cleanup, register use, return
@@ -326,7 +326,7 @@ Evidence: Opt-in path, pinned identity, export/candidate checks, static describe
 
 - [x] T-01 Controlled x64 and x86 fixture DLLs. See [PR #90](https://github.com/kerbymart/FuBi/pull/90) and [PR #102](https://github.com/kerbymart/FuBi/pull/102).
 - [x] T-02 Zero-argument and all supported integer-width returns. See [PR #68](https://github.com/kerbymart/FuBi/pull/68) and [PR #100](https://github.com/kerbymart/FuBi/pull/100).
-- [ ] T-03 Pointer/handle echo and C-string/wide-string length functions.
+- [x] T-03 Pointer/handle echo and C-string/wide-string length functions ([PR #125](https://github.com/kerbymart/FuBi/pull/125)).
 - [x] T-04 Input checksum and output/inout buffer functions. String output and
   inout coverage is in [PR #64](https://github.com/kerbymart/FuBi/pull/64).
 - [x] T-05 Floating argument/return fixtures when floating support begins.
