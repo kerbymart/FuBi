@@ -21,6 +21,7 @@ struct CallRequest
     uint32_t schemaVersion = kSchemaVersion;
     std::string correlationId;
     std::string selector;
+    std::string moduleSha256;
     std::vector<CallArgument> arguments;
     PrototypeSpec prototypeOverride;
     bool hasPrototypeOverride = false;

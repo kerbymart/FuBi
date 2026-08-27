@@ -82,6 +82,7 @@ bool ValidateCallRequest(const CallRequest& request, const FunctionCatalog& cata
     if (request.schemaVersion != CallRequest::kSchemaVersion) Diagnostic(diagnostics, "unsupported-schema", "schema_version", "supported version is 1");
     if (request.correlationId.empty() || request.correlationId.size() > 128) Diagnostic(diagnostics, "invalid-correlation-id", "correlation_id", "correlation ID must be 1..128 characters");
     if (request.selector.empty()) Diagnostic(diagnostics, "missing-selector", "selector", "function selector is required");
+    if (request.allowInternal && request.moduleSha256 != catalog.Module().sha256) Diagnostic(diagnostics, "module-identity-required", "module_sha256", "internal calls require the catalog SHA-256 identity");
     const FunctionRecord* record = request.selector.empty() ? nullptr : catalog.Find(request.selector);
     if (record == nullptr) Diagnostic(diagnostics, "selector-not-found-or-ambiguous", "selector", "selector must identify exactly one catalog record");
     if (record != nullptr && !request.allowInternal && record->exportNames.empty()) Diagnostic(diagnostics, "internal-policy-required", "selector", "internal targets require explicit policy");
@@ -113,7 +114,7 @@ bool ValidateCallRequest(const CallRequest& request, const FunctionCatalog& cata
 
 void WriteCallRequestJson(std::ostream& output, const CallRequest& request)
 {
-    output << "{\"schema_version\":" << request.schemaVersion << ",\"correlation_id\":"; Json(output, request.correlationId); output << ",\"selector\":"; Json(output, request.selector); output << ",\"timeout_ms\":" << request.timeoutMs << ",\"allow_internal\":" << (request.allowInternal ? "true" : "false") << ",\"has_prototype_override\":" << (request.hasPrototypeOverride ? "true" : "false") << ",\"prototype_override\":"; if (request.hasPrototypeOverride) WritePrototype(output, request.prototypeOverride); else output << "null"; output << ",\"arguments\":[";
+    output << "{\"schema_version\":" << request.schemaVersion << ",\"correlation_id\":"; Json(output, request.correlationId); output << ",\"selector\":"; Json(output, request.selector); output << ",\"module_sha256\":"; Json(output, request.moduleSha256); output << ",\"timeout_ms\":" << request.timeoutMs << ",\"allow_internal\":" << (request.allowInternal ? "true" : "false") << ",\"has_prototype_override\":" << (request.hasPrototypeOverride ? "true" : "false") << ",\"prototype_override\":"; if (request.hasPrototypeOverride) WritePrototype(output, request.prototypeOverride); else output << "null"; output << ",\"arguments\":[";
     for (size_t i=0;i<request.arguments.size();++i) { if(i) output << ','; output << "{\"type\":"; WriteType(output, request.arguments[i].type); output << ",\"value\":"; Json(output, request.arguments[i].value); output << ",\"buffer_size\":" << request.arguments[i].bufferSize << ",\"ownership\":"; Json(output, request.arguments[i].ownership); output << '}'; }
     output << "]}";
 }
@@ -131,6 +132,7 @@ bool ParseCallRequestJson(const std::string& document, CallRequest& request, std
     if(!UIntField(document,"schema_version",number)||number>UINT32_MAX) Diagnostic(diagnostics,"invalid-schema","schema_version","schema_version is invalid"); else request.schemaVersion=static_cast<uint32_t>(number);
     if(!StringField(document,"correlation_id",request.correlationId)) Diagnostic(diagnostics,"missing-field","correlation_id","correlation_id is required");
     if(!StringField(document,"selector",request.selector)) Diagnostic(diagnostics,"missing-field","selector","selector is required");
+    StringField(document,"module_sha256",request.moduleSha256);
     if(UIntField(document,"timeout_ms",number)&&number<=UINT32_MAX) request.timeoutMs=static_cast<uint32_t>(number);
     if(BoolField(document,"allow_internal",flag)) request.allowInternal=flag;
     if(BoolField(document,"has_prototype_override",flag)&&flag) { request.hasPrototypeOverride=true; size_t pos=document.find("\"prototype_override\":"); std::string object; if(pos==std::string::npos||!NextObject(document,pos,object)||!PrototypeObject(object,request.prototypeOverride)) Diagnostic(diagnostics,"invalid-prototype-override","prototype_override","prototype override is invalid"); }
@@ -140,5 +142,16 @@ bool ParseCallRequestJson(const std::string& document, CallRequest& request, std
 
 bool ParseCallResultJson(const std::string& document, CallResult& result, std::vector<CallDiagnostic>& diagnostics)
 {
-    result={}; diagnostics.clear(); uint64_t number=0; bool flag=false; if(!UIntField(document,"schema_version",number)||number>UINT32_MAX) Diagnostic(diagnostics,"invalid-schema","schema_version","schema_version is invalid"); else result.schemaVersion=static_cast<uint32_t>(number); if(!StringField(document,"correlation_id",result.correlationId))Diagnostic(diagnostics,"missing-field","correlation_id","correlation_id is required"); if(BoolField(document,"success",flag))result.success=flag; if(!StringField(document,"status",result.status))Diagnostic(diagnostics,"missing-field","status","status is required"); StringField(document,"return_value",result.returnValue); size_t position=document.find("\"diagnostics\":["); if(position!=std::string::npos){position+=15; while(true){std::string object; if(!NextObject(document,position,object))break; CallDiagnostic item; if(StringField(object,"code",item.code)&&StringField(object,"path",item.path)&&StringField(object,"message",item.message))result.diagnostics.push_back(std::move(item)); else {Diagnostic(diagnostics,"invalid-diagnostic","diagnostics","diagnostic is incomplete");break;} if(document.find(']',position)!=std::string::npos&&document.find(']',position)<document.find('{',position))break; }} return diagnostics.empty();
+    result={}; diagnostics.clear(); uint64_t number=0; bool flag=false;
+    if(!UIntField(document,"schema_version",number)||number>UINT32_MAX) Diagnostic(diagnostics,"invalid-schema","schema_version","schema_version is invalid"); else result.schemaVersion=static_cast<uint32_t>(number);
+    if(!StringField(document,"correlation_id",result.correlationId))Diagnostic(diagnostics,"missing-field","correlation_id","correlation_id is required");
+    if(BoolField(document,"success",flag))result.success=flag;
+    if(!StringField(document,"status",result.status))Diagnostic(diagnostics,"missing-field","status","status is required");
+    StringField(document,"return_value",result.returnValue); UIntField(document,"duration_ms",result.durationMs);
+    size_t pos=document.find("\"return_type\":"); std::string object;
+    if(pos!=std::string::npos && NextObject(document,pos,object)) TypeObject(object,result.returnType);
+    pos=document.find("\"resolved_module\":"); if(pos!=std::string::npos && NextObject(document,pos,object)){StringField(object,"sha256",result.resolvedModule.sha256);StringField(object,"architecture",result.resolvedModule.architecture);}
+    pos=document.find("\"prototype_used\":"); if(pos!=std::string::npos && NextObject(document,pos,object)) PrototypeObject(object,result.prototypeUsed);
+    pos=document.find("\"output_values\":["); if(pos!=std::string::npos){pos+=16; while(true){if(!NextObject(document,pos,object))break; CallArgument value; size_t typePos=object.find("\"type\":"); std::string typeObject; if(typePos==std::string::npos||!NextObject(object,typePos,typeObject)||!TypeObject(typeObject,value.type)||!StringField(object,"value",value.value)){Diagnostic(diagnostics,"invalid-output","output_values","output value is invalid");break;} UIntField(object,"buffer_size",value.bufferSize); StringField(object,"ownership",value.ownership); result.outputValues.push_back(std::move(value)); if(document.find(']',pos)!=std::string::npos&&document.find(']',pos)<document.find('{',pos))break; }}
+    pos=document.find("\"diagnostics\":["); if(pos!=std::string::npos){pos+=15; while(true){if(!NextObject(document,pos,object))break; CallDiagnostic item; if(StringField(object,"code",item.code)&&StringField(object,"path",item.path)&&StringField(object,"message",item.message))result.diagnostics.push_back(std::move(item)); else {Diagnostic(diagnostics,"invalid-diagnostic","diagnostics","diagnostic is incomplete");break;} if(document.find(']',pos)!=std::string::npos&&document.find(']',pos)<document.find('{',pos))break; }} return diagnostics.empty();
 }
