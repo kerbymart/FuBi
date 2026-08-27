@@ -33,4 +33,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: make capability analysis evidence-aware
 - Merge pull request #1 from kerbymart/feat/static-pe-analysis
 - docs: refocus README on function binding
+- chore: remove external decoder dependency
 
