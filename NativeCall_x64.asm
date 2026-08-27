@@ -11,8 +11,8 @@ NativeCallX64 PROC
     mov r10, rdx
     mov r11d, r8d
     mov rdx, r9
-    sub rsp, 48h
-    mov qword ptr [rsp+40h], rdx
+    sub rsp, 58h
+    mov qword ptr [rsp+50h], rdx
 
     xor ecx, ecx
     xor edx, edx
@@ -34,24 +34,24 @@ arguments_ready:
     cmp r11d, 5
     jb short stack_ready
     mov rdx, qword ptr [r10+20h]
-    mov qword ptr [rsp+20h], rdx
+    mov qword ptr [rsp+28h], rdx
     cmp r11d, 6
     jb short stack_ready
     mov rdx, qword ptr [r10+28h]
-    mov qword ptr [rsp+28h], rdx
+    mov qword ptr [rsp+30h], rdx
     cmp r11d, 7
     jb short stack_ready
     mov rdx, qword ptr [r10+30h]
-    mov qword ptr [rsp+30h], rdx
+    mov qword ptr [rsp+38h], rdx
     cmp r11d, 8
     jb short stack_ready
     mov rdx, qword ptr [r10+38h]
-    mov qword ptr [rsp+38h], rdx
+    mov qword ptr [rsp+40h], rdx
 stack_ready:
     call rax
-    mov r10, qword ptr [rsp+40h]
+    mov r10, qword ptr [rsp+50h]
     mov qword ptr [r10], rax
-    add rsp, 48h
+    add rsp, 58h
     ret
 NativeCallX64 ENDP
 END
