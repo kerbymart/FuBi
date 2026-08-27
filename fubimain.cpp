@@ -89,7 +89,7 @@ void WriteSessionDescription(std::ostream& output, const FunctionCatalog& catalo
 void PrintUsage()
 {
     std::cerr << "Usage:\n"
-              << "  Fubi.exe <dll-file> [--list|--list-callable|--describe <name|#ordinal|0xRVA>|--call <selector>] [--arg <kind:value> ...] [--profile <file>] [--prototype-override <file>] [--symbols] [--json|--jsonl|--shell|--interactive]\n";
+              << "  Fubi.exe <dll-file> [--list|--list-callable|--describe <name|#ordinal|0xRVA>|--call <selector>] [--arg <kind:value> ...] [--timeout <ms>] [--profile <file>] [--prototype-override <file>] [--symbols] [--json|--jsonl|--shell|--interactive]\n";
 }
 
 struct Options
@@ -103,6 +103,7 @@ struct Options
     std::string profilePath;
     std::string prototypeOverridePath;
     bool symbols = false;
+    uint32_t timeoutMs = 0;
     std::vector<std::string> rawArguments;
 };
 
@@ -134,6 +135,16 @@ bool ParseOptions(int argc, char* argv[], Options& options)
         {
             if (options.action != "call") return false;
             options.rawArguments.push_back(argv[++index]);
+        }
+        else if (argument == "--timeout" && index + 1 < argc)
+        {
+            if (options.action != "call") return false;
+            char* end = nullptr;
+            errno = 0;
+            const unsigned long value = std::strtoul(argv[++index], &end, 10);
+            if (errno == ERANGE || end == argv[index] || *end != '\0' || value > UINT32_MAX)
+                return false;
+            options.timeoutMs = static_cast<uint32_t>(value);
         }
         else if (argument == "--json") options.json = true;
         else if (argument == "--jsonl") options.jsonl = true;
@@ -287,6 +298,7 @@ int main(int argc, char* argv[])
         request.modulePreferredImageBase = catalog.Module().preferredImageBase;
         request.modulePdbGuid = catalog.Module().pdbGuid;
         request.modulePdbAge = catalog.Module().pdbAge;
+        request.timeoutMs = options.timeoutMs;
         const FunctionRecord* record = catalog.Find(options.selector);
         if (!options.prototypeOverridePath.empty())
         {

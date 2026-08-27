@@ -22,6 +22,19 @@ if(CRASH_CORRELATION LESS 0 OR CRASH_FAILURE LESS 0)
     message(FATAL_ERROR "crash response was not structured: ${CRASH_OUTPUT}")
 endif()
 
+execute_process(COMMAND "${FUBI}" "${FIXTURE}" --call HangProcess
+    --prototype-override "${PROFILE}" --json --timeout 200
+    TIMEOUT 10 RESULT_VARIABLE HANG_RESULT OUTPUT_VARIABLE HANG_OUTPUT
+    ERROR_VARIABLE HANG_DIAGNOSTICS)
+if(NOT HANG_RESULT EQUAL 9)
+    message(FATAL_ERROR "expected timeout exit code 9, got ${HANG_RESULT}: ${HANG_DIAGNOSTICS}")
+endif()
+string(FIND "${HANG_OUTPUT}" "\"correlation_id\":\"cli-call\"" HANG_CORRELATION)
+string(FIND "${HANG_OUTPUT}" "timed-out" HANG_FAILURE)
+if(HANG_CORRELATION LESS 0 OR HANG_FAILURE LESS 0)
+    message(FATAL_ERROR "timeout response was not structured: ${HANG_OUTPUT}")
+endif()
+
 execute_process(COMMAND "${FUBI}" "${FIXTURE}" --call NamedExport
     --prototype-override "${PROFILE}" --json
     RESULT_VARIABLE NORMAL_RESULT OUTPUT_VARIABLE NORMAL_OUTPUT ERROR_VARIABLE NORMAL_DIAGNOSTICS)
