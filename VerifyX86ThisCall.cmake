@@ -32,9 +32,6 @@ file(WRITE "${PROFILE}"
     "{\"rva\":${DWORD_RVA},\"selector\":\"ThisCallDword\",\"abi\":\"__thiscall\",\"return_type\":{\"kind\":\"integer\",\"width\":32},\"parameters\":[{\"kind\":\"pointer\",\"width\":32,\"pointer_depth\":1},{\"kind\":\"integer\",\"width\":32},{\"kind\":\"integer\",\"width\":32},{\"kind\":\"integer\",\"width\":32},{\"kind\":\"integer\",\"width\":32}],\"variadic\":false},"
     "{\"rva\":${REPEATED_RVA},\"selector\":\"ThisCallRepeated\",\"abi\":\"__thiscall\",\"return_type\":{\"kind\":\"integer\",\"width\":32},\"parameters\":[{\"kind\":\"pointer\",\"width\":32,\"pointer_depth\":1},{\"kind\":\"integer\",\"width\":32}],\"variadic\":false}]}")
 
-file(READ "${PROFILE}" PROFILE_TEXT)
-string(REPLACE "}]" "}]},{\"rva\":${REGISTER_RVA},\"selector\":\"ThisCallRegisterCheck\",\"abi\":\"__thiscall\",\"return_type\":{\"kind\":\"integer\",\"width\":32},\"parameters\":[{\"kind\":\"pointer\",\"width\":32,\"pointer_depth\":1},{\"kind\":\"integer\",\"width\":32}],\"variadic\":false}]" PROFILE_TEXT "${PROFILE_TEXT}")
-file(WRITE "${PROFILE}" "${PROFILE_TEXT}")
 
 function(run_call SELECTOR EXPECTED)
     set(call_args --arg "pointer:opaque:0x13572468")
@@ -57,6 +54,16 @@ run_call(ThisCallWord 18577 --arg integer:4660)
 run_call(ThisCallDword 270549281 --arg integer:1 --arg integer:2 --arg integer:3 --arg integer:4)
 run_call(ThisCallRepeated 42 --arg integer:35)
 run_call(ThisCallRepeated 106 --arg integer:99)
+
+set(REGISTER_PROFILE "${OUTPUT_DIR}/x86-thiscall-register-profile.json")
+file(WRITE "${REGISTER_PROFILE}"
+    "{\"schema_version\":1,\"module\":{\"sha256\":\"${HASH}\",\"architecture\":\"x86\"},\"functions\":[{\"rva\":${REGISTER_RVA},\"selector\":\"ThisCallRegisterCheck\",\"abi\":\"__thiscall\",\"return_type\":{\"kind\":\"integer\",\"width\":32},\"parameters\":[{\"kind\":\"pointer\",\"width\":32,\"pointer_depth\":1},{\"kind\":\"integer\",\"width\":32}],\"variadic\":false}]}")
+execute_process(COMMAND "${FUBI}" "${FIXTURE}" --call ThisCallRegisterCheck --prototype-override "${REGISTER_PROFILE}"
+    --arg "pointer:opaque:0x13572468" --arg integer:305419896 --json
+    WORKING_DIRECTORY "${OUTPUT_DIR}" RESULT_VARIABLE REGISTER_RESULT OUTPUT_VARIABLE REGISTER_OUTPUT ERROR_VARIABLE REGISTER_ERROR)
+if(NOT REGISTER_RESULT EQUAL 0 OR NOT REGISTER_OUTPUT MATCHES "\\\"return_value\\\":\\\"305419899\\\"")
+    message(FATAL_ERROR "thiscall register preservation failed: ${REGISTER_RESULT}: ${REGISTER_ERROR}: ${REGISTER_OUTPUT}")
+endif()
 run_call(ThisCallRegisterCheck 305419899 --arg integer:305419896)
 
 execute_process(COMMAND "${FUBI}" "${FIXTURE}" --call "#1" --prototype-override "${PROFILE}"
@@ -100,4 +107,4 @@ if(EXISTS "${OUTPUT_DIR}/thiscall_fixture.loaded")
     message(FATAL_ERROR "malformed object-pointer request loaded the target fixture")
 endif()
 
-file(REMOVE "${PROFILE}" "${OUTPUT_DIR}/invalid-thiscall.jsonl" "${SESSION_SCRIPT}" "${OUTPUT_DIR}/thiscall_fixture.loaded")
+file(REMOVE "${PROFILE}" "${REGISTER_PROFILE}" "${OUTPUT_DIR}/invalid-thiscall.jsonl" "${SESSION_SCRIPT}" "${OUTPUT_DIR}/thiscall_fixture.loaded")
