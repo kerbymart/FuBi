@@ -59,3 +59,33 @@ BOOST_AUTO_TEST_CASE(MalformedAndForeignReferencesAreRejected)
     BOOST_CHECK(!second.Release(local));
     BOOST_CHECK(first.Resolve(local, value));
 }
+
+BOOST_AUTO_TEST_CASE(HandlesRequireIdentityAndConfiguredReleaseAdapter)
+{
+    SessionReferences references;
+    uint64_t released = 0;
+    const std::string token = references.IssueHandle(0x42, {64, "module-hash", "x64", "owned",
+        [&](uint64_t value) { released = value; return true; }});
+    BOOST_CHECK_EQUAL(token, "opaque:session-1");
+    uint64_t value = 0;
+    BOOST_CHECK(!references.Resolve(token, value));
+    BOOST_REQUIRE(references.ResolveHandle(token, value, "module-hash", "x64"));
+    BOOST_CHECK_EQUAL(value, 0x42ULL);
+    BOOST_CHECK(!references.ResolveHandle(token, value, "other-hash", "x64"));
+    BOOST_CHECK(!references.ReleaseHandle(token, "module-hash", "x86"));
+    BOOST_CHECK(references.ReleaseHandle(token, "module-hash", "x64"));
+    BOOST_CHECK_EQUAL(released, 0x42ULL);
+    BOOST_CHECK(!references.ReleaseHandle(token, "module-hash", "x64"));
+}
+
+BOOST_AUTO_TEST_CASE(UnconfiguredOrInvalidHandlesFailClosed)
+{
+    SessionReferences references;
+    BOOST_CHECK(references.IssueHandle(1, {32, "hash", "x86", "owned", {}}).empty() == false);
+    BOOST_CHECK(references.IssueHandle(2, {16, "hash", "x86", "owned", {}}).empty());
+    BOOST_CHECK(references.IssueHandle(3, {64, "hash", "x64", "unknown", {}}).empty());
+    const std::string token = references.IssueHandle(4, {64, "hash", "x64", "borrowed", {}});
+    BOOST_CHECK(!references.ReleaseHandle(token, "hash", "x64"));
+    uint64_t value = 0;
+    BOOST_CHECK(references.ResolveHandle(token, value, "hash", "x64"));
+}
