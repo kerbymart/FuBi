@@ -3,6 +3,7 @@
 #include "FunctionCatalog.h"
 #include "PrototypeProfile.h"
 #include "DbgHelpDll.h"
+#include "CallContract.h"
 
 #include <fstream>
 #include <iostream>
@@ -13,7 +14,7 @@ namespace
 void PrintUsage()
 {
     std::cerr << "Usage:\n"
-              << "  Fubi.exe <dll-file> [--list|--list-callable|--describe <name|#ordinal|0xRVA>] [--profile <file>] [--symbols] [--json]\n";
+              << "  Fubi.exe <dll-file> [--list|--list-callable|--describe <name|#ordinal|0xRVA>|--call <selector>] [--arg <kind:value> ...] [--profile <file>] [--prototype-override <file>] [--symbols] [--json]\n";
 }
 
 struct Options
@@ -23,7 +24,9 @@ struct Options
     std::string selector;
     bool json = false;
     std::string profilePath;
+    std::string prototypeOverridePath;
     bool symbols = false;
+    std::vector<std::string> rawArguments;
 };
 
 bool ParseOptions(int argc, char* argv[], Options& options)
@@ -44,11 +47,27 @@ bool ParseOptions(int argc, char* argv[], Options& options)
             options.action = "describe";
             options.selector = argv[++index];
         }
+        else if (argument == "--call" && index + 1 < argc)
+        {
+            if (options.action != "list") return false;
+            options.action = "call";
+            options.selector = argv[++index];
+        }
+        else if (argument == "--arg" && index + 1 < argc)
+        {
+            if (options.action != "call") return false;
+            options.rawArguments.push_back(argv[++index]);
+        }
         else if (argument == "--json") options.json = true;
         else if (argument == "--profile" && index + 1 < argc)
         {
             if (!options.profilePath.empty()) return false;
             options.profilePath = argv[++index];
+        }
+        else if (argument == "--prototype-override" && index + 1 < argc)
+        {
+            if (!options.prototypeOverridePath.empty()) return false;
+            options.prototypeOverridePath = argv[++index];
         }
         else if (argument == "--symbols") options.symbols = true;
         else return false;
@@ -101,6 +120,60 @@ int main(int argc, char* argv[])
             std::cerr << error << "\n";
             return 7;
         }
+    }
+    if (options.action == "call")
+    {
+        CallRequest request;
+        request.selector = options.selector;
+        request.correlationId = "cli-call";
+        request.moduleSha256 = catalog.Module().sha256;
+        request.modulePath = catalog.Module().canonicalPath;
+        request.moduleTimestamp = catalog.Module().timestamp;
+        request.moduleImageSize = catalog.Module().imageSize;
+        request.modulePreferredImageBase = catalog.Module().preferredImageBase;
+        request.modulePdbGuid = catalog.Module().pdbGuid;
+        request.modulePdbAge = catalog.Module().pdbAge;
+        const FunctionRecord* record = catalog.Find(options.selector);
+        if (!options.prototypeOverridePath.empty())
+        {
+            std::ifstream overrideFile(options.prototypeOverridePath, std::ios::binary | std::ios::ate);
+            if (!overrideFile) { std::cerr << "Unable to open prototype override\n"; return 6; }
+            const std::streamoff size = overrideFile.tellg();
+            if (size < 0 || size > 4 * 1024 * 1024) { std::cerr << "Prototype override exceeds the 4 MiB limit\n"; return 6; }
+            std::string document(static_cast<size_t>(size), '\0'); overrideFile.seekg(0); if (!document.empty()) overrideFile.read(&document[0], static_cast<std::streamsize>(document.size()));
+            PrototypeProfile overrideProfile; std::vector<ProfileValidationError> overrideErrors;
+            if (!ParsePrototypeProfile(document, overrideProfile, overrideErrors)) { for (const auto& item : overrideErrors) std::cerr << item.code << " at " << item.path << ": " << item.message << "\n"; return 6; }
+            if (record == nullptr) { std::cerr << "Function selector not found or ambiguous\n"; return 8; }
+            for (const auto& item : overrideProfile.functions) if (item.rva == record->startRva) { request.hasPrototypeOverride = true; request.prototypeOverride = item.prototype; break; }
+            if (!request.hasPrototypeOverride) { std::cerr << "Prototype override has no matching function\n"; return 8; }
+        }
+        const PrototypeSpec* argumentPrototype = request.hasPrototypeOverride ? &request.prototypeOverride : (record != nullptr && record->hasPrototype ? &record->prototype : nullptr);
+        if (argumentPrototype != nullptr && argumentPrototype->parameters.size() == options.rawArguments.size())
+        {
+            for (size_t index = 0; index < options.rawArguments.size(); ++index)
+            {
+                const std::string& raw = options.rawArguments[index];
+                const size_t separator = raw.find(':');
+                if (separator == std::string::npos) { CallResult malformed; malformed.correlationId="cli-call"; malformed.status="validation-failed"; malformed.diagnostics.push_back({"invalid-argument-syntax","arguments","--arg requires kind:value"}); if(options.json) WriteCallResultJson(std::cout,malformed); else std::cerr << "--arg requires kind:value\n"; return 8; }
+                CallArgument argument;
+                argument.type = argumentPrototype->parameters[index];
+                const std::string kind = raw.substr(0, separator);
+                if (kind != TypeKindName(argument.type.kind)) { CallResult malformed; malformed.correlationId="cli-call"; malformed.status="validation-failed"; malformed.diagnostics.push_back({"argument-type-mismatch","arguments","argument type does not match prototype"}); if(options.json) WriteCallResultJson(std::cout,malformed); else std::cerr << "argument type does not match prototype\n"; return 8; }
+                argument.value = raw.substr(separator + 1);
+                request.arguments.push_back(std::move(argument));
+            }
+        }
+        std::vector<CallDiagnostic> diagnostics;
+        const bool valid = ValidateCallRequest(request, catalog, diagnostics);
+        CallResult result;
+        result.correlationId = request.correlationId;
+        result.resolvedModule = catalog.Module();
+        if (record != nullptr && record->hasPrototype) result.prototypeUsed = record->prototype;
+        result.success = false;
+        result.status = valid ? "not-executed" : "validation-failed";
+        result.diagnostics = diagnostics;
+        if (options.json) WriteCallResultJson(std::cout, result); else for (const CallDiagnostic& item : diagnostics) std::cerr << item.code << " at " << item.path << ": " << item.message << "\n";
+        return valid ? 9 : 8;
     }
     if (options.action == "describe")
     {

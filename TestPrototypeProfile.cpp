@@ -3,6 +3,7 @@
 
 #include "PrototypeProfile.h"
 #include "DbgHelpDll.h"
+#include "CallContract.h"
 
 #include <windows.h>
 #include <algorithm>
@@ -190,4 +191,43 @@ BOOST_AUTO_TEST_CASE(InferredSymbolEvidenceRemainsDisplayOnly)
     std::string applyError;
     BOOST_REQUIRE(catalog.ApplySymbolEvidence({evidence}, applyError));
     BOOST_CHECK(catalog.Find("NamedExport")->callability == Callability::RequiresPrototype);
+}
+
+BOOST_AUTO_TEST_CASE(InternalAuthorizationIsCatalogOwned)
+{
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+    const FunctionRecord* internal = nullptr;
+    for (const auto& item : catalog.Functions()) if (item.exportNames.empty() && item.executable) { internal = &item; break; }
+    if (internal == nullptr) return;
+    const uint32_t internalRva = internal->startRva;
+    PrototypeProfile profile;
+    std::vector<ProfileValidationError> profileErrors;
+    BOOST_REQUIRE(ParsePrototypeProfile(ProfileDocument(catalog, catalog.Module().architecture), profile, profileErrors));
+    profile.functions.front().rva = internalRva;
+    profile.functions.front().selector.clear();
+    BOOST_REQUIRE(catalog.ApplyProfile(profile, profileErrors));
+    CallRequest request;
+    request.selector = "0x";
+    std::ostringstream selector;
+    selector << "0x" << std::hex << internalRva;
+    request.selector = selector.str();
+    request.correlationId = "internal";
+    request.allowInternal = true;
+    request.authorizationProvenance = "profile:forged";
+    request.moduleSha256 = catalog.Module().sha256;
+    request.modulePath = catalog.Module().canonicalPath;
+    request.moduleTimestamp = catalog.Module().timestamp;
+    request.moduleImageSize = catalog.Module().imageSize;
+    request.modulePreferredImageBase = catalog.Module().preferredImageBase;
+    request.modulePdbGuid = catalog.Module().pdbGuid;
+    request.modulePdbAge = catalog.Module().pdbAge;
+    const FunctionRecord* authorized = catalog.Find(request.selector);
+    if (authorized != nullptr) for (const auto& type : authorized->prototype.parameters) request.arguments.push_back({type, "1"});
+    std::vector<CallDiagnostic> diagnostics;
+    BOOST_CHECK(!ValidateCallRequest(request, catalog, diagnostics));
+    request.authorizationProvenance = "profile:" + catalog.Module().sha256;
+    diagnostics.clear();
+    BOOST_CHECK(ValidateCallRequest(request, catalog, diagnostics));
 }
