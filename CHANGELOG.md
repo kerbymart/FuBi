@@ -90,4 +90,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - Merge pull request #25 from kerbymart/feat/11-native-invocation-x86
 - feat: add bounded Windows call pattern catalog
 - fix: bound and tighten Windows pattern evidence
+- fix: harden pattern catalog arithmetic bounds
 
