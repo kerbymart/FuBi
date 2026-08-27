@@ -37,7 +37,7 @@ additional evidence, but parsing a type does not make it callable.
 | Supported ABI names | `x64`, `win64` | `__cdecl`, `__stdcall`, `__thiscall`, `__fastcall` |
 | Integer widths | 8, 16, 32, 64 bits | 8, 16, 32, 64 bits |
 | Scalar arguments | Boolean, integer, floating point, and pointer values | Boolean, integer, floating point, and pointer values |
-| Scalar returns | Integer, Boolean, and floating point values; pointer returns are rejected by the worker boundary | Integer, Boolean, and floating point values; pointer returns are rejected by the worker boundary |
+| Scalar returns | Integer, Boolean, and floating point values; pointer returns are rejected by the worker boundary | Integer and Boolean values; floating point and pointer returns are rejected by the x86 worker boundary |
 | Structure and `void` returns | Rejected by the native adapter | Rejected by the native adapter |
 | Structures and aggregates as arguments | Rejected by the native adapter | Rejected by the native adapter |
 | Variadic prototypes | Not supported as an invocation contract | Not supported as an invocation contract |
