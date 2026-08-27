@@ -143,6 +143,10 @@ add_executable(call_contract_tests TestCallContract.cpp CallContract.cpp Invocat
 target_link_libraries(call_contract_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 add_dependencies(call_contract_tests export_fixture FubiInvocationWorker)
 
+add_executable(invocation_adapter_tests TestInvocationAdapter.cpp CallContract.cpp InvocationEngine.cpp ProcessInvocation.cpp FunctionCatalog.cpp PrototypeProfile.cpp DbgHelpDll.cpp StaticExportCatalog.cpp PEImage.cpp ${NATIVE_CALL_SOURCES})
+target_link_libraries(invocation_adapter_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
+add_dependencies(invocation_adapter_tests export_fixture FubiInvocationWorker)
+
 add_executable(internal_rva_tests TestInternalRva.cpp CallContract.cpp InvocationEngine.cpp FunctionCatalog.cpp PrototypeProfile.cpp StaticExportCatalog.cpp PEImage.cpp ${NATIVE_CALL_SOURCES})
 target_link_libraries(internal_rva_tests PRIVATE bcrypt fubi_boost_headers fubi_build_limits)
 add_dependencies(internal_rva_tests static_fixture)
@@ -193,6 +197,7 @@ endif()
 add_test(NAME function_catalog COMMAND function_catalog_tests)
 add_test(NAME prototype_profile COMMAND prototype_profile_tests)
 add_test(NAME call_contract COMMAND call_contract_tests)
+add_test(NAME invocation_adapter COMMAND invocation_adapter_tests)
 add_test(NAME internal_rva COMMAND internal_rva_tests)
 add_test(NAME mixed_floating COMMAND mixed_floating_tests)
 add_test(NAME string_output COMMAND string_output_tests)

@@ -18,6 +18,7 @@ std::string ControllerDirectory()
     const size_t slash = result.find_last_of("\\/");
     return result.substr(0, slash + 1);
 }
+
 bool BinaryMatchesArchitecture(const std::string& path,
     const std::string& architecture)
 {
@@ -26,6 +27,7 @@ bool BinaryMatchesArchitecture(const std::string& path,
     if (architecture == "x64") return type == SCS_64BIT_BINARY;
     return architecture == "x86" && type == SCS_32BIT_BINARY;
 }
+
 void RecordExitCode(HANDLE process, CallResult& result)
 {
     DWORD exitCode = 0;
@@ -70,6 +72,58 @@ void RetainWorker(PROCESS_INFORMATION& process, const char* requestPath, const c
     retainedWorkers.push_back({process.hProcess, process.hThread, requestPath, resultPath});
     process.hProcess = nullptr; process.hThread = nullptr;
 }
+}
+
+bool NormalizeCall(const CallRequest& request, const FunctionCatalog& catalog,
+    NormalizedCall& call, std::vector<CallDiagnostic>& diagnostics)
+{
+    diagnostics.clear();
+    if (!ValidateCallRequest(request, catalog, diagnostics))
+        return false;
+
+    const FunctionRecord* selected = catalog.Find(request.selector);
+    if (selected == nullptr && !request.hasPrototypeOverride)
+        return false;
+
+    call = {};
+    call.request = request;
+    call.module = catalog.Module();
+    call.prototype = request.hasPrototypeOverride
+        ? request.prototypeOverride : selected->prototype;
+    return true;
+}
+
+bool DispatchCall(const CallRequest& request, const FunctionCatalog& catalog,
+    InvocationAdapter& adapter, CallResult& result, std::string& error)
+{
+    NormalizedCall call;
+    std::vector<CallDiagnostic> diagnostics;
+    if (!NormalizeCall(request, catalog, call, diagnostics))
+    {
+        result = {};
+        result.action = request.action;
+        result.correlationId = request.correlationId;
+        result.resolvedModule = catalog.Module();
+        result.status = "validation-failed";
+        result.diagnostics = std::move(diagnostics);
+        error = "call request validation failed";
+        return false;
+    }
+
+    result = {};
+    result.action = request.action;
+    result.correlationId = request.correlationId;
+    result.resolvedModule = call.module;
+    result.prototypeUsed = call.prototype;
+    result.status = "not-executed";
+    return adapter.Invoke(call, result, error);
+}
+
+bool WorkerInvocationAdapter::Invoke(const NormalizedCall& call,
+    CallResult& result, std::string& error)
+{
+    return InvokeX64ExportProcess(imagePath_, call.request, catalog_, result,
+        error, allowPointerResults_);
 }
 
 bool SelectInvocationWorker(const std::string& targetArchitecture,

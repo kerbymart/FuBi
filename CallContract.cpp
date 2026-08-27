@@ -186,6 +186,17 @@ void WriteCallResultJson(std::ostream& output, const CallResult& result)
     output << "],\"issued_references\":["; for (size_t i=0;i<result.issuedReferences.size();++i) { if(i) output << ','; Json(output, result.issuedReferences[i]); } output << "],\"released_reference\":"; Json(output, result.releasedReference); output << "}";
 }
 
+void WriteCallResultText(std::ostream& output, const CallResult& result)
+{
+    output << "schema_version: " << result.schemaVersion << '\n'
+        << "action: " << result.action << '\n'
+        << "correlation_id: " << result.correlationId << '\n'
+        << "status: " << result.status << '\n'
+        << "success: " << (result.success ? "true" : "false") << '\n'
+        << "return_value: " << result.returnValue << '\n'
+        << "diagnostics: " << result.diagnostics.size() << '\n';
+}
+
 bool ParseCallRequestJson(const std::string& document, CallRequest& request, std::vector<CallDiagnostic>& diagnostics)
 {
     request = {}; diagnostics.clear(); if(document.size()>4*1024*1024){Diagnostic(diagnostics,"size-limit","$","request is too large");return false;} if(!StrictTopLevel(document, diagnostics)) return false; uint64_t number=0; bool flag=false; std::string text;
