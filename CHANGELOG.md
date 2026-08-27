@@ -123,4 +123,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: align x64 outgoing stack arguments
 - fix: preserve x64 register arguments
 - Merge pull request #45 from kerbymart/feat/44-normalized-x64-call-frame
+- feat: support bounded string and byte buffer arguments
 
