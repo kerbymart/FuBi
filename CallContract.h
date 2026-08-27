@@ -48,4 +48,3 @@ bool ValidateCallRequest(const CallRequest& request, const FunctionCatalog& cata
     std::vector<CallDiagnostic>& diagnostics);
 void WriteCallRequestJson(std::ostream& output, const CallRequest& request);
 void WriteCallResultJson(std::ostream& output, const CallResult& result);
-
