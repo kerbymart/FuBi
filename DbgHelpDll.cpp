@@ -122,7 +122,13 @@ bool DbgHelpDll::EnumerateExactFunctionSymbols(const std::string& imagePath,
     const ModuleIdentity& expected, std::vector<SymbolPrototypeEvidence>& symbols,
     std::string& error)
 {
-    symbols.clear(); ModuleIdentity actual; if (!ReadCodeView(imagePath, actual, error)) return false;
+    symbols.clear();
+    if (expected.sha256.empty() || expected.architecture.empty()) { error = "module hash and architecture are required"; return false; }
+    FunctionCatalog catalog;
+    if (!FunctionCatalog::Load(imagePath, catalog, error)) return false;
+    if (catalog.Module().sha256 != expected.sha256 || catalog.Module().architecture != expected.architecture) { error = "module identity mismatch"; return false; }
+    ModuleIdentity actual = catalog.Module();
+    if (!ReadCodeView(imagePath, actual, error)) return false;
     if (expected.pdbGuid.empty() || expected.pdbGuid != actual.pdbGuid || expected.pdbAge != actual.pdbAge) { error = "PDB CodeView GUID/age mismatch"; return false; }
     if (!Load()) { error = "Unable to load local DbgHelp"; return false; }
     auto initialize = reinterpret_cast<SymInitializeFn>(GetProcAddress(handle_, "SymInitialize"));
@@ -140,6 +146,7 @@ bool DbgHelpDll::EnumerateExactFunctionSymbols(const std::string& imagePath,
     const DWORD64 base = load(process, nullptr, imagePath.c_str(), nullptr, 0, 0, nullptr, 0);
     if (base == 0) { setOptions(oldOptions); cleanup(process); error = "Unable to load matching local PDB"; return false; }
     EnumerationState state{&symbols}; const BOOL okay = enumerate(process, base, nullptr, EnumCallback, &state);
+    for (SymbolPrototypeEvidence& item : symbols) item.module = actual;
     unload(process, base); setOptions(oldOptions); cleanup(process);
     if (!okay) { symbols.clear(); error = "DbgHelp symbol enumeration failed"; return false; }
     std::sort(symbols.begin(), symbols.end(), [](const auto& left, const auto& right) { return left.rva < right.rva; });

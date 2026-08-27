@@ -544,9 +544,11 @@ bool FunctionCatalog::ApplySymbolEvidence(
         for (FunctionRecord& candidateRecord : candidate.functions_)
             if (candidateRecord.startRva == item.rva) { record = &candidateRecord; break; }
         if (record == nullptr) { error = "symbol RVA is not in the catalog"; return false; }
+        if (item.module.sha256 != module_.sha256 || item.module.architecture != module_.architecture) { error = "symbol module identity mismatch"; return false; }
         if (!record->executable || !record->forwarder.empty()) { error = "symbol RVA is not a callable code address"; return false; }
         if (!MergePrototypeEvidence(*record, item.prototype, "dbghelp-pdb", PrototypeQuality::ExactSymbol))
         { error = "symbol prototype conflicts with existing evidence"; return false; }
+        record->id.symbol = item.name;
     }
     *this = std::move(candidate);
     error.clear();
