@@ -2,6 +2,7 @@
 #include <boost/test/included/unit_test.hpp>
 
 #include "CallContract.h"
+#include "InvocationEngine.h"
 #include "FunctionCatalog.h"
 #include "ProcessInvocation.h"
 
@@ -144,6 +145,31 @@ BOOST_AUTO_TEST_CASE(ArchitectureRejectionHappensBeforeTargetLoad)
     BOOST_CHECK(HasDiagnostic(result, "unsupported-abi"));
     BOOST_CHECK_EQUAL(GetFileAttributesA((DirectoryOfExecutable() +
         "x86_abi_fixture.executed").c_str()), INVALID_FILE_ATTRIBUTES);
+}
+
+BOOST_AUTO_TEST_CASE(NormalizedFrameRejectsInvalidLayoutBeforeExecution)
+{
+    NativeCallFrameX86 frame;
+    std::string error;
+    BOOST_CHECK(!InvokeNativeCallX86(frame, error));
+    BOOST_CHECK_EQUAL(error, "x86 native adapter requires a target address");
+
+    frame.targetAddress = 1;
+    frame.argumentCount = 9;
+    BOOST_CHECK(!InvokeNativeCallX86(frame, error));
+    BOOST_CHECK_EQUAL(error, "x86 native adapter supports at most eight arguments");
+
+    frame.argumentCount = 2;
+    frame.convention = X86CallingConvention::Fastcall;
+    frame.stackBytes = 4;
+    BOOST_CHECK(!InvokeNativeCallX86(frame, error));
+    BOOST_CHECK_EQUAL(error, "x86 native adapter frame stack size is inconsistent");
+
+    frame.argumentCount = 0;
+    frame.convention = X86CallingConvention::Thiscall;
+    frame.stackBytes = 0;
+    BOOST_CHECK(!InvokeNativeCallX86(frame, error));
+    BOOST_CHECK_EQUAL(error, "x86 thiscall frame requires an object pointer");
 }
 
 BOOST_AUTO_TEST_CASE(MissingWorkerIsReportedBeforeTargetLoad)

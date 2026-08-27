@@ -159,4 +159,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - feat: add injectable invocation adapter seam (#115)
 - feat: support persistent JSONL pointer references (#119)
 - feat: add opaque handle ownership contract (#120)
+- feat: define normalized x86 call frame
 
