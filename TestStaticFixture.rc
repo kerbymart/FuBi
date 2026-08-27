@@ -1,0 +1,26 @@
+#include <windows.h>
+
+1 VERSIONINFO
+ FILEVERSION 1,2,3,4
+ PRODUCTVERSION 5,6,7,8
+ FILEOS VOS_NT_WINDOWS32
+ FILETYPE VFT_DLL
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904B0"
+        BEGIN
+            VALUE "CompanyName", "FuBi Tests\0"
+            VALUE "ProductName", "Static PE Fixture\0"
+            VALUE "FileDescription", "Non-execution analysis fixture\0"
+            VALUE "FileVersion", "1.2.3.4\0"
+            VALUE "ProductVersion", "5.6.7.8\0"
+            VALUE "OriginalFilename", "static_fixture.dll\0"
+            VALUE "InternalName", "static_fixture\0"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END
