@@ -60,3 +60,12 @@ BOOST_AUTO_TEST_CASE(ForwardersAreNotCallable)
     BOOST_REQUIRE(forwarded != nullptr);
     BOOST_CHECK(forwarded->callability == Callability::Forwarded);
 }
+
+BOOST_AUTO_TEST_CASE(StaticCandidatesAreExecutable)
+{
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+    for (const FunctionRecord& record : catalog.Functions())
+        if (record.forwarder.empty()) BOOST_CHECK(record.executable);
+}
