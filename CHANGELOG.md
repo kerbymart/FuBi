@@ -75,4 +75,9 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - feat: authorize checked internal RVA calls
 - test: cover internal invocation authorization boundary
 - Merge pull request #22 from kerbymart/feat/8-internal-rva-binding
+- feat: add deterministic JSONL session mode
+- fix: enforce strict JSONL request boundaries
+- fix: validate JSON request structure completely
+- fix: enforce JSON number and unicode grammar
+- Merge pull request #23 from kerbymart/feat/9-script-session-protocol
 
