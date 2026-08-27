@@ -35,7 +35,16 @@ std::string ReturnValue(uint64_t value, const TypeSpec& type)
 {
     if (type.kind == TypeKind::Bool) return value ? "true" : "false";
     if (type.kind == TypeKind::Pointer) return "opaque:0x" + [&] { std::ostringstream out; out << std::hex << value; return out.str(); }();
-    if (type.isSigned && type.width > 0 && type.width < 64) { const uint64_t mask=(uint64_t(1)<<type.width)-1; value &= mask; const uint64_t sign=(uint64_t(1)<<(type.width-1)); if(value&sign) value |= ~mask; }
+    if (type.width > 0 && type.width < 64)
+    {
+        const uint64_t mask = (uint64_t(1) << type.width) - 1;
+        value &= mask;
+        if (type.isSigned)
+        {
+            const uint64_t sign = uint64_t(1) << (type.width - 1);
+            if (value & sign) value |= ~mask;
+        }
+    }
     if (type.isSigned) return std::to_string(static_cast<int64_t>(value));
     return std::to_string(value);
 }
