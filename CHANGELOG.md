@@ -60,4 +60,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: preserve call metadata and override transport
 - fix: complete call result transport and policy
 - fix: enforce complete call identity contracts
+- fix: require trusted internal authorization provenance
 
