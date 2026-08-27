@@ -230,15 +230,17 @@ Evidence: Persistent JSONL lifecycle, correlation, malformed-request recovery, a
 - [x] M7-02 Support `hello`, `list`, `describe`, `call`, `release`, and `quit`. ([PR #23](https://github.com/kerbymart/FuBi/pull/23), [PR #76](https://github.com/kerbymart/FuBi/pull/76))
 - [x] M7-03 Preserve correlation IDs in every response. ([PR #23](https://github.com/kerbymart/FuBi/pull/23))
 - [x] M7-04 Add persistent module sessions through the shared command service. ([PR #76](https://github.com/kerbymart/FuBi/pull/76), [PR #119](https://github.com/kerbymart/FuBi/pull/119))
-- [x] M7-05 Represent pointer results with opaque IDs rather than lossy JSON
-  numbers, and validate same-session pointer reuse. Explicit handle reuse remains in [issue #118](https://github.com/kerbymart/FuBi/issues/118). ([PR #113](https://github.com/kerbymart/FuBi/pull/113), [PR #119](https://github.com/kerbymart/FuBi/pull/119))
+- [x] M7-05 Represent pointer and handle results with session-scoped opaque IDs
+  rather than lossy JSON numbers. Validate same-session reuse, ownership,
+  architecture width, raw-reference rejection, and explicit `CloseHandle`
+  release. ([PR #113](https://github.com/kerbymart/FuBi/pull/113), [PR #119](https://github.com/kerbymart/FuBi/pull/119), [PR #120](https://github.com/kerbymart/FuBi/pull/120))
 - [x] M7-06 Do not automatically dereference opaque IDs or arbitrary returned
   pointers. ([PR #113](https://github.com/kerbymart/FuBi/pull/113))
 - [x] M7-07 Build `--shell` on the same command model and retain `--interactive`
   as a compatibility alias. ([PR #76](https://github.com/kerbymart/FuBi/pull/76))
 - [x] M7-08 Recover from malformed requests without corrupting the session. ([PR #53](https://github.com/kerbymart/FuBi/pull/53))
 - [x] M7-09 Pass multi-call session, opaque-reference reuse/release/isolation,
-  stdout/stderr, and protocol-negotiation tests. ([PR #76](https://github.com/kerbymart/FuBi/pull/76), [PR #113](https://github.com/kerbymart/FuBi/pull/113), [PR #119](https://github.com/kerbymart/FuBi/pull/119))
+  handle ownership, stdout/stderr, and protocol-negotiation tests. ([PR #76](https://github.com/kerbymart/FuBi/pull/76), [PR #113](https://github.com/kerbymart/FuBi/pull/113), [PR #119](https://github.com/kerbymart/FuBi/pull/119), [PR #120](https://github.com/kerbymart/FuBi/pull/120))
 
 ## Milestone 8 — Isolated call worker
 
