@@ -101,19 +101,27 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     }
     FunctionRecord const* selected=catalog.Find(request.selector);
     if (selected == nullptr) { error="function selector is unavailable"; return false; }
-    if (selected->exportNames.empty()) { error="internal targets are not supported by the export invocation engine"; return false; }
+    if (selected->exportNames.empty() && (!request.allowInternal || !selected->executable)) { error="internal target is not executable or authorized"; return false; }
     const PrototypeSpec prototype=request.hasPrototypeOverride?request.prototypeOverride:selected->prototype;
     if (prototype.returnType.kind == TypeKind::Floating || prototype.returnType.kind == TypeKind::Structure || prototype.returnType.kind == TypeKind::Void)
     { result={}; result.correlationId=request.correlationId; result.status="validation-failed"; result.diagnostics.push_back({"unsupported-return-type","prototype.return_type","x64 adapter supports scalar integer, bool, and pointer returns only"}); error="unsupported x64 return type"; return false; }
     FunctionCatalog current; if (!FunctionCatalog::Load(imagePath, current, error) || !SameIdentity(current.Module(), catalog.Module())) { error = "runtime module identity changed"; return false; }
     const FunctionRecord* record=selected;
     HMODULE module=LoadLibraryExA(imagePath.c_str(),nullptr,LOAD_LIBRARY_SEARCH_DLL_LOAD_DIR|LOAD_LIBRARY_SEARCH_DEFAULT_DIRS); if(module==nullptr){error="unable to load target module";return false;}
-    FARPROC address=GetProcAddress(module,record->exportNames.front().c_str());
-    if(address==nullptr){FreeLibrary(module);error="export address is unavailable";return false;}
+    FARPROC address=nullptr;
+    const uintptr_t moduleBase=reinterpret_cast<uintptr_t>(module);
+    if (!record->exportNames.empty()) address=GetProcAddress(module,record->exportNames.front().c_str());
+    else
+    {
+        if (record->startRva > current.Module().imageSize || moduleBase > std::numeric_limits<uintptr_t>::max() - record->startRva)
+        { FreeLibrary(module); error="internal RVA arithmetic is invalid"; return false; }
+        address=reinterpret_cast<FARPROC>(moduleBase + record->startRva);
+    }
+    if(address==nullptr){FreeLibrary(module);error="target address is unavailable";return false;}
     uint64_t values[8]={}; if(request.arguments.size()>8){FreeLibrary(module);error="x64 adapter supports at most eight arguments";return false;}
     for(size_t i=0;i<request.arguments.size();++i) if(!Value(request.arguments[i],values[i])) { FreeLibrary(module); error="invalid typed argument"; return false; }
-    const uintptr_t moduleBase=reinterpret_cast<uintptr_t>(module); const uintptr_t functionAddress=reinterpret_cast<uintptr_t>(address);
-    if (functionAddress < moduleBase || functionAddress-moduleBase > UINT32_MAX || static_cast<uint32_t>(functionAddress-moduleBase) != record->startRva) { FreeLibrary(module); error="resolved export does not match static RVA"; return false; }
+    const uintptr_t functionAddress=reinterpret_cast<uintptr_t>(address);
+    if (functionAddress < moduleBase || functionAddress-moduleBase > UINT32_MAX || static_cast<uint32_t>(functionAddress-moduleBase) != record->startRva) { FreeLibrary(module); error="resolved target does not match static RVA"; return false; }
     unsigned available=0;
     if (!retainedTimeoutWorkers.compare_exchange_strong(available, 1, std::memory_order_acq_rel))
     {
