@@ -87,6 +87,7 @@ public:
 
 private:
     bool Parse(std::string& error);
+    std::optional<size_t> MappedRvaLength(uint32_t rva) const;
 
     std::string sourceName_;
     std::vector<uint8_t> bytes_;

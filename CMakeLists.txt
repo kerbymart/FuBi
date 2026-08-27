@@ -52,7 +52,7 @@ add_executable(
     StaticExportCatalog.cpp
     PEImage.cpp)
 target_link_libraries(static_catalog_tests PRIVATE fubi_boost_headers)
-add_dependencies(static_catalog_tests static_fixture)
+add_dependencies(static_catalog_tests static_fixture export_fixture)
 
 enable_testing()
 add_test(NAME signature_parser COMMAND tests)
