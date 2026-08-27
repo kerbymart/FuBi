@@ -254,6 +254,12 @@ add_test(
         -DACCEPTANCE_FILE=${FUBI_ACCEPTANCE_BINARY}
         -DSHA256=${FUBI_ACCEPTANCE_SHA256}
         -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyAcceptance.cmake)
+add_test(
+    NAME acceptance_t1pidd_catalog
+    COMMAND ${CMAKE_COMMAND}
+        -DFUBI=$<TARGET_FILE:Fubi>
+        -DOUTPUT_DIR=$<TARGET_FILE_DIR:Fubi>
+        -P ${CMAKE_CURRENT_SOURCE_DIR}/VerifyT1PiddAcceptance.cmake)
 if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 4)
     add_test(
         NAME x86_nonvolatile_registers
