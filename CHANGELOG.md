@@ -102,4 +102,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: keep incomplete PDB graphs display-only
 - Merge pull request #30 from kerbymart/feat/29-pdb-type-graph
 - test: cover x64 invocation fixture matrix
+- fix: preserve narrow scalar return widths
 
