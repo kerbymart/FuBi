@@ -187,4 +187,7 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - Merge pull request #145 from kerbymart/test/144-static-inspection-cli
 - docs: document export and signature evidence
 - Merge pull request #147 from kerbymart/docs/146-export-signature-docs
+- test: align export count expectations
+- fix: match complete export fixture count
+- Merge pull request #149 from kerbymart/test/148-export-count
 
