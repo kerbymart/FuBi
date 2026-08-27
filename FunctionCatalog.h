@@ -103,6 +103,7 @@ struct FunctionRecord
     std::vector<std::string> callabilityReasons;
     bool executable = false;
     std::string forwarder;
+    std::vector<std::string> forwarders;
     std::vector<std::string> exportNames;
     std::vector<uint32_t> exportOrdinals;
 };
