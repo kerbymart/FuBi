@@ -14,3 +14,5 @@ EXPORTS
     PointerEcho @10
     CrashProcess @11
     HangProcess @12
+    NarrowStringLength @15
+    WideStringLength @16
