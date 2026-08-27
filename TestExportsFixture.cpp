@@ -1,5 +1,8 @@
 #include <windows.h>
 
+#include <cstring>
+#include <cwchar>
+
 extern "C" int NamedExport()
 {
     return 42;
@@ -44,6 +47,16 @@ extern "C" double MultiplyDoubles(double left, double right)
 extern "C" int* PointerEcho(int* value)
 {
     return value;
+}
+
+extern "C" int NarrowStringLength(const char* value)
+{
+    return value == nullptr ? -1 : static_cast<int>(std::strlen(value));
+}
+
+extern "C" int WideStringLength(const wchar_t* value)
+{
+    return value == nullptr ? -1 : static_cast<int>(std::wcslen(value));
 }
 
 extern "C" void CrashProcess()
