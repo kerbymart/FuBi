@@ -38,10 +38,11 @@ set(SOURCES
     StaticExportCatalog.cpp
     FunctionCatalog.cpp
     PrototypeProfile.cpp
+    DbgHelpDll.cpp
     fubimain.cpp
     stdafx.cpp)
 add_executable(Fubi ${SOURCES})
-target_link_libraries(Fubi PRIVATE bcrypt fubi_build_limits)
+target_link_libraries(Fubi PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 
 set(TEST_SOURCES TestSignatureParser.cpp)
 add_executable(tests ${TEST_SOURCES})
