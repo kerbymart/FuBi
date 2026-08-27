@@ -34,19 +34,19 @@ arguments_ready:
     cmp r11d, 5
     jb short stack_ready
     mov rdx, qword ptr [r10+20h]
-    mov qword ptr [rsp+28h], rdx
+    mov qword ptr [rsp+20h], rdx
     cmp r11d, 6
     jb short stack_ready
     mov rdx, qword ptr [r10+28h]
-    mov qword ptr [rsp+30h], rdx
+    mov qword ptr [rsp+28h], rdx
     cmp r11d, 7
     jb short stack_ready
     mov rdx, qword ptr [r10+30h]
-    mov qword ptr [rsp+38h], rdx
+    mov qword ptr [rsp+30h], rdx
     cmp r11d, 8
     jb short stack_ready
     mov rdx, qword ptr [r10+38h]
-    mov qword ptr [rsp+40h], rdx
+    mov qword ptr [rsp+38h], rdx
 stack_ready:
     call rax
     mov r10, qword ptr [rsp+50h]
