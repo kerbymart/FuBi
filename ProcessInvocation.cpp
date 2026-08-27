@@ -102,7 +102,8 @@ bool SelectInvocationWorker(const std::string& targetArchitecture,
 }
 
 bool InvokeX64ExportProcess(const std::string& imagePath, const CallRequest& request,
-    const FunctionCatalog& catalog, CallResult& result, std::string& error)
+    const FunctionCatalog& catalog, CallResult& result, std::string& error,
+    bool allowPointerResults)
 {
     ReapRetainedWorkers();
     auto failure = [&](const char* status, const char* code, const char* message)
@@ -127,7 +128,7 @@ bool InvokeX64ExportProcess(const std::string& imagePath, const CallRequest& req
     const FunctionRecord* selected = catalog.Find(request.selector);
     const PrototypeSpec& prototype = request.hasPrototypeOverride
         ? request.prototypeOverride : selected->prototype;
-    if (prototype.returnType.kind == TypeKind::Pointer)
+    if (prototype.returnType.kind == TypeKind::Pointer && !allowPointerResults)
     {
         result = {};
         result.correlationId = request.correlationId;
