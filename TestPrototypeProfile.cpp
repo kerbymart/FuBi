@@ -207,8 +207,8 @@ BOOST_AUTO_TEST_CASE(IncompletePdbTypeGraphRemainsDisplayOnly)
     evidence.module = catalog.Module();
     evidence.name = "NamedExport";
     BOOST_REQUIRE(catalog.ApplySymbolEvidence({evidence}, error));
-    BOOST_CHECK_EQUAL(catalog.Find("NamedExport")->callability, Callability::RequiresPrototype);
-    BOOST_CHECK_EQUAL(catalog.Find("NamedExport")->prototype.quality, PrototypeQuality::Inferred);
+    BOOST_CHECK(static_cast<int>(catalog.Find("NamedExport")->callability) == static_cast<int>(Callability::RequiresPrototype));
+    BOOST_CHECK(static_cast<int>(catalog.Find("NamedExport")->prototype.quality) == static_cast<int>(PrototypeQuality::Inferred));
 }
 
 BOOST_AUTO_TEST_CASE(InternalAuthorizationIsCatalogOwned)

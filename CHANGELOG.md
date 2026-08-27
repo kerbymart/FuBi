@@ -96,4 +96,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - Merge pull request #27 from kerbymart/test/13-t1pidd-catalog-acceptance
 - feat: extract bounded PDB type metadata
 - fix: keep partial PDB metadata display-only
+- fix: compile display-only PDB regression
 
