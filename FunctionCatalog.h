@@ -142,8 +142,12 @@ public:
         std::vector<ProfileValidationError>& errors);
     bool ApplySymbolEvidence(const std::vector<SymbolPrototypeEvidence>& evidence,
         std::string& error);
+    bool HasTrustedInternalAuthorization(uint32_t rva,
+        const std::string& provenance) const;
 
 private:
     ModuleIdentity module_;
     std::vector<FunctionRecord> functions_;
+    std::string trustedProfileProvenance_;
+    std::vector<uint32_t> trustedProfileRvas_;
 };

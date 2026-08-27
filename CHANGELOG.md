@@ -52,4 +52,15 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - fix: bind symbol evidence to module identity
 - fix: keep undecorated symbols display-only
 - Merge pull request #18 from kerbymart/feat/5-symbol-and-profile-prototypes
+- feat: add typed call request contracts
+- style: normalize call contract header
+- fix: harden typed call validation and transport
+- fix: round-trip call diagnostics
+- fix: preserve call contract metadata and errors
+- fix: preserve call metadata and override transport
+- fix: complete call result transport and policy
+- fix: enforce complete call identity contracts
+- fix: require trusted internal authorization provenance
+- fix: require catalog-owned internal authorization
+- Merge pull request #20 from kerbymart/feat/6-typed-call-request
 
