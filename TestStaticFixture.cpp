@@ -1,6 +1,7 @@
 #include <windows.h>
 
 #include <climits>
+#include <cstring>
 
 namespace
 {
@@ -82,6 +83,22 @@ extern "C" __declspec(dllexport) int CallInternalAdd(int left, int right)
 {
     volatile int result = InternalAddFixture(left, right);
     return result;
+}
+
+extern "C" __declspec(dllexport) int WriteNarrowString(char* buffer)
+{
+    if (buffer == nullptr) return 0;
+    const char value[] = "fubi-output";
+    std::memcpy(buffer, value, sizeof(value));
+    return static_cast<int>(sizeof(value) - 1);
+}
+
+extern "C" __declspec(dllexport) int WriteWideString(wchar_t* buffer)
+{
+    if (buffer == nullptr) return 0;
+    const wchar_t value[] = L"fubi-wide";
+    std::memcpy(buffer, value, sizeof(value));
+    return static_cast<int>(sizeof(value) / sizeof(value[0]) - 1);
 }
 
 BOOL WINAPI DllMain(HINSTANCE, DWORD reason, LPVOID)
