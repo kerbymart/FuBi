@@ -4,7 +4,7 @@ Source: [`FUBI_TECHNICAL_DESIGN_PLAN.md`](./FUBI_TECHNICAL_DESIGN_PLAN.md)
 Created: 2026-08-27
 Last updated: 2026-08-27
 Roadmap status: **Baseline implementations merged; acceptance work remains**
-Current milestone: **Acceptance gaps, PDB type conversion, and history maintenance**
+Current milestone: **Acceptance gaps, PDB type conversion, tracker evidence, and history maintenance**
 
 ## How to use this tracker
 
@@ -35,7 +35,7 @@ Current milestone: **Acceptance gaps, PDB type conversion, and history maintenan
 | 10. Focused Windows patterns | `feat/12-windows-call-pattern-catalog` | 2 | In progress | [PR #26](https://github.com/kerbymart/FuBi/pull/26) |
 | 11. t1pidd catalog acceptance | `test/13-t1pidd-catalog-acceptance` | 3 | In progress | [PR #27](https://github.com/kerbymart/FuBi/pull/27) |
 
-Overall roadmap: **11/11 milestones have baseline implementation PRs, with detailed acceptance checklists still open**. Bounded PDB metadata is merged in [PR #28](https://github.com/kerbymart/FuBi/pull/28) and display-only graph validation is merged in [PR #30](https://github.com/kerbymart/FuBi/pull/30). Complete invocation-grade PDB type conversion remains open in [#29](https://github.com/kerbymart/FuBi/issues/29), published-history rewriting remains open in [#14](https://github.com/kerbymart/FuBi/issues/14), and the unchecked acceptance items below remain authoritative.
+Overall roadmap: **11/11 milestones have baseline implementation PRs, with detailed acceptance checklists still open**. Bounded PDB metadata is merged in [PR #28](https://github.com/kerbymart/FuBi/pull/28) and display-only graph validation is merged in [PR #30](https://github.com/kerbymart/FuBi/pull/30). Internal RVA acceptance is covered by [PR #62](https://github.com/kerbymart/FuBi/pull/62), bounded string output by [PR #64](https://github.com/kerbymart/FuBi/pull/64), mixed x64 ABI placement by [PR #68](https://github.com/kerbymart/FuBi/pull/68), and adversarial parser boundaries by [PR #70](https://github.com/kerbymart/FuBi/pull/70). Complete invocation-grade PDB type conversion remains open in [#29](https://github.com/kerbymart/FuBi/issues/29), published-history rewriting remains open in [#14](https://github.com/kerbymart/FuBi/issues/14), and the unchecked acceptance items below remain authoritative.
 
 ## Design approval gate
 
@@ -158,7 +158,7 @@ Evidence: _None_
 Status: **In progress**
 Branch: `feat/6-typed-call-request`
 Depends on: M3
-Evidence: _None_
+Evidence: Bounded string output and inout marshalling in [PR #64](https://github.com/kerbymart/FuBi/pull/64), with targeted call-contract and string-output tests.
 
 - [ ] M4-01 Implement versioned `CallRequest`, `CallResult`, and structured
   diagnostic records.
@@ -182,7 +182,7 @@ Evidence: _None_
 Status: **In progress**
 Branch: `feat/7-native-invocation-x64`
 Depends on: M4
-Evidence: _None_
+Evidence: Mixed integer, floating, pointer, and stack-position coverage in [PR #68](https://github.com/kerbymart/FuBi/pull/68), with JSON round-trip and static non-execution assertions.
 
 - [ ] M5-01 Add a normalized call frame independent of catalog and CLI logic.
 - [ ] M5-02 Implement the project-owned Windows x64 assembly invocation adapter.
@@ -196,7 +196,7 @@ Evidence: _None_
   ordinal exports with `GetProcAddress`.
 - [ ] M5-08 Add one-shot `--call` using the shared command service.
 - [ ] M5-09 Reject unsupported ABI/types before loading or invoking the DLL.
-- [ ] M5-10 Pass the x64 fixture matrix, including more than four arguments and
+- [x] M5-10 Pass the x64 fixture matrix, including more than four arguments and
   stack/register invariant tests.
 
 ## Milestone 6 — Internal RVA binding
@@ -204,7 +204,7 @@ Evidence: _None_
 Status: **In progress**
 Branch: `feat/8-internal-rva-binding`
 Depends on: M5
-Evidence: _None_
+Evidence: Hash-pinned internal RVA fixture and policy/identity rejection coverage in [PR #62](https://github.com/kerbymart/FuBi/pull/62).
 
 - [ ] M6-01 Recheck loaded module path, SHA-256, architecture, and image identity.
 - [ ] M6-02 Validate that the selected RVA lies in an executable section.
@@ -215,7 +215,7 @@ Evidence: _None_
   stronger override is defined.
 - [ ] M6-07 Emit stable failures for mismatched hashes, invalid RVAs, missing
   authorization, and blocked entry points.
-- [ ] M6-08 Verify an internal fixture is called only with a matching hash-pinned
+- [x] M6-08 Verify an internal fixture is called only with a matching hash-pinned
   profile and explicit authorization; mismatches are never executed.
 
 ## Milestone 7 — Script session protocol
@@ -280,8 +280,8 @@ Evidence: _None_
 
 Status: **In progress**
 Branch: `feat/12-windows-call-pattern-catalog`
-Depends on: M2; may proceed independently of M3–M9 after D-10 permits it
-Evidence: _None_
+Depends on: M2; may proceed independently of M3 through M9 after D-10 permits it
+Evidence: Bounded WDF and CFG recognizers with positive and truncated fixtures in [PR #58](https://github.com/kerbymart/FuBi/pull/58).
 
 - [ ] M10-01 Keep this provider separate from the general catalog and do not
   expose a disassembly UI.
@@ -325,25 +325,29 @@ Evidence: _None_
 - [ ] T-01 Controlled x64 and x86 fixture DLLs.
 - [ ] T-02 Zero-argument and all supported integer-width returns.
 - [ ] T-03 Pointer/handle echo and C-string/wide-string length functions.
-- [ ] T-04 Input checksum and output/inout buffer functions.
-- [ ] T-05 Floating argument/return fixtures when floating support begins.
+- [x] T-04 Input checksum and output/inout buffer functions. String output and
+  inout coverage is in [PR #64](https://github.com/kerbymart/FuBi/pull/64).
+- [x] T-05 Floating argument/return fixtures when floating support begins.
+  Mixed ABI coverage is in [PR #68](https://github.com/kerbymart/FuBi/pull/68).
 - [ ] T-06 Named, ordinal-only, aliased, and forwarded exports.
-- [ ] T-07 Internal non-exported function with a profile-known RVA.
+- [x] T-07 Internal non-exported function with a profile-known RVA.
 - [ ] T-08 Crash and hang functions.
-- [ ] T-09 `DllMain` marker proving metadata commands never execute the target.
+- [x] T-09 `DllMain` marker proving metadata commands never execute the target.
+  Static catalog assertions are covered in [PR #62](https://github.com/kerbymart/FuBi/pull/62) and [PR #68](https://github.com/kerbymart/FuBi/pull/68).
 - [ ] T-10 Unit coverage for selectors, type parsing, validation, catalog merge,
   callability transitions, JSON round trips, diagnostics, and exit codes.
-- [ ] T-11 Fuzz or adversarial cases for truncated PE data, offsets, sizes,
-  counts, profile data, and requests.
+- [x] T-11 Adversarial cases for truncated PE data, offsets, sizes, counts,
+  profile data, and requests. See [PR #70](https://github.com/kerbymart/FuBi/pull/70).
 
 ## Documentation and compatibility backlog
 
-- [ ] DOC-01 Document the catalog-first product workflow and safety model.
+- [x] DOC-01 Document the catalog-first product workflow and safety model. See
+  [PR #66](https://github.com/kerbymart/FuBi/pull/66).
 - [ ] DOC-02 Document text, one-shot JSON, JSONL session, and exit-code contracts.
 - [ ] DOC-03 Document the profile schema with hash-pinned export and RVA
   examples.
-- [ ] DOC-04 Explain that calling commands may execute `DllMain` and arbitrary
-  target code.
+- [x] DOC-04 Explain that calling commands may execute `DllMain` and arbitrary
+  target code. See [PR #66](https://github.com/kerbymart/FuBi/pull/66).
 - [ ] DOC-05 Preserve complete export enumeration, signature dumps, aliases,
   ordinals, forwarders, decorated-name recovery, and human-readable output.
 - [ ] DOC-06 Deprecate analysis-first language and general disassembly flags.
