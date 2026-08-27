@@ -64,8 +64,6 @@ execute_process(COMMAND "${FUBI}" "${FIXTURE}" --call ThisCallRegisterCheck --pr
 if(NOT REGISTER_RESULT EQUAL 0 OR NOT REGISTER_OUTPUT MATCHES "\\\"return_value\\\":\\\"305419899\\\"")
     message(FATAL_ERROR "thiscall register preservation failed: ${REGISTER_RESULT}: ${REGISTER_ERROR}: ${REGISTER_OUTPUT}")
 endif()
-run_call(ThisCallRegisterCheck 305419899 --arg integer:305419896)
-
 execute_process(COMMAND "${FUBI}" "${FIXTURE}" --call "#1" --prototype-override "${PROFILE}"
     --arg "pointer:opaque:0x13572468" --json
     WORKING_DIRECTORY "${OUTPUT_DIR}" RESULT_VARIABLE ORDINAL_RESULT OUTPUT_VARIABLE ORDINAL_OUTPUT ERROR_VARIABLE ORDINAL_ERROR)
