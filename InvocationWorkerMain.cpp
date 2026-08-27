@@ -72,6 +72,17 @@ bool ParseWorkerPointer(const std::string& text, uint64_t& value)
     return true;
 }
 
+SessionReferences::HandleReleaseAdapter ConfigureHandleReleaseAdapter(
+    const std::string& imagePath, const FunctionCatalog& catalog,
+    const TypeSpec& handleType)
+{
+    if (handleType.releaseAdapter == "CloseHandle")
+        return [](uint64_t value) {
+            return CloseHandle(reinterpret_cast<HANDLE>(static_cast<uintptr_t>(value))) != FALSE;
+        };
+    return {};
+}
+
 bool WriteProtocolLine(HANDLE protocol, const CallResult& result)
 {
     std::ostringstream encoded;
@@ -201,8 +212,9 @@ int RunSession(const char* imagePath, HANDLE protocol)
                     else
                     {
                         SessionReferences::HandleReleaseAdapter release;
-                        if (result.prototypeUsed.returnType.releaseAdapter == "CloseHandle")
-                            release = [](uint64_t value) { return CloseHandle(reinterpret_cast<HANDLE>(static_cast<uintptr_t>(value))) != FALSE; };
+                        if (result.prototypeUsed.returnType.kind == TypeKind::Handle)
+                            release = ConfigureHandleReleaseAdapter(imagePath, catalog,
+                                result.prototypeUsed.returnType);
                         result.returnValue = result.prototypeUsed.returnType.kind == TypeKind::Handle
                             ? references.IssueHandle(address, {result.prototypeUsed.returnType.width, catalog.Module().sha256, catalog.Module().architecture, result.prototypeUsed.returnType.ownership, std::move(release)})
                             : references.Issue(address);
