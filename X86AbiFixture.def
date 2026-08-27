@@ -1,0 +1,9 @@
+LIBRARY x86_abi_fixture
+EXPORTS
+    CdeclReturn8 @1
+    CdeclReturn16 @2
+    CdeclReturn32 @3
+    CdeclReturn64 @4
+    CdeclSum8 @5
+    StdcallSum8=_StdcallSum8@32 @6
+    StdcallReturn64=_StdcallReturn64@0 @7

@@ -40,5 +40,4 @@ execute_process(COMMAND "${FUBI}" "${FIXTURE}" --call CdeclAdd --arg integer:1 -
 if(NOT mismatch_rc EQUAL 6)
     message(FATAL_ERROR "x64 ABI/profile was not rejected before loading: ${mismatch_rc}")
 endif()
-file(REMOVE "${profile}")
-file(REMOVE "${invalid_path}")
+file(REMOVE "${profile}" "${invalid_path}")
