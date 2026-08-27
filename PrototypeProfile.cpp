@@ -147,8 +147,8 @@ bool ValidType(const TypeSpec& type)
     case TypeKind::Bool: return type.width == 1;
     case TypeKind::Integer: return std::set<uint16_t>{8, 16, 32, 64}.count(type.width) != 0;
     case TypeKind::Floating: return std::set<uint16_t>{32, 64}.count(type.width) != 0;
-    case TypeKind::String: return type.pointerDepth >= 1;
-    case TypeKind::Bytes: return type.pointerDepth >= 1 && type.width == 8;
+    case TypeKind::String: return type.pointerDepth == 1;
+    case TypeKind::Bytes: return type.pointerDepth == 1 && type.width == 8;
     case TypeKind::Pointer: return type.pointerDepth >= 1;
     case TypeKind::Structure: return type.width != 0;
     default: return false;

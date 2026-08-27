@@ -144,6 +144,36 @@ BOOST_AUTO_TEST_CASE(ByteBufferContractsValidateHexAndBounds)
         [](const CallDiagnostic& item) { return item.code == "buffer-size-overflow"; }));
 }
 
+BOOST_AUTO_TEST_CASE(StringContractsRejectNestedPointersAndInvalidUtf8)
+{
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+    CallRequest request;
+    request.correlationId = "string-1";
+    request.selector = "NamedExport";
+    request.hasPrototypeOverride = true;
+    request.prototypeOverride.quality = PrototypeQuality::UserDeclared;
+    request.prototypeOverride.abi = catalog.Module().architecture == "x64" ? "x64" : "__cdecl";
+    request.prototypeOverride.returnType = {TypeKind::Integer, 32};
+    TypeSpec stringType;
+    stringType.kind = TypeKind::String;
+    stringType.width = 8;
+    stringType.pointerDepth = 1;
+    stringType.encoding = "utf8";
+    request.prototypeOverride.parameters = {stringType};
+    request.arguments = {{{stringType, "hello"}}};
+    std::vector<CallDiagnostic> diagnostics;
+    BOOST_CHECK(ValidateCallRequest(request, catalog, diagnostics));
+    request.arguments[0].value = "\xC3\x28";
+    diagnostics.clear();
+    BOOST_CHECK(!ValidateCallRequest(request, catalog, diagnostics));
+    request.arguments[0].value = "hello";
+    request.arguments[0].type.pointerDepth = 2;
+    diagnostics.clear();
+    BOOST_CHECK(!ValidateCallRequest(request, catalog, diagnostics));
+}
+
 BOOST_AUTO_TEST_CASE(ValidationRejectsBadRangeCountAndDisplayOnlyPrototype)
 {
     FunctionCatalog catalog;

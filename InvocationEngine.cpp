@@ -100,6 +100,11 @@ bool PrepareStorage(const CallArgument& argument, std::vector<unsigned char>& st
             storage.push_back(0);
         }
         else { error = "string encoding must be cstr, utf8, utf16, or wstr"; return false; }
+        if (argument.bufferSize != 0 && storage.size() > argument.bufferSize)
+        {
+            error = "string value exceeds its buffer size";
+            return false;
+        }
         return storage.size() <= 16 * 1024 * 1024;
     }
     if (argument.type.kind != TypeKind::Bytes)
