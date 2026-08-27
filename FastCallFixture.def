@@ -1,6 +1,6 @@
 LIBRARY FastCallFixture
 EXPORTS
-    FastCallByte=_FastCallByte
-    FastCallWord=_FastCallWord
-    FastCallDword=_FastCallDword
-    FastCallRegisterCheck=_FastCallRegisterCheck
+    FastCallByte
+    FastCallWord
+    FastCallDword
+    FastCallRegisterCheck

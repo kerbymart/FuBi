@@ -1,11 +1,11 @@
 .386
 .model flat
 .code
-PUBLIC _FastCallByte
-PUBLIC _FastCallWord
-PUBLIC _FastCallDword
-PUBLIC _FastCallRegisterCheck
-_FastCallByte PROC
+PUBLIC FastCallByte
+PUBLIC FastCallWord
+PUBLIC FastCallDword
+PUBLIC FastCallRegisterCheck
+FastCallByte PROC
     cmp ecx, 13572468h
     jne bad_byte
     mov eax, 0A5h
@@ -13,8 +13,8 @@ _FastCallByte PROC
 bad_byte:
     xor eax, eax
     ret
-_FastCallByte ENDP
-_FastCallWord PROC
+FastCallByte ENDP
+FastCallWord PROC
     cmp ecx, 13572468h
     jne bad_word
     cmp edx, 1234h
@@ -24,8 +24,8 @@ _FastCallWord PROC
 bad_word:
     xor eax, eax
     ret
-_FastCallWord ENDP
-_FastCallDword PROC
+FastCallWord ENDP
+FastCallDword PROC
     cmp ecx, 13572468h
     jne bad_dword
     cmp edx, 2468h
@@ -36,8 +36,8 @@ _FastCallDword PROC
 bad_dword:
     xor eax, eax
     ret 8
-_FastCallDword ENDP
-_FastCallRegisterCheck PROC
+FastCallDword ENDP
+FastCallRegisterCheck PROC
     push ebx
     push esi
     push edi
@@ -59,5 +59,5 @@ bad_registers:
     pop esi
     pop ebx
     ret 8
-_FastCallRegisterCheck ENDP
+FastCallRegisterCheck ENDP
 END

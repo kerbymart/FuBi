@@ -59,7 +59,7 @@ file(WRITE "${SESSION_SCRIPT}" "@echo off\n\"%~1\" \"%~2\" --jsonl < \"%~3\"\nex
 execute_process(COMMAND cmd /c call "${SESSION_SCRIPT}" "${FUBI}" "${FIXTURE}"
     "${OUTPUT_DIR}/invalid-fastcall.jsonl" WORKING_DIRECTORY "${OUTPUT_DIR}"
     RESULT_VARIABLE SESSION_RESULT OUTPUT_VARIABLE SESSION_OUTPUT ERROR_VARIABLE SESSION_ERROR)
-if(NOT SESSION_RESULT EQUAL 0 OR NOT SESSION_OUTPUT MATCHES "missing-object-pointer")
+if(NOT SESSION_RESULT EQUAL 0 OR NOT SESSION_OUTPUT MATCHES "argument-count-mismatch")
     message(FATAL_ERROR "invalid fastcall request failed: ${SESSION_RESULT}: ${SESSION_ERROR}: ${SESSION_OUTPUT}")
 endif()
 if(EXISTS "${OUTPUT_DIR}/fastcall_fixture.loaded")
