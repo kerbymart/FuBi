@@ -108,6 +108,42 @@ BOOST_AUTO_TEST_CASE(SessionActionsRoundTripWithoutCallSelectors)
         [](const CallDiagnostic& item) { return item.code == "unsupported-action"; }));
 }
 
+BOOST_AUTO_TEST_CASE(ByteBufferContractsValidateHexAndBounds)
+{
+    FunctionCatalog catalog;
+    std::string error;
+    BOOST_REQUIRE(FunctionCatalog::Load(FixturePath(), catalog, error));
+    CallRequest request;
+    request.correlationId = "bytes-1";
+    request.selector = "NamedExport";
+    request.hasPrototypeOverride = true;
+    request.prototypeOverride.quality = PrototypeQuality::UserDeclared;
+    request.prototypeOverride.abi = catalog.Module().architecture == "x64" ? "x64" : "__cdecl";
+    request.prototypeOverride.returnType = {TypeKind::Integer, 32};
+    TypeSpec bytes;
+    bytes.kind = TypeKind::Bytes;
+    bytes.width = 8;
+    bytes.pointerDepth = 1;
+    request.prototypeOverride.parameters = {bytes};
+    request.arguments = {{{bytes, "0011aaff"}}};
+    request.arguments[0].bufferSize = 4;
+    std::vector<CallDiagnostic> diagnostics;
+    BOOST_CHECK(ValidateCallRequest(request, catalog, diagnostics));
+
+    request.arguments[0].value = "0g";
+    diagnostics.clear();
+    BOOST_CHECK(!ValidateCallRequest(request, catalog, diagnostics));
+    BOOST_CHECK(std::any_of(diagnostics.begin(), diagnostics.end(),
+        [](const CallDiagnostic& item) { return item.code == "invalid-argument-value"; }));
+
+    request.arguments[0].value = "00";
+    request.arguments[0].type.elementCount = UINT32_MAX;
+    diagnostics.clear();
+    BOOST_CHECK(!ValidateCallRequest(request, catalog, diagnostics));
+    BOOST_CHECK(std::any_of(diagnostics.begin(), diagnostics.end(),
+        [](const CallDiagnostic& item) { return item.code == "buffer-size-overflow"; }));
+}
+
 BOOST_AUTO_TEST_CASE(ValidationRejectsBadRangeCountAndDisplayOnlyPrototype)
 {
     FunctionCatalog catalog;

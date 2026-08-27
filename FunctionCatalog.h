@@ -19,6 +19,7 @@ enum class TypeKind
     Integer,
     Floating,
     String,
+    Bytes,
     Pointer,
     Structure
 };
