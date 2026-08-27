@@ -119,6 +119,19 @@ worker. x64 builds use `FubiInvocationWorker.exe`; an x86 build emits
 `FubiInvocationWorker_x86.exe`. A worker is rejected when it is unavailable or
 its PE bitness does not match the target.
 
+Worker isolation is an execution boundary, not a security sandbox. A target
+DLL may execute arbitrary code, access its permitted process resources, start
+threads, and perform external I/O. A timeout can force worker termination, but
+it cannot guarantee cleanup of target-owned resources or undo external side
+effects. The controller reports this limitation and does not describe an
+unknown DLL as safe merely because it ran in a worker.
+
+Static catalog, listing, description, and profile operations read file and
+metadata bytes only. They do not load the target or execute `DllMain`. Pointer
+results remain unsupported across the isolated worker boundary because a raw
+address is not a reusable session reference. Runtime tests use controlled,
+trusted fixture DLLs and should not load arbitrary contributor or system DLLs.
+
 ## Testing
 
 The test suite includes a fixture DLL whose `DllMain` writes a marker. Both the
