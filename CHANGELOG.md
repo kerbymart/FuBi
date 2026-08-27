@@ -106,4 +106,7 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - Merge pull request #34 from kerbymart/test/33-x64-invocation-fixture-matrix
 - feat: convert bounded PDB type graphs
 - Merge pull request #35 from kerbymart/feat/29-pdb-type-graph-complete
+- feat: dispatch persistent JSONL session actions
+- fix: preserve JSONL response framing
+- Merge pull request #37 from kerbymart/feat/36-jsonl-session-dispatch
 

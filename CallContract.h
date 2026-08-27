@@ -19,6 +19,7 @@ struct CallRequest
 {
     static constexpr uint32_t kSchemaVersion = 1;
     uint32_t schemaVersion = kSchemaVersion;
+    std::string action = "call";
     std::string correlationId;
     std::string selector;
     std::string moduleSha256;
@@ -47,6 +48,7 @@ struct CallResult
 {
     static constexpr uint32_t kSchemaVersion = 1;
     uint32_t schemaVersion = kSchemaVersion;
+    std::string action = "call";
     std::string correlationId;
     bool success = false;
     std::string status = "not-executed";
