@@ -37,7 +37,7 @@ bool Number(const std::string& text, int base, uint64_t& value)
 bool Value(const CallArgument& argument, uint64_t& value)
 {
     if (argument.type.kind == TypeKind::Bool) { if (argument.value == "false") { value=0; return true; } if (argument.value == "true") { value=1; return true; } return false; }
-    if (argument.type.kind == TypeKind::Pointer) { if (argument.value.rfind("opaque:", 0) != 0) return false; return Number(argument.value.substr(7), 0, value); }
+    if (argument.type.kind == TypeKind::Pointer || argument.type.kind == TypeKind::Handle) { if (argument.value.rfind("opaque:", 0) != 0) return false; return Number(argument.value.substr(7), 0, value); }
     if (argument.type.isSigned) { if (argument.value.empty()) return false; errno=0; char* end=nullptr; const long long parsed=std::strtoll(argument.value.c_str(),&end,0); if(errno==ERANGE||end==argument.value.c_str()||*end!='\0') return false; value=static_cast<uint64_t>(parsed); return true; }
     return Number(argument.value, 0, value);
 }
@@ -186,7 +186,7 @@ bool PrepareStorage(const CallArgument& argument, std::vector<unsigned char>& st
 std::string ReturnValue(uint64_t value, const TypeSpec& type)
 {
     if (type.kind == TypeKind::Bool) return value ? "true" : "false";
-    if (type.kind == TypeKind::Pointer) return "opaque:0x" + [&] { std::ostringstream out; out << std::hex << value; return out.str(); }();
+    if (type.kind == TypeKind::Pointer || type.kind == TypeKind::Handle) return "opaque:0x" + [&] { std::ostringstream out; out << std::hex << value; return out.str(); }();
     if (type.width > 0 && type.width < 64)
     {
         const uint64_t mask = (uint64_t(1) << type.width) - 1;
@@ -318,7 +318,7 @@ bool InvokeX64Export(const std::string& imagePath, const CallRequest& request,
     if (!ValidateCallRequest(request, catalog, diagnostics)) { result = {}; result.correlationId=request.correlationId; result.status="validation-failed"; result.diagnostics=diagnostics; error="call request validation failed"; return false; }
     for (const CallArgument& argument : request.arguments)
     {
-        if (argument.type.kind != TypeKind::Integer && argument.type.kind != TypeKind::Bool && argument.type.kind != TypeKind::Pointer && argument.type.kind != TypeKind::String && argument.type.kind != TypeKind::Bytes && argument.type.kind != TypeKind::Floating)
+        if (argument.type.kind != TypeKind::Integer && argument.type.kind != TypeKind::Bool && argument.type.kind != TypeKind::Pointer && argument.type.kind != TypeKind::Handle && argument.type.kind != TypeKind::String && argument.type.kind != TypeKind::Bytes && argument.type.kind != TypeKind::Floating)
         {
             result = {}; result.correlationId = request.correlationId; result.status = "validation-failed";
             result.diagnostics.push_back({"unsupported-type", "arguments", "x64 adapter supports scalar integer, bool, pointer, and floating values"});
