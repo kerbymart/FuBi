@@ -37,6 +37,10 @@ Current milestone: **Acceptance gaps, PDB type conversion, tracker evidence, and
 
 Overall roadmap: **11/11 milestones have baseline implementation PRs, with detailed acceptance checklists still open**. Bounded PDB metadata is merged in [PR #28](https://github.com/kerbymart/FuBi/pull/28), display-only graph validation in [PR #30](https://github.com/kerbymart/FuBi/pull/30), and invocation-grade type conversion in [PR #35](https://github.com/kerbymart/FuBi/pull/35). Internal RVA acceptance is covered by [PR #62](https://github.com/kerbymart/FuBi/pull/62), bounded string output by [PR #64](https://github.com/kerbymart/FuBi/pull/64), mixed x64 ABI placement by [PR #68](https://github.com/kerbymart/FuBi/pull/68), and adversarial parser boundaries by [PR #70](https://github.com/kerbymart/FuBi/pull/70). Published-history rewriting remains open in [#14](https://github.com/kerbymart/FuBi/issues/14), and the unchecked acceptance items below remain authoritative.
 
+All milestone branch values in this tracker use the corresponding issue-numbered
+branch. The names remain stable after merge so each milestone can be traced to
+its issue and the associated historical pull requests.
+
 ## Design approval gate
 
 No implementation milestone should begin until the dependency policy, call
