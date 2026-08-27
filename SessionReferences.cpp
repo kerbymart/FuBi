@@ -95,6 +95,7 @@ bool SessionReferences::ReleaseHandle(const std::string& reference,
         found->second.identity.width != expectedWidth ||
         found->second.identity.moduleSha256 != moduleSha256 ||
         found->second.identity.architecture != architecture ||
+        found->second.identity.ownership != "owned" ||
         !found->second.identity.release) return false;
     if (!found->second.identity.release(found->second.value)) return false;
     values_.erase(found);
