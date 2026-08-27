@@ -65,10 +65,17 @@ set(SOURCES
     WindowsPatternCatalog.cpp
     fubimain.cpp
     stdafx.cpp)
+if(MSVC AND CMAKE_SIZEOF_VOID_P EQUAL 8)
+    enable_language(ASM_MASM)
+    set(NATIVE_CALL_SOURCES NativeCall_x64.asm)
+else()
+    set(NATIVE_CALL_SOURCES)
+endif()
 add_executable(Fubi ${SOURCES})
+target_sources(Fubi PRIVATE ${NATIVE_CALL_SOURCES})
 target_link_libraries(Fubi PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 
-add_executable(FubiInvocationWorker InvocationWorkerMain.cpp InvocationEngine.cpp CallContract.cpp FunctionCatalog.cpp PrototypeProfile.cpp DbgHelpDll.cpp StaticExportCatalog.cpp PEImage.cpp stdafx.cpp)
+add_executable(FubiInvocationWorker InvocationWorkerMain.cpp InvocationEngine.cpp CallContract.cpp FunctionCatalog.cpp PrototypeProfile.cpp DbgHelpDll.cpp StaticExportCatalog.cpp PEImage.cpp stdafx.cpp ${NATIVE_CALL_SOURCES})
 target_link_libraries(FubiInvocationWorker PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 
 set(TEST_SOURCES TestSignatureParser.cpp)
@@ -108,7 +115,7 @@ add_executable(prototype_profile_tests TestPrototypeProfile.cpp PrototypeProfile
 target_link_libraries(prototype_profile_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 add_dependencies(prototype_profile_tests export_fixture)
 
-add_executable(call_contract_tests TestCallContract.cpp CallContract.cpp InvocationEngine.cpp ProcessInvocation.cpp FunctionCatalog.cpp PrototypeProfile.cpp DbgHelpDll.cpp StaticExportCatalog.cpp PEImage.cpp)
+add_executable(call_contract_tests TestCallContract.cpp CallContract.cpp InvocationEngine.cpp ProcessInvocation.cpp FunctionCatalog.cpp PrototypeProfile.cpp DbgHelpDll.cpp StaticExportCatalog.cpp PEImage.cpp ${NATIVE_CALL_SOURCES})
 target_link_libraries(call_contract_tests PRIVATE bcrypt DbgHelp fubi_boost_headers fubi_build_limits)
 add_dependencies(call_contract_tests export_fixture)
 
