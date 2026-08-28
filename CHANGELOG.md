@@ -201,4 +201,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - Merge pull request #155 from kerbymart/chore/154-ignore-build-output
 - docs: add changelog
 - docs: reconstruct changelog history
+- docs: remove changelog process note
 
