@@ -197,4 +197,6 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - chore: fix reference acceptance selector
 - Merge pull request #152 from kerbymart/chore/151-reference-acceptance-and-tracker-branches
 - chore: remove project metadata and commit GitHub templates
+- chore: ignore local verification build outputs
+- Merge pull request #155 from kerbymart/chore/154-ignore-build-output
 
