@@ -4,107 +4,187 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-FuBi has not yet published versioned releases, so all notable project history is currently recorded under `Unreleased`.
+FuBi has not yet published versioned releases, so all project history is recorded under `Unreleased`.
 
 ## [Unreleased]
 
-### Added
+Commits are listed in parent-before-child order. Each entry represents one commit in the repository history.
 
-- Static DLL export discovery that reads PE files without loading or executing the target module.
-- Complete export enumeration for named, ordinal-only, aliased, and forwarded exports.
-- Bounded PE parsing with explicit limits for image size, export tables, delay imports, and other untrusted metadata.
-- A unified function catalog that combines PE exports, x64 runtime-function metadata, Guard CF metadata, and other supported function evidence.
-- Module identity tracking based on canonical path, hash, architecture, timestamp, image size, preferred image base, and available PDB identity.
-- Function selectors and catalog records that preserve names, aliases, ordinals, RVAs, executable-state checks, provenance, and callability state.
-- Hash-pinned prototype profiles for supplying trusted function signatures when the binary itself does not contain enough type information.
-- Local PDB symbol discovery with module-identity validation.
-- Bounded PDB type extraction and type-graph conversion for supported function prototype evidence.
-- Typed call request, result, diagnostic, argument, return-type, ABI, and policy contracts.
-- Explicit authorization for calling cataloged non-exported functions by internal RVA.
-- An isolated invocation worker executable for executing target functions outside the main FuBi process.
-- Worker supervision, result transport, timeout handling, IPC cleanup, and normalized worker failure reporting.
-- Architecture-aware worker selection for x86 and x64 targets.
-- A normalized Windows x64 native-call adapter implemented in MASM.
-- Windows x64 argument marshalling for integer, pointer, floating-point, and mixed register/stack calls.
-- Windows x64 scalar integer, pointer, boolean, float, and double return handling.
-- A normalized x86 call-frame model.
-- x86 invocation support for `__cdecl`, `__stdcall`, `__thiscall`, and `__fastcall`.
-- x86 ABI fixtures for calling-convention behavior, register preservation, and stack handling.
-- Persistent JSONL session mode for machine-readable command dispatch.
-- Strict JSONL request parsing, response framing, malformed-line recovery, and session lifecycle handling.
-- Bounded string and byte-buffer arguments.
-- Bounded output and in/out string buffers.
-- Opaque session references for pointer-like values that must remain process-local.
-- Opaque handle ownership and lifecycle contracts.
-- Stable CLI exit codes for automation.
-- Windows-specific bounded call-pattern recognition for supported WDF and CFG-related evidence.
-- Static inspection diagnostics for PE headers, sections, imports, delay imports, exports, runtime functions, load configuration, and related metadata.
-- CLI output-format and session-compatibility handling for the current static and invocation workflows.
-- Optional hash-pinned acceptance testing against an external reference DLL.
-- Acceptance coverage for Windows call-pattern recognition and architecture/calling-convention matrices.
-- Regression fixtures for exports, persistent output buffers, opaque handles, static PE metadata, x86 ABIs, thiscall, fastcall, and register preservation.
-- Early Boost-based signature parsing and its unit tests from the original FuBi implementation.
-- The original direct DLL binding and calling implementation, preserved as legacy source for historical reference.
-
-### Changed
-
-- Reworked FuBi from the original direct `LoadLibrary`/raw-call design into a static-first discovery and validated invocation architecture.
-- Replaced the original `Fubi::Call_function` production path with the current `FunctionCatalog`, `PrototypeProfile`, `CallContract`, `InvocationEngine`, and worker-based execution pipeline.
-- Replaced ad-hoc x86 dispatch with normalized x86 call frames and compiler-declared calling-convention function types.
-- Moved Windows x64 ABI marshalling into the dedicated `NativeCall_x64.asm` boundary.
-- Kept incomplete or weak PDB and undecorated-symbol information display-only instead of treating it as sufficient call authorization.
-- Bound prototype, symbol, and internal-RVA evidence to the exact target module identity.
-- Strengthened call validation so the selected function, module identity, prototype, architecture, ABI, and argument shapes must agree before execution.
-- Improved typed result formatting for narrow signed and unsigned scalar values.
-- Improved session handling so process-local pointer and handle values are represented through controlled references rather than reusable raw integers.
-- Made worker names and architecture-specific output artifacts predictable for orchestration and tests.
-- Made Boost discovery work with local/offline installations instead of requiring build-time downloads.
-- Removed dependency-fetch wording and references to retired external components from project documentation.
-- Reorganized the repository into production source, platform-specific code, preserved legacy code, unit tests, fixtures, and integration verification scripts.
-- Moved the original `Fubi.cpp`, `Fubi.h`, `SysExports.cpp`, and `SysExports.h` out of the modern production source path while preserving them in the repository.
-- Moved platform-specific assembly into dedicated Windows source/fixture locations.
-- Updated CMake paths and MASM object handling to match the organized source tree.
-- Standardized README and usage documentation around the current function-discovery, prototype, binding, and invocation workflow.
-- Documented the prototype-profile format, supported capability matrix, export/signature evidence model, bounded string behavior, worker-isolation limits, and current CLI behavior.
-- Removed obsolete local project metadata while retaining GitHub issue and contribution templates.
-- Added ignore rules for local verification build outputs.
-
-### Fixed
-
-- Corrected static export parsing bounds and allocation limits.
-- Corrected function-catalog identity, selector handling, complete evidence output, executable-range checks, and export counts.
-- Corrected canonical path length validation.
-- Corrected profile identity validation and supported type-shape validation.
-- Prevented undecorated or incomplete symbol/type evidence from becoming callable contracts.
-- Corrected call-contract serialization so diagnostics, metadata, overrides, and errors survive round trips.
-- Required trusted catalog provenance before internal-function authorization is accepted.
-- Hardened Windows x64 native invocation safety checks.
-- Bounded native invocation execution and retained timed-out contexts safely until process isolation is available.
-- Prevented unbounded accumulation of timed-out in-process workers.
-- Corrected worker-capacity reservation and release on preflight failures.
-- Corrected worker termination verification and IPC cleanup ordering.
-- Normalized isolated worker error and result handling.
-- Hardened x86 invocation portability and worker ABI lifetime handling.
-- Corrected Windows x64 outgoing stack-argument placement and alignment.
-- Preserved x64 register arguments while preparing stack arguments.
-- Corrected mixed integer/floating x64 calls and floating-point return capture.
-- Preserved narrow scalar return widths and signedness.
-- Hardened string and byte-buffer marshalling.
-- Rejected oversized string payloads and invalid output-buffer descriptors.
-- Rejected invalid pointer-like results returned through worker/session boundaries.
-- Hardened parser boundaries for malformed JSON numbers, Unicode escapes, request structures, and JSONL framing.
-- Preserved JSONL response framing after malformed input.
-- Hardened Windows call-pattern arithmetic and evidence bounds.
-- Corrected call-pattern target semantics.
-- Corrected delay-import reporting under bounded inspection.
-- Corrected worker failure fixture RVAs after source/build changes.
-- Corrected export fixture expectations to match the complete export identity set.
-- Corrected MASM fixture object paths after the repository layout refactor.
-
-### Removed
-
-- Removed the external decoder/disassembly dependency from the current production path.
-- Removed automatic build-time dependency fetching from the supported build flow.
-- Removed the original direct raw-call implementation from the modern FuBi executable; the source remains preserved under legacy code.
-- Removed the legacy x86 call-dispatch path after normalized x86 frames became authoritative.
-- Removed obsolete project metadata and retired dependency references.
+- 2013-12-30 — 35b9193 — Initial commit
+- 2022-12-29 — 41ab6eb — - Update CMakeLists.txt with target and link libraries - Added comments on each source and header files - Updated `FunctionSpec` to use enum-type var and call types - Modified parser for the changes in `FunctionSpec` data structure - Modified `Fubi::Call_function` method to return the result type
+- 2022-12-29 — e658699 — - Created initial README file
+- 2022-12-29 — 2b56d8f — Fixed README headings
+- 2022-12-29 — 888950d — - Set platform to x86 in the CMakeLists file - Updated README build instruction
+- 2022-12-29 — d911233 — - Updated CMakeLists to enable Boost test - Added initial TestSignatureParser
+- 2022-12-29 — d5fecc6 — - Added basic SignatureParser tests - Added grammar to capture 'class' function return type - Added addition base types
+- 2022-12-30 — 3f3db3b — Updated README source file list section
+- 2026-08-27 — d12680c — feat: enumerate and dump complete DLL exports
+- 2026-08-27 — 4267413 — feat: add static PE reverse-engineering analysis
+- 2026-08-27 — 998c00e — docs: standardize README and usage guide
+- 2026-08-27 — 3e6377a — fix: make capability analysis evidence-aware
+- 2026-08-27 — 4e1b9b8 — Merge pull request #1 from kerbymart/feat/static-pe-analysis
+- 2026-08-27 — 177e7dc — docs: refocus README on function binding
+- 2026-08-27 — 1397200 — chore: remove external decoder dependency
+- 2026-08-27 — dcf4933 — fix: bound static export parsing
+- 2026-08-27 — de32177 — fix: cap static catalog allocations
+- 2026-08-27 — a0e1858 — Merge pull request #15 from kerbymart/chore/remove-decoder-dependency
+- 2026-08-27 — cd1aced — feat: add static function catalog core
+- 2026-08-27 — b25f4bc — fix: tighten function catalog identity and selectors
+- 2026-08-27 — 5c1ac0d — fix: preserve complete catalog evidence output
+- 2026-08-27 — bf4f24e — fix: reject non-executable function evidence
+- 2026-08-27 — 4dcf132 — fix: count complete export identity set
+- 2026-08-27 — d7fa358 — fix: correct canonical path length check
+- 2026-08-27 — 3cb964d — Merge pull request #17 from kerbymart/refactor/4-function-catalog-core
+- 2026-08-27 — c73c800 — feat: add hash-pinned prototype profiles
+- 2026-08-27 — 286b235 — fix: harden prototype profile integration
+- 2026-08-27 — e42baea — fix: validate profile identities and type shapes
+- 2026-08-27 — 5d559fb — feat: add validated local PDB symbol evidence
+- 2026-08-27 — 05616ca — feat: apply static symbol evidence to catalogs
+- 2026-08-27 — 44cdb3b — fix: bind symbol evidence to module identity
+- 2026-08-27 — c5fc352 — fix: keep undecorated symbols display-only
+- 2026-08-27 — 1839848 — Merge pull request #18 from kerbymart/feat/5-symbol-and-profile-prototypes
+- 2026-08-27 — e45684a — feat: add typed call request contracts
+- 2026-08-27 — 54649d3 — style: normalize call contract header
+- 2026-08-27 — f5f123f — fix: harden typed call validation and transport
+- 2026-08-27 — 03072df — fix: round-trip call diagnostics
+- 2026-08-27 — 7507823 — fix: preserve call contract metadata and errors
+- 2026-08-27 — af5939d — fix: preserve call metadata and override transport
+- 2026-08-27 — abe7380 — fix: complete call result transport and policy
+- 2026-08-27 — 5fcf2cf — fix: enforce complete call identity contracts
+- 2026-08-27 — 8950024 — fix: require trusted internal authorization provenance
+- 2026-08-27 — 4d831c0 — fix: require catalog-owned internal authorization
+- 2026-08-27 — 5e04799 — Merge pull request #20 from kerbymart/feat/6-typed-call-request
+- 2026-08-27 — bfa15f5 — feat: add x64 exported invocation engine
+- 2026-08-27 — bff5762 — style: normalize invocation header
+- 2026-08-27 — 9c49c8d — fix: harden x64 invocation safety checks
+- 2026-08-27 — 249f4ff — feat: bound invocation worker execution
+- 2026-08-27 — 13ec2de — fix: retain timed out invocation context
+- 2026-08-27 — 76875cb — fix: cap retained timeout workers
+- 2026-08-27 — a7fabdc — fix: reserve invocation worker capacity atomically
+- 2026-08-27 — fb6f55e — fix: release worker reservation on preflight failure
+- 2026-08-27 — 1d6eb10 — Merge pull request #21 from kerbymart/feat/7-native-invocation-x64
+- 2026-08-27 — 32a22df — feat: authorize checked internal RVA calls
+- 2026-08-27 — fce4d12 — test: cover internal invocation authorization boundary
+- 2026-08-27 — 21b0623 — Merge pull request #22 from kerbymart/feat/8-internal-rva-binding
+- 2026-08-27 — 1ffc40a — feat: add deterministic JSONL session mode
+- 2026-08-27 — 34db0d6 — fix: enforce strict JSONL request boundaries
+- 2026-08-27 — 9c89afc — fix: validate JSON request structure completely
+- 2026-08-27 — 53e8de5 — fix: enforce JSON number and unicode grammar
+- 2026-08-27 — 7643ce0 — Merge pull request #23 from kerbymart/feat/9-script-session-protocol
+- 2026-08-27 — a222d9f — feat: add isolated invocation worker executable
+- 2026-08-27 — 951d4fa — feat: supervise calls in isolated worker process
+- 2026-08-27 — f49e512 — fix: normalize isolated worker failures
+- 2026-08-27 — bba1789 — fix: verify worker termination and IPC cleanup
+- 2026-08-27 — 3c94315 — fix: close worker result before IPC cleanup
+- 2026-08-27 — d686bdd — Merge pull request #24 from kerbymart/feat/10-isolated-call-worker
+- 2026-08-27 — 22953f4 — feat: add guarded x86 cdecl invocation path
+- 2026-08-27 — e5c84ee — Merge pull request #25 from kerbymart/feat/11-native-invocation-x86
+- 2026-08-27 — 4f0183f — feat: add bounded Windows call pattern catalog
+- 2026-08-27 — efd171c — fix: bound and tighten Windows pattern evidence
+- 2026-08-27 — 343a6ce — fix: harden pattern catalog arithmetic bounds
+- 2026-08-27 — b0a2b0b — Merge pull request #26 from kerbymart/feat/12-windows-call-pattern-catalog
+- 2026-08-27 — 7ed29c8 — test: add opt-in hash-pinned acceptance harness
+- 2026-08-27 — f008179 — Merge pull request #27 from kerbymart/test/13-t1pidd-catalog-acceptance
+- 2026-08-27 — 647e3a1 — feat: extract bounded PDB type metadata
+- 2026-08-27 — 3caba0e — fix: keep partial PDB metadata display-only
+- 2026-08-27 — 2c40c1e — fix: compile display-only PDB regression
+- 2026-08-27 — 7a9dc69 — Merge pull request #28 from kerbymart/feat/19-pdb-type-extraction
+- 2026-08-27 — fcaa8d0 — feat: validate bounded PDB type graphs
+- 2026-08-27 — 8dfa2cd — fix: keep incomplete PDB graphs display-only
+- 2026-08-27 — 127bfbd — Merge pull request #30 from kerbymart/feat/29-pdb-type-graph
+- 2026-08-27 — 5401e0e — test: cover x64 invocation fixture matrix
+- 2026-08-27 — 54c7170 — fix: preserve narrow scalar return widths
+- 2026-08-27 — 91060a3 — Merge pull request #34 from kerbymart/test/33-x64-invocation-fixture-matrix
+- 2026-08-27 — d550dc5 — feat: convert bounded PDB type graphs
+- 2026-08-27 — 9e51717 — Merge pull request #35 from kerbymart/feat/29-pdb-type-graph-complete
+- 2026-08-27 — a2d969f — feat: dispatch persistent JSONL session actions
+- 2026-08-27 — 16aa728 — fix: preserve JSONL response framing
+- 2026-08-27 — 25e005d — Merge pull request #37 from kerbymart/feat/36-jsonl-session-dispatch
+- 2026-08-27 — 4f8dc41 — feat: support x86 calling conventions
+- 2026-08-27 — a5dc370 — fix: keep x86 catalog validation portable
+- 2026-08-27 — 6bbc640 — fix: retain x86 worker ABI lifetime
+- 2026-08-27 — e3cc7ab — Merge pull request #39 from kerbymart/feat/38-x86-calling-conventions
+- 2026-08-27 — 9746f24 — feat: recognize bounded x64 call patterns
+- 2026-08-27 — d45174a — fix: preserve call pattern target semantics
+- 2026-08-27 — a675d82 — Merge pull request #41 from kerbymart/feat/40-call-iat-patterns
+- 2026-08-27 — e5be870 — chore: support offline Boost discovery
+- 2026-08-27 — 856ba23 — Merge pull request #43 from kerbymart/chore/42-offline-boost-discovery
+- 2026-08-27 — 4928766 — feat: add normalized x64 call adapter
+- 2026-08-27 — aea19a9 — fix: place x64 stack arguments correctly
+- 2026-08-27 — 2d3fb95 — fix: align x64 outgoing stack arguments
+- 2026-08-27 — 12fb72e — fix: preserve x64 register arguments
+- 2026-08-27 — 4c9c799 — Merge pull request #45 from kerbymart/feat/44-normalized-x64-call-frame
+- 2026-08-27 — 800b7fd — feat: support bounded string and byte buffer arguments
+- 2026-08-27 — 37e54a1 — fix: harden string and buffer marshalling
+- 2026-08-27 — 14d4de9 — fix: bound byte buffer decoding
+- 2026-08-27 — eaf15cb — Merge pull request #47 from kerbymart/feat/46-bounded-strings-byte-buffers
+- 2026-08-27 — b131efd — feat: report isolated worker outcomes
+- 2026-08-27 — 4220ff0 — feat: support x64 floating point calls
+- 2026-08-27 — 8321f7c — test: verify JSONL malformed-line recovery
+- 2026-08-27 — 45237e3 — test: verify scanned call pattern evidence
+- 2026-08-27 — 78e085c — feat: recognize bounded WDF and CFG call patterns
+- 2026-08-27 — 2f2fb51 — feat: select invocation workers by architecture
+- 2026-08-27 — a5093bb — test: verify hash-pinned internal RVA calls (#62)
+- 2026-08-27 — 9a15249 — feat: support bounded string output arguments (#64)
+- 2026-08-27 — 75808b0 — docs: document bounded string outputs (#66)
+- 2026-08-27 — 9f41a83 — test: cover mixed x64 floating ABI calls (#68)
+- 2026-08-27 — dd08af9 — test: harden parser boundary coverage (#70)
+- 2026-08-27 — deebc36 — fix: reject invalid pointer results from workers (#74)
+- 2026-08-27 — 99938ab — feat: enforce persistent JSONL session lifecycle (#76)
+- 2026-08-27 — 9e0a691 — feat: define stable exit-code contract (#78)
+- 2026-08-27 — cb1c997 — docs: clarify worker isolation limits (#80)
+- 2026-08-27 — 3e08ae5 — test: verify worker failure protocol recovery (#82)
+- 2026-08-27 — 5d6ff52 — test: verify framework-managed call blocking (#84)
+- 2026-08-27 — b44a44d — docs: document prototype profile schema (#86)
+- 2026-08-27 — 9168f89 — docs: add capability matrix (#88)
+- 2026-08-27 — 84f65aa — feat: complete x86 worker invocation coverage (#90)
+- 2026-08-27 — 4c3922e — test: harden x86 ABI worker guarantees (#92)
+- 2026-08-27 — ce6f6fc — test: verify x86 nonvolatile register preservation (#94)
+- 2026-08-27 — 1a72da8 — feat: add x86 thiscall invocation support (#96)
+- 2026-08-27 — a951025 — feat: add x86 fastcall invocation coverage (#98)
+- 2026-08-27 — 81d8470 — test: add x86 convention matrix verification (#100)
+- 2026-08-27 — 8d48e33 — test: verify architecture and calling-convention matrices (#102)
+- 2026-08-27 — 0c86be4 — test: add Windows pattern acceptance coverage (#104)
+- 2026-08-27 — 76b5b45 — test: add opt-in t1pidd catalog acceptance (#106)
+- 2026-08-27 — 1fc05de — feat: add opaque session reference lifecycle (#113)
+- 2026-08-27 — a360c7b — feat: add injectable invocation adapter seam (#115)
+- 2026-08-27 — a327868 — feat: support persistent JSONL pointer references (#119)
+- 2026-08-27 — 7d747bc — feat: add opaque handle ownership contract (#120)
+- 2026-08-27 — 9f3e0e7 — test: cover string length fixture matrix
+- 2026-08-27 — 66bd33e — test: cover opaque echo validation
+- 2026-08-27 — 052271f — feat: define normalized x86 call frame
+- 2026-08-27 — 1724bf9 — test: reject oversized string payloads
+- 2026-08-27 — dadd34e — Merge pull request #125 from kerbymart/feat/124-string-fixture-matrix
+- 2026-08-27 — d304f7b — fix: route x86 workers through normalized frames
+- 2026-08-27 — 88f68ee — refactor: remove legacy x86 call dispatch
+- 2026-08-27 — 5b3905e — Merge pull request #126 from kerbymart/feat/123-x86-call-frame-adapter
+- 2026-08-27 — 5b00234 — Merge pull request #128 from kerbymart/docs/127-tracker-x86-frame-fixture
+- 2026-08-28 — 27c3cc0 — build: align invocation worker artifact names
+- 2026-08-28 — 8ebd06f — test: refresh worker failure fixture RVAs
+- 2026-08-28 — 949186a — Merge pull request #130 from kerbymart/feat/129-worker-artifact-names
+- 2026-08-28 — db862a3 — chore: remove retired dependency names
+- 2026-08-28 — 45a88d3 — Merge pull request #132 from kerbymart/chore/131-retired-dependency-wording
+- 2026-08-28 — 935169d — docs: remove fetch mechanism wording
+- 2026-08-28 — d4d988c — Merge pull request #138 from kerbymart/chore/135-fetch-wording-cleanup
+- 2026-08-28 — 16cb0e0 — feat: add CLI format and session compatibility
+- 2026-08-28 — e7d7ea2 — Merge pull request #140 from kerbymart/feat/137-cli-format-session
+- 2026-08-28 — 8a57cdd — feat: add bounded inspect diagnostics
+- 2026-08-28 — 638c10a — fix: report bounded delay imports
+- 2026-08-28 — 39d1df7 — Merge pull request #141 from kerbymart/feat/136-inspect-diagnostics
+- 2026-08-28 — 89c67e9 — test: prove static inspection CLI does not execute
+- 2026-08-28 — 34c381a — Merge pull request #145 from kerbymart/test/144-static-inspection-cli
+- 2026-08-28 — 480cfff — docs: document export and signature evidence
+- 2026-08-28 — 81a6f55 — Merge pull request #147 from kerbymart/docs/146-export-signature-docs
+- 2026-08-28 — c135132 — test: align export count expectations
+- 2026-08-28 — 6419df5 — fix: match complete export fixture count
+- 2026-08-28 — fefbe90 — Merge pull request #149 from kerbymart/test/148-export-count
+- 2026-08-28 — 65e11ef — refactor: organize source and test layout
+- 2026-08-28 — d3ed33a — refactor: organize source and test layout
+- 2026-08-28 — 630d080 — fix: flatten moved MASM fixture object paths
+- 2026-08-28 — 426537c — Merge pull request #150 from kerbymart/refactor/139-source-test-layout
+- 2026-08-28 — e732beb — chore: fix reference acceptance selector
+- 2026-08-28 — b37c139 — Merge pull request #152 from kerbymart/chore/151-reference-acceptance-and-tracker-branches
+- 2026-08-28 — f436bda — chore: remove project metadata and commit GitHub templates
+- 2026-08-28 — 24d27ea — chore: ignore local verification build outputs
+- 2026-08-28 — ae08fe3 — Merge pull request #155 from kerbymart/chore/154-ignore-build-output
+- 2026-08-28 — caccb26 — docs: add changelog
