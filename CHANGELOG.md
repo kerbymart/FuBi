@@ -8,8 +8,6 @@ FuBi has not yet published versioned releases, so all project history is recorde
 
 ## [Unreleased]
 
-Commits are listed in parent-before-child order. Each entry represents one commit in the repository history.
-
 - 2013-12-30 — 35b9193 — Initial commit
 - 2022-12-29 — 41ab6eb — - Update CMakeLists.txt with target and link libraries - Added comments on each source and header files - Updated `FunctionSpec` to use enum-type var and call types - Modified parser for the changes in `FunctionSpec` data structure - Modified `Fubi::Call_function` method to return the result type
 - 2022-12-29 — e658699 — - Created initial README file
