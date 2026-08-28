@@ -200,4 +200,5 @@ FuBi has not yet published versioned releases, so all project history is recorde
 - chore: ignore local verification build outputs
 - Merge pull request #155 from kerbymart/chore/154-ignore-build-output
 - docs: add changelog
+- docs: reconstruct changelog history
 
